@@ -120,12 +120,18 @@ def block_size(img) -> tuple[int, int]:
 
 
 def crop(src: Path, out: Path, trim: bool, session) -> str:
-    from PIL import Image
+    from PIL import Image, UnidentifiedImageError
 
-    original = Image.open(src)
+    try:
+        original = Image.open(src)
+    except UnidentifiedImageError:
+        raise Refused("it is not an image") from None
     if original.format != "JPEG":
         raise Refused("it is not a JPEG")
-    img = original.convert("RGB")
+    try:
+        img = original.convert("RGB")
+    except OSError as e:
+        raise Refused(f"it could not be read: {e}") from None
     w, h = img.size
     fixed = TRIM_FIXED.get(src.name) if trim else None
     if fixed:
@@ -138,8 +144,11 @@ def crop(src: Path, out: Path, trim: bool, session) -> str:
     if min(r - l, b - t) < MIN_KEPT * min(w, h):
         raise Refused(f"the crop {r - l}x{b - t} keeps less than {MIN_KEPT:.0%} of its short side ({min(w, h)} px)")
     dst = out / src.name
-    subprocess.run(["jpegtran", "-crop", f"{r - l}x{b - t}+{l}+{t}", "-perfect", "-copy", "none", "-optimize",
-                    "-outfile", str(dst), str(src)], check=True)
+    run = subprocess.run(["jpegtran", "-crop", f"{r - l}x{b - t}+{l}+{t}", "-perfect", "-copy", "none", "-optimize",
+                          "-outfile", str(dst), str(src)], capture_output=True, text=True)
+    if run.returncode != 0:
+        dst.unlink(missing_ok=True)
+        raise Refused(f"jpegtran failed: {run.stderr.strip() or f'exit {run.returncode}'}")
     return f"{src.name}\t{l}\t{t}\t{w - r}\t{h - b}\t{r - l}x{b - t}"
 
 

@@ -1,5 +1,5 @@
 {
- "source": "The 47 factory cloth photos the home page uses, read 6 October 2026; the colour and name of these measured from their photos by tool/measure_start_cloth.dart: KF-3.jpg, KF-4.jpg, KF-6.jpg, KF-7.jpg, KF-8.jpg, KF-10.jpg, KF-12.jpg, KF-13.jpg, KF-18.jpg, KF-19.jpg, KF-20.jpg, KF-21.jpg, KF-23.jpg, KF-27.jpg, KF-28.jpg, KF-31.jpg, KF-32.jpg, KF-33.jpg, KF-35.jpg, KF-36.jpg, KF-37.jpg, KF-38.jpg, KF-39.jpg, KF-40.jpg, KF-41.jpg, KF-42.jpg, KF-43.jpg, KF-44.jpg, KF-45.jpg, KF-46.jpg, KF-47.jpg, KF-48.jpg",
+ "source": "The 47 factory cloth photos the home page uses, read 6 October 2026; the colour, edge and name of these measured from their photos by tool/measure_start_cloth.dart: KF-3.jpg, KF-4.jpg, KF-6.jpg, KF-7.jpg, KF-8.jpg, KF-10.jpg, KF-12.jpg, KF-13.jpg, KF-18.jpg, KF-19.jpg, KF-20.jpg, KF-21.jpg, KF-23.jpg, KF-27.jpg, KF-28.jpg, KF-31.jpg, KF-32.jpg, KF-33.jpg, KF-35.jpg, KF-36.jpg, KF-37.jpg, KF-38.jpg, KF-39.jpg, KF-40.jpg, KF-41.jpg, KF-42.jpg, KF-43.jpg, KF-44.jpg, KF-45.jpg, KF-46.jpg, KF-47.jpg, KF-48.jpg",
  "cloth": [
   {
    "id": "KF-1",
@@ -40,7 +40,7 @@
     -25.5
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.005,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -55,7 +55,7 @@
     -10.3
    ],
    "busy": true,
-   "edge": 0.0367,
+   "edge": 0.077,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -85,7 +85,7 @@
     14.3
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.022,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -100,7 +100,7 @@
     -6.0
    ],
    "busy": true,
-   "edge": 0.0364,
+   "edge": 0.1045,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -115,7 +115,7 @@
     5.6
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.042,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -145,7 +145,7 @@
     -1.3
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0025,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -175,7 +175,7 @@
     -4.4
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0055,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -190,7 +190,7 @@
     -10.4
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0085,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -265,7 +265,7 @@
     -14.3
    ],
    "busy": false,
-   "edge": 0.0031,
+   "edge": 0.0075,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -280,7 +280,7 @@
     10.3
    ],
    "busy": false,
-   "edge": 0.0002,
+   "edge": 0.003,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -295,7 +295,7 @@
     -3.3
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0095,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -310,7 +310,7 @@
     -12.3
    ],
    "busy": false,
-   "edge": 0.0088,
+   "edge": 0.0135,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -340,7 +340,7 @@
     -12.3
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.01,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -400,7 +400,7 @@
     -19.3
    ],
    "busy": false,
-   "edge": 0.0041,
+   "edge": 0.022,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -415,7 +415,7 @@
     -8.5
    ],
    "busy": false,
-   "edge": 0.0002,
+   "edge": 0.0205,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -460,7 +460,7 @@
     -12.4
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0175,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -475,7 +475,7 @@
     -11.0
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0145,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -490,7 +490,7 @@
     -3.1
    ],
    "busy": true,
-   "edge": 0.0598,
+   "edge": 0.0945,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -505,7 +505,7 @@
     -10.7
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.036,
    "grain": null,
    "inBox": 1,
    "pieces": 1,
@@ -520,7 +520,7 @@
     11.2
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.0815,
    "grain": null,
    "inBox": 13,
    "pieces": 2,
@@ -535,7 +535,7 @@
     2.3
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.086,
    "grain": null,
    "inBox": 21,
    "pieces": 2,
@@ -550,7 +550,7 @@
     -10.8
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.044,
    "grain": null,
    "inBox": 10,
    "pieces": 2,
@@ -565,7 +565,7 @@
     30.2
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.0345,
    "grain": null,
    "inBox": 6,
    "pieces": 2,
@@ -580,7 +580,7 @@
     56.5
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.0295,
    "grain": null,
    "inBox": 6,
    "pieces": 2,
@@ -595,7 +595,7 @@
     -3.0
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.129,
    "grain": null,
    "inBox": 4,
    "pieces": 2,
@@ -610,7 +610,7 @@
     2.6
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.075,
    "grain": null,
    "inBox": 1,
    "pieces": 1,
@@ -625,7 +625,7 @@
     14.8
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.042,
    "grain": null,
    "inBox": 4,
    "pieces": 2,
@@ -640,7 +640,7 @@
     29.9
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.0535,
    "grain": null,
    "inBox": 12,
    "pieces": 2,
@@ -655,7 +655,7 @@
     -8.5
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.029,
    "grain": null,
    "inBox": 12,
    "pieces": 2,
@@ -670,7 +670,7 @@
     56.6
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.025,
    "grain": null,
    "inBox": 7,
    "pieces": 2,
@@ -685,7 +685,7 @@
     24.3
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.019,
    "grain": null,
    "inBox": 4,
    "pieces": 2,
@@ -700,7 +700,7 @@
     -17.9
    ],
    "busy": null,
-   "edge": null,
+   "edge": 0.079,
    "grain": null,
    "inBox": 5,
    "pieces": 2,
