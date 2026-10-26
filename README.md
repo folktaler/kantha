@@ -10,6 +10,8 @@ where takes an afternoon. The Kantha studio is the app that does the deciding. I
 
 <img src="docs/screenshots/studio-phone.png" alt="The studio on a phone: a Wave panel of real cloth, with the patterns below" width="320">
 
+<img src="docs/photos/panel-yellow-stitch.jpg" alt="A hand-stitched kantha panel: bright cotton squares with yellow running stitch" width="240"> <img src="docs/photos/panel-orange-stitch.jpg" alt="A hand-stitched kantha panel: red, black and striped squares with orange running stitch" width="240">
+
 ## What it does
 
 Collect scraps of cloth, cut them 6 × 6 cm, photograph them into a box, and see designs come out of what
