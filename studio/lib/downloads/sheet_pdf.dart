@@ -68,16 +68,16 @@ Future<Uint8List> sheetPdf(DesignView d, Map<String, Uint8List?> photos, List<Ui
         ])),
         // The join: along the bottom of a page with one after it, ticks above; along the top of a page with one before
         // it, ticks below. All the white first, then the ink, so no white is over a mark.
-        for (final edge in [halo, 0.0])
+        for (final (edge, colour) in [(halo, white), (0.0, ink)])
           for (final (y, down) in [if (p > 0) (top, true), if (p < pages.length - 1) (bottom, false)]) ...[
             pw.Positioned(left: left - past - edge, top: y - mark / 2 - edge,
-                child: pw.Container(width: bw + 2 * past + 2 * edge, height: mark + 2 * edge, color: edge > 0 ? white : ink)),
+                child: pw.Container(width: bw + 2 * past + 2 * edge, height: mark + 2 * edge, color: colour)),
             for (var c = 0; c <= a4.cols; c++)
               pw.Positioned(left: left + c * size - mark / 2 - edge, top: (down ? y : y - tick) - edge,
-                  child: pw.Container(width: mark + 2 * edge, height: tick + 2 * edge, color: edge > 0 ? white : ink)),
+                  child: pw.Container(width: mark + 2 * edge, height: tick + 2 * edge, color: colour)),
           ],
         // On a page after the first, the words to cut it at its top line and lay it on the page before: 4 mm above
-        // that line (clear of the ticks), centred.
+        // that line, centred, so the words stay clear of the line and its white edge and fall away with the strip cut off.
         if (p > 0 && joinWords != null)
           pw.Positioned(left: (format.width - joinWords.w) / 2, top: top - 4 * mm - joinWords.h,
               child: pw.Image(joinWords.image, width: joinWords.w, height: joinWords.h)),

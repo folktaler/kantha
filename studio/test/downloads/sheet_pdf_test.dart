@@ -7,6 +7,7 @@ import 'package:kantha_studio/downloads/caption.dart';
 import 'package:kantha_studio/downloads/paper.dart';
 import 'package:kantha_studio/downloads/sheet_pdf.dart';
 import 'package:kantha_studio/l10n/app_localizations.dart';
+import 'package:kantha_studio/studio/shelf_feed.dart';
 import 'caption_test.dart' show zinnia;
 
 final square = Uint8List.fromList(img.encodeJpg(img.Image(width: 600, height: 600)..clear(img.ColorRgb8(30, 120, 140))));
@@ -32,12 +33,13 @@ List<({double w, double h, List<Box> placed, List<Box> rects})> pagesOf_(String 
   return [
     for (var i = 0; i < boxes.length; i++)
       (w: double.parse(boxes[i][1]!), h: double.parse(boxes[i][2]!),
-          placed: _painted(streams[i], r'([\d.]+) 0 0 ([\d.]+) 0 0 cm\s*/I\w+ Do'),
+          placed: _painted(streams[i], r'([\d.]+) 0 0 ([\d.]+) ([-\d.]+) ([-\d.]+) cm\s*/I\w+ Do'),
           rects: _painted(streams[i], r'0 0 ([\d.]+) ([\d.]+) re\s+[\d.\s]+rg\s+f')),
   ];
 }
 
-/* What `paint` (its width and height captured) paints in `stream`, each at the last move before it. */
+/* What `paint` (its width and height captured, then for a picture its own offset, signed: "-0 0" is a real PDF's)
+   paints in `stream`, each at the last move before it. A turned square's rotation is not a move: it stays at its own. */
 List<Box> _painted(String stream, String paint) {
   final found = <Box>[];
   var (x, y) = (0.0, 0.0);
@@ -46,10 +48,18 @@ List<Box> _painted(String stream, String paint) {
       final (mx, my) = (double.parse(m[1]!), double.parse(m[2]!));
       if (mx != 0 || my != 0) (x, y) = (mx, my);
     } else {
-      found.add((w: double.parse(m[3]!), h: double.parse(m[4]!), x: x, y: y));
+      final (ox, oy) = m.groupCount >= 6 && m[5] != null ? (double.parse(m[5]!), double.parse(m[6]!)) : (0.0, 0.0);
+      found.add((w: double.parse(m[3]!), h: double.parse(m[4]!), x: x + ox, y: y + oy));
     }
   }
   return found;
+}
+
+/* zinnia with its cloth turned: square i a quarter turn i times, so every turn is on both Letter pages. */
+DesignView turned() {
+  final z = zinnia();
+  return DesignView(id: z.id, name: z.name, layout: z.layout, mount: z.mount, box: z.box, seed: z.seed, started: null,
+      firstSolve: null, grid: z.grid, rot: [for (var i = 0; i < 35; i++) i % 4], saved: z.saved);
 }
 
 void main() {
@@ -85,9 +95,10 @@ void main() {
   // `clear`: the least room, in cm, between the grid and the paper's edge — A4's 0.5 cm sides as they always were; on
   // Letter at least 0.6 cm, past the 0.4–0.6 cm most printers leave unprinted.
   for (final (paper, w, h, rows, clearCm) in [(Paper.a4, 595.28, 841.89, [7], 0.5), (Paper.letter, 612.0, 792.0, [4, 3], 0.6)]) {
-    test('${paper.name}: ${rows.length} page(s) of ${w.toStringAsFixed(2)} × ${h.toStringAsFixed(2)} pt, '
-        'every square 4 cm within 0.01 pt', () async {
-      final pdf = latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [for (final _ in rows) footer],
+    for (final (design, how) in [(zinnia, 'cloth as cut'), (turned, 'cloth turned every way')]) {
+    test('${paper.name}, $how: ${rows.length} page(s) of ${w.toStringAsFixed(2)} × ${h.toStringAsFixed(2)} pt, '
+        'every square 4 cm within 0.01 pt, edge to edge', () async {
+      final pdf = latin1.decode(await sheetPdf(design(), {'KF-1': square}, [for (final _ in rows) footer],
           paper: paper, join: join, compress: false));
       final pages = pagesOf_(pdf);
       expect(pages.length, rows.length);
@@ -122,6 +133,7 @@ void main() {
             reason: 'page ${i + 1}');
       }
     });
+    }
   }
 
   test('Letter: the join words sit 4 mm above page 2’s top line', () async {
@@ -166,14 +178,17 @@ void main() {
       }
     }
     final a4 = pagesOf_(latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer], compress: false)));
-    expect(a4.single.rects.where((r) => near(r.w, mark) || near(r.h, mark)), isEmpty);
+    expect(a4.single.rects.where((r) => [mark, mark + 2 * halo].any((m) => near(r.w, m) || near(r.h, m))), isEmpty,
+        reason: 'no marks, and no white edges');
   });
 
-  test('Letter: everything on both pages, the marks and their white included, is at least 6.35 mm (¼ in) from every '
-      'edge of the paper, where printers print', () async {
+  for (final (design, how) in [(zinnia, 'cloth as cut'), (turned, 'cloth turned every way')]) {
+  test('Letter, $how: everything on both pages, the marks and their white included, is at least 6.35 mm (¼ in) from '
+      'every edge of the paper, where printers print', () async {
     const clear = 6.35 * 72 / 25.4;
-    final pages = pagesOf_(latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer, footer],
+    final pages = pagesOf_(latin1.decode(await sheetPdf(design(), {'KF-1': square}, [footer, footer],
         paper: Paper.letter, join: join, compress: false)));
+    expect(pages.map((p) => p.placed.where((s) => (s.w - edge).abs() < 1).length), [20, 15], reason: 'every square found');
     for (final (i, p) in pages.indexed) {
       for (final b in [...p.rects, ...p.placed]) {
         final where = 'page ${i + 1}: $b';
@@ -184,6 +199,7 @@ void main() {
       }
     }
   });
+  }
 
   test('a sheet is refused without one footer a page, or a Letter sheet without its join words', () async {
     await expectLater(sheetPdf(zinnia(), {'KF-1': square}, [footer], paper: Paper.letter, join: join),
