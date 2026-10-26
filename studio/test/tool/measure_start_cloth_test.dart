@@ -34,6 +34,25 @@ void main() {
     expect(cloth[0]['busy'], isFalse); // no mark: the measure's
     expect(cloth[1]['busy'], isNull); // not measured
   });
+
+  Map<String, dynamic> one(Map<String, dynamic> cloth) =>
+      {'source': 'Read 6 October', 'cloth': [{'photo': 'KF-1.jpg', 'name': 'Red 01', 'lab': [0.0, 0.0, 0.0], ...cloth}]};
+  Map<String, dynamic> after(Map<String, dynamic> json) =>
+      ((remeasured(json, {'KF-1.jpg': _red})['cloth'] as List).single as Map<String, dynamic>);
+
+  test('a hand mark the spread disagrees with survives a measure, its note too', () {
+    // _red is plain, so the measure would say false.
+    final c = after(one({'busy': true, 'busyBy': 'hand', 'busyNote': 'a print too fine for the photo'}));
+    expect(c['busy'], isTrue);
+    expect(c['busyBy'], 'hand');
+    expect(c['busyNote'], 'a print too fine for the photo');
+  });
+
+  test('a measured mark is worked out again on every measure', () {
+    final c = after(one({'busy': true, 'busyBy': 'measure'}));
+    expect(c['busy'], isFalse);
+    expect(c['busyBy'], 'measure');
+  });
 }
 
 // An 8 x 8 red JPEG.

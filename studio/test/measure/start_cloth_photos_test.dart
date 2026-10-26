@@ -39,7 +39,6 @@ void main() {
   test('all 47 photos measure within $_maxDeltaE of their recorded colour and at their recorded edge', () {
     expect(cloth, hasLength(47));
     expect(measured, cloth.map((c) => c['photo']).toSet());
-    expect(measured, containsAll(_floorShot.keys));
     for (final c in cloth.where((c) => measured.contains(c['photo']))) {
       final m = measureBytes(File('test/fixtures/start-cloth/${c['photo']}').readAsBytesSync());
       final r = (c['lab'] as List).cast<num>();

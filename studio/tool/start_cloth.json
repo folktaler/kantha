@@ -1,5 +1,5 @@
 {
- "source": "The 47 factory cloth photos the home page uses, read 6 October 2026; the colour, edge, name and any missing busy mark of these measured from their photos by tool/measure_start_cloth.dart: KF-1.jpg, KF-2.jpg, KF-3.jpg, KF-4.jpg, KF-5.jpg, KF-6.jpg, KF-7.jpg, KF-8.jpg, KF-9.jpg, KF-10.jpg, KF-11.jpg, KF-12.jpg, KF-13.jpg, KF-14.jpg, KF-15.jpg, KF-16.jpg, KF-17.jpg, KF-18.jpg, KF-19.jpg, KF-20.jpg, KF-21.jpg, KF-22.jpg, KF-23.jpg, KF-24.jpg, KF-25.jpg, KF-26.jpg, KF-27.jpg, KF-28.jpg, KF-29.jpg, KF-30.jpg, KF-31.jpg, KF-32.jpg, KF-33.jpg, KF-35.jpg, KF-36.jpg, KF-37.jpg, KF-38.jpg, KF-39.jpg, KF-40.jpg, KF-41.jpg, KF-42.jpg, KF-43.jpg, KF-44.jpg, KF-45.jpg, KF-46.jpg, KF-47.jpg, KF-48.jpg",
+ "source": "The 47 factory cloth photos the home page uses, read 6 October 2026; the colour, edge, name and any measured busy mark of these measured from their photos by tool/measure_start_cloth.dart: KF-1.jpg, KF-2.jpg, KF-3.jpg, KF-4.jpg, KF-5.jpg, KF-6.jpg, KF-7.jpg, KF-8.jpg, KF-9.jpg, KF-10.jpg, KF-11.jpg, KF-12.jpg, KF-13.jpg, KF-14.jpg, KF-15.jpg, KF-16.jpg, KF-17.jpg, KF-18.jpg, KF-19.jpg, KF-20.jpg, KF-21.jpg, KF-22.jpg, KF-23.jpg, KF-24.jpg, KF-25.jpg, KF-26.jpg, KF-27.jpg, KF-28.jpg, KF-29.jpg, KF-30.jpg, KF-31.jpg, KF-32.jpg, KF-33.jpg, KF-35.jpg, KF-36.jpg, KF-37.jpg, KF-38.jpg, KF-39.jpg, KF-40.jpg, KF-41.jpg, KF-42.jpg, KF-43.jpg, KF-44.jpg, KF-45.jpg, KF-46.jpg, KF-47.jpg, KF-48.jpg",
  "cloth": [
   {
    "id": "KF-1",
@@ -10,6 +10,7 @@
     -10.4
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0075,
    "grain": null,
    "inBox": 200,
@@ -25,6 +26,7 @@
     28.4
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.009,
    "grain": null,
    "inBox": 200,
@@ -40,6 +42,7 @@
     -25.5
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.005,
    "grain": null,
    "inBox": 200,
@@ -55,6 +58,7 @@
     -10.3
    ],
    "busy": true,
+   "busyBy": "hand",
    "edge": 0.077,
    "grain": null,
    "inBox": 200,
@@ -70,6 +74,7 @@
     37.5
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.002,
    "grain": null,
    "inBox": 200,
@@ -85,6 +90,7 @@
     14.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.022,
    "grain": null,
    "inBox": 200,
@@ -100,6 +106,7 @@
     -6.0
    ],
    "busy": true,
+   "busyBy": "hand",
    "edge": 0.1045,
    "grain": null,
    "inBox": 200,
@@ -115,6 +122,7 @@
     5.6
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.042,
    "grain": null,
    "inBox": 200,
@@ -130,6 +138,7 @@
     -20.1
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.006,
    "grain": null,
    "inBox": 200,
@@ -145,6 +154,7 @@
     -1.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0025,
    "grain": null,
    "inBox": 200,
@@ -160,6 +170,7 @@
     2.9
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0055,
    "grain": null,
    "inBox": 200,
@@ -175,6 +186,7 @@
     -4.4
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0055,
    "grain": null,
    "inBox": 200,
@@ -190,6 +202,7 @@
     -10.4
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0085,
    "grain": null,
    "inBox": 200,
@@ -205,6 +218,7 @@
     -3.9
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.008,
    "grain": null,
    "inBox": 200,
@@ -220,6 +234,7 @@
     59.7
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.005,
    "grain": null,
    "inBox": 200,
@@ -235,6 +250,7 @@
     -9.6
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.006,
    "grain": null,
    "inBox": 200,
@@ -250,6 +266,7 @@
     -6.7
    ],
    "busy": true,
+   "busyBy": "hand",
    "edge": 0.0855,
    "grain": null,
    "inBox": 200,
@@ -265,6 +282,7 @@
     -14.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0075,
    "grain": null,
    "inBox": 200,
@@ -280,6 +298,7 @@
     10.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.003,
    "grain": null,
    "inBox": 200,
@@ -295,6 +314,7 @@
     -3.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0095,
    "grain": null,
    "inBox": 200,
@@ -310,6 +330,7 @@
     -12.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0135,
    "grain": null,
    "inBox": 200,
@@ -325,6 +346,7 @@
     8.2
    ],
    "busy": true,
+   "busyBy": "hand",
    "edge": 0.0685,
    "grain": null,
    "inBox": 200,
@@ -340,6 +362,7 @@
     -12.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.01,
    "grain": null,
    "inBox": 200,
@@ -355,6 +378,7 @@
     10.1
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0025,
    "grain": null,
    "inBox": 200,
@@ -370,6 +394,7 @@
     -3.1
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.01,
    "grain": null,
    "inBox": 200,
@@ -385,6 +410,7 @@
     -3.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.005,
    "grain": null,
    "inBox": 200,
@@ -400,6 +426,7 @@
     -19.3
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.022,
    "grain": null,
    "inBox": 200,
@@ -415,6 +442,7 @@
     -8.5
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0205,
    "grain": null,
    "inBox": 200,
@@ -430,6 +458,7 @@
     22.9
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0095,
    "grain": null,
    "inBox": 200,
@@ -445,6 +474,7 @@
     -2.4
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.007,
    "grain": null,
    "inBox": 200,
@@ -460,6 +490,7 @@
     -12.4
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0175,
    "grain": null,
    "inBox": 200,
@@ -475,6 +506,7 @@
     -11.0
    ],
    "busy": false,
+   "busyBy": "hand",
    "edge": 0.0145,
    "grain": null,
    "inBox": 200,
@@ -490,6 +522,7 @@
     -3.1
    ],
    "busy": true,
+   "busyBy": "hand",
    "edge": 0.0945,
    "grain": null,
    "inBox": 200,
@@ -505,6 +538,7 @@
     -10.7
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.036,
    "grain": null,
    "inBox": 1,
@@ -520,6 +554,7 @@
     11.2
    ],
    "busy": true,
+   "busyBy": "measure",
    "edge": 0.0815,
    "grain": null,
    "inBox": 13,
@@ -535,6 +570,7 @@
     2.3
    ],
    "busy": true,
+   "busyBy": "measure",
    "edge": 0.086,
    "grain": null,
    "inBox": 21,
@@ -550,6 +586,7 @@
     -10.8
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.044,
    "grain": null,
    "inBox": 10,
@@ -565,6 +602,7 @@
     30.2
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.0345,
    "grain": null,
    "inBox": 6,
@@ -580,6 +618,7 @@
     56.5
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.0295,
    "grain": null,
    "inBox": 6,
@@ -595,6 +634,7 @@
     -3.0
    ],
    "busy": true,
+   "busyBy": "measure",
    "edge": 0.129,
    "grain": null,
    "inBox": 4,
@@ -610,6 +650,7 @@
     2.6
    ],
    "busy": true,
+   "busyBy": "measure",
    "edge": 0.075,
    "grain": null,
    "inBox": 1,
@@ -625,6 +666,7 @@
     14.8
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.042,
    "grain": null,
    "inBox": 4,
@@ -639,7 +681,9 @@
     -22.2,
     29.9
    ],
-   "busy": true,
+   "busy": false,
+   "busyBy": "hand",
+   "busyNote": "a plain green cloth: its folds and selvedge band lift the spread to 10.7, but it has no print",
    "edge": 0.0535,
    "grain": null,
    "inBox": 12,
@@ -655,6 +699,7 @@
     -8.5
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.029,
    "grain": null,
    "inBox": 12,
@@ -670,6 +715,7 @@
     56.6
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.025,
    "grain": null,
    "inBox": 7,
@@ -685,6 +731,7 @@
     24.3
    ],
    "busy": false,
+   "busyBy": "measure",
    "edge": 0.019,
    "grain": null,
    "inBox": 4,
@@ -700,6 +747,7 @@
     -17.9
    ],
    "busy": true,
+   "busyBy": "measure",
    "edge": 0.079,
    "grain": null,
    "inBox": 5,
