@@ -18,26 +18,30 @@ double mm(String pt) => double.parse(pt) * 25.4 / 72;
 /* 4 cm in points: 4 / 2.54 × 72. */
 const edge = 4 / 2.54 * 72;
 
-/* Each page of an uncompressed sheet, in order: its MediaBox and the pictures its content stream paints. A picture is
-   painted by "w 0 0 h 0 0 cm /Ix Do" (its width and height in points) after its Positioned's "1 0 0 1 x y cm" (its
+typedef Box = ({double w, double h, double x, double y});
+
+/* Each page of an uncompressed sheet, in order: its MediaBox, the pictures its content stream paints, and the filled
+   rectangles (the seams, and the join's line, ticks and their white). A picture is painted by "w 0 0 h 0 0 cm /Ix Do"
+   (its width and height in points), a filled rectangle by "0 0 w h re r g b rg f" (a clip, "re W n", is not one); each after its Positioned's "1 0 0 1 x y cm" (its
    lower-left corner, in points up from the page's lower left): the last move before it. */
-List<({double w, double h, List<({double w, double h, double x, double y})> placed})> pagesOf_(String pdf) {
+List<({double w, double h, List<Box> placed, List<Box> rects})> pagesOf_(String pdf) {
   final boxes = RegExp(r'/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)').allMatches(pdf).toList();
   final streams = RegExp(r'stream\r?\n(.*?)endstream', dotAll: true).allMatches(pdf)
       .map((m) => m[1]!).where((s) => s.contains(' Do')).toList();
   expect(streams.length, boxes.length, reason: 'one content stream a page');
   return [
     for (var i = 0; i < boxes.length; i++)
-      (w: double.parse(boxes[i][1]!), h: double.parse(boxes[i][2]!), placed: _placed(streams[i])),
+      (w: double.parse(boxes[i][1]!), h: double.parse(boxes[i][2]!),
+          placed: _painted(streams[i], r'([\d.]+) 0 0 ([\d.]+) 0 0 cm\s*/I\w+ Do'),
+          rects: _painted(streams[i], r'0 0 ([\d.]+) ([\d.]+) re\s+[\d.\s]+rg\s+f')),
   ];
 }
 
-/* The filled rectangles a content stream paints ("0 0 w h re … f"), each at the last move before it: the seams, and
-   the join's line and ticks. */
-List<({double w, double h, double x, double y})> rects(String stream) {
-  final found = <({double w, double h, double x, double y})>[];
+/* What `paint` (its width and height captured) paints in `stream`, each at the last move before it. */
+List<Box> _painted(String stream, String paint) {
+  final found = <Box>[];
   var (x, y) = (0.0, 0.0);
-  for (final m in RegExp(r'1 0 0 1 ([-\d.]+) ([-\d.]+) cm|0 0 ([\d.]+) ([\d.]+) re [^f]*?f').allMatches(stream)) {
+  for (final m in RegExp('1 0 0 1 ([-\\d.]+) ([-\\d.]+) cm|$paint').allMatches(stream)) {
     if (m[1] != null) {
       final (mx, my) = (double.parse(m[1]!), double.parse(m[2]!));
       if (mx != 0 || my != 0) (x, y) = (mx, my);
@@ -46,24 +50,6 @@ List<({double w, double h, double x, double y})> rects(String stream) {
     }
   }
   return found;
-}
-
-/* Each page's content stream, in order. */
-List<String> streamsOf(String pdf) => RegExp(r'stream\r?\n(.*?)endstream', dotAll: true).allMatches(pdf)
-    .map((m) => m[1]!).where((s) => s.contains(' Do')).toList();
-
-List<({double w, double h, double x, double y})> _placed(String stream) {
-  final placed = <({double w, double h, double x, double y})>[];
-  var (x, y) = (0.0, 0.0);
-  for (final m in RegExp(r'1 0 0 1 ([-\d.]+) ([-\d.]+) cm|([\d.]+) 0 0 ([\d.]+) 0 0 cm\s*/I\w+ Do').allMatches(stream)) {
-    if (m[1] != null) {
-      final (mx, my) = (double.parse(m[1]!), double.parse(m[2]!));
-      if (mx != 0 || my != 0) (x, y) = (mx, my);
-    } else {
-      placed.add((w: double.parse(m[3]!), h: double.parse(m[4]!), x: x, y: y));
-    }
-  }
-  return placed;
 }
 
 void main() {
@@ -138,43 +124,65 @@ void main() {
     });
   }
 
-  test('Letter: the join words sit 2 mm above page 2’s top line', () async {
+  test('Letter: the join words sit 4 mm above page 2’s top line', () async {
     final pages = pagesOf_(latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer, footer],
         paper: Paper.letter, join: join, compress: false)));
     final second = pages[1].placed, squares = second.where((s) => (s.w - edge).abs() < 1);
     final top = squares.map((s) => s.y + edge).reduce((a, b) => a > b ? a : b); // PDF y runs up the page
     final words = second.firstWhere((s) => (s.w - 900 * 72 / 300).abs() < 0.01);
-    expect(words.y, closeTo(top + 4 * 72 / 25.4, 0.01), reason: '4 mm above the line, clear of the ticks');
+    expect(words.y, closeTo(top + 4 * 72 / 25.4, 0.01), reason: '4 mm above the line');
   });
 
-  test('Letter: where the pages meet, each draws a solid line along that edge and a tick across it at every column '
-      'line, half in the grid and half in the margin; A4 has none', () async {
-    const mm = 72 / 25.4, mark = 0.3 * mm;
-    final pdf = latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer, footer],
-        paper: Paper.letter, join: join, compress: false));
-    final pages = pagesOf_(pdf), streams = streamsOf(pdf);
+  /* The join's marks, each in ink over white: a line along the edge where the pages meet, and a tick at every column
+     line on the side that stays in sight once page 2 is cut along its top line and laid over page 1's bottom margin. */
+  test('Letter: where the pages meet, a solid line along the edge, 1 mm past the grid, and a 4 mm tick at every column '
+      'line on the side that stays in sight: above the line on page 1, below it on page 2; each with a white edge; '
+      'A4 has none', () async {
+    const mm = 72 / 25.4, mark = 0.3 * mm, halo = 0.25 * mm, tick = 4 * mm;
+    final pages = pagesOf_(latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer, footer],
+        paper: Paper.letter, join: join, compress: false)));
+    bool near(double a, double b) => (a - b).abs() < 0.01;
     for (final (i, p) in pages.indexed) {
       final squares = p.placed.where((s) => (s.w - edge).abs() < 1).toList();
       final left = squares.map((s) => s.x).reduce((a, b) => a < b ? a : b);
       // PDF y runs up the page: page 1 meets page 2 along its grid's bottom, page 2 meets page 1 along its top.
       final y = i == 0 ? squares.map((s) => s.y).reduce((a, b) => a < b ? a : b)
           : squares.map((s) => s.y + edge).reduce((a, b) => a > b ? a : b);
-      final marks = rects(streams[i]).where((r) => (r.w - mark).abs() < 0.01 || (r.h - mark).abs() < 0.01).toList();
-      final line = marks.where((r) => (r.h - mark).abs() < 0.01).toList();
-      expect(line, hasLength(1), reason: 'page ${i + 1}: one join line');
-      expect(line.single.w, closeTo(20 / 2.54 * 72 + 10 * mm, 0.01), reason: 'the grid and 5 mm past each side');
-      expect(line.single.x, closeTo(left - 5 * mm, 0.01));
-      expect(line.single.y + mark / 2, closeTo(y, 0.01), reason: 'centred on the edge');
-      final ticks = marks.where((r) => (r.w - mark).abs() < 0.01).toList()..sort((a, b) => a.x.compareTo(b.x));
-      expect(ticks, hasLength(6), reason: 'page ${i + 1}: one at each of the 6 column lines');
-      for (final (c, t) in ticks.indexed) {
-        expect(t.x + mark / 2, closeTo(left + c * edge, 0.01), reason: 'on column line $c');
-        expect(t.h, closeTo(6 * mm, 0.01));
-        expect(t.y + t.h / 2, closeTo(y, 0.01), reason: '3 mm into the grid, 3 mm into the margin');
+      for (final (white, e) in [(false, 0.0), (true, halo)]) {
+        final what = white ? 'white' : 'ink';
+        final line = p.rects.where((r) => near(r.h, mark + 2 * e)).toList();
+        expect(line, hasLength(1), reason: 'page ${i + 1}: one join line ($what)');
+        expect(line.single.w, closeTo(20 / 2.54 * 72 + 2 * mm + 2 * e, 0.01), reason: 'the grid and 1 mm past each side');
+        expect(line.single.x, closeTo(left - mm - e, 0.01));
+        expect(line.single.y + line.single.h / 2, closeTo(y, 0.01), reason: 'centred on the edge');
+        final ticks = p.rects.where((r) => near(r.w, mark + 2 * e) && near(r.h, tick + 2 * e)).toList()
+          ..sort((a, b) => a.x.compareTo(b.x));
+        expect(ticks, hasLength(6), reason: 'page ${i + 1}: one at each of the 6 column lines ($what)');
+        for (final (c, t) in ticks.indexed) {
+          expect(t.x + t.w / 2, closeTo(left + c * edge, 0.01), reason: 'on column line $c');
+          // Page 1: from the line up into the grid. Page 2: from the line down into the grid.
+          expect(i == 0 ? t.y + e : t.y + t.h - e, closeTo(y, 0.01), reason: 'page ${i + 1}, on the kept side');
+        }
       }
     }
-    final a4 = latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer], compress: false));
-    expect(rects(streamsOf(a4).single).where((r) => (r.w - mark).abs() < 0.01 || (r.h - mark).abs() < 0.01), isEmpty);
+    final a4 = pagesOf_(latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer], compress: false)));
+    expect(a4.single.rects.where((r) => near(r.w, mark) || near(r.h, mark)), isEmpty);
+  });
+
+  test('Letter: everything on both pages, the marks and their white included, is at least 6.35 mm (¼ in) from every '
+      'edge of the paper, where printers print', () async {
+    const clear = 6.35 * 72 / 25.4;
+    final pages = pagesOf_(latin1.decode(await sheetPdf(zinnia(), {'KF-1': square}, [footer, footer],
+        paper: Paper.letter, join: join, compress: false)));
+    for (final (i, p) in pages.indexed) {
+      for (final b in [...p.rects, ...p.placed]) {
+        final where = 'page ${i + 1}: $b';
+        expect(b.x, greaterThanOrEqualTo(clear), reason: where);
+        expect(b.y, greaterThanOrEqualTo(clear), reason: where);
+        expect(p.w - (b.x + b.w), greaterThanOrEqualTo(clear), reason: where);
+        expect(p.h - (b.y + b.h), greaterThanOrEqualTo(clear), reason: where);
+      }
+    }
   });
 
   test('a sheet is refused without one footer a page, or a Letter sheet without its join words', () async {

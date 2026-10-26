@@ -18,6 +18,7 @@ import '../downloads/photo_png.dart';
 // The pdf package is loaded when a sheet is first made, not with the studio's first screen (his decision, 20 Oct).
 import '../downloads/sheet_pdf.dart' deferred as sheet_pdf;
 import '../l10n/app_localizations.dart';
+import '../l10n/words.dart';
 import '../platform/deferred.dart';
 import '../platform/fonts.dart';
 import '../platform/links.dart' show helpUri;
@@ -239,8 +240,6 @@ class _ExportBodyState extends State<_ExportBody> with _Delivers<_ExportBody> {
   StudioController get c => widget.c;
   TakeAway get t => widget.takeAway;
 
-  static String _paperName(L words, Paper p) => switch (p) { Paper.a4 => words.canvasPaperA4, Paper.letter => words.canvasPaperLetter };
-
   /* Whether Save photo's last failure was the photo not being made, rather than its handing over. */
   var _photoNotMade = false;
 
@@ -290,11 +289,11 @@ class _ExportBodyState extends State<_ExportBody> with _Delivers<_ExportBody> {
             child: labelledRow(words.canvasPaper, segments([
               for (final p in Paper.values)
                 // Not while the sheet is being made: the paper it was asked for stays the one shown.
-                segmentCell(key: 'paper-${p.name}', text: _paperName(words, p), on: t.paper == p,
+                segmentCell(key: 'paper-${p.name}', text: words.paperName(p), on: t.paper == p,
                     onPressed: _busy.contains('pdf') ? null : () => setState(() => t.paper = p)),
             ], height: 46)),
           ),
-          _fileRow('pdf', name: words.canvasPrintPattern, note: words.canvasPrintPatternNote(_paperName(words, t.paper)),
+          _fileRow('pdf', name: words.canvasPrintPattern, note: words.canvasPrintPatternNote(words.paperName(t.paper)),
               icon: const tabler.Printer(),
               failedText: words.canvasDownloadFailed,
               make: d == null ? null : (origin) async =>

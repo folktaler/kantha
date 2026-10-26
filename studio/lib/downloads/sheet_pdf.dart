@@ -11,15 +11,19 @@ import 'paper.dart';
    On A4 it is one page, the grid inside geometry's margins. On Letter (28 cm of panel on 27.94 cm of paper) it is two:
    rows 1–4, then rows 5–7 with `join` (its words to cut and lay it on page 1) just above its top line; each grid is
    centred on its page. Where two pages meet, each draws the join: a solid line along that edge of its grid, and a
-   tick across it at every column line, half over the squares and half in the margin, so once page 2 is cut and laid
-   the halves left showing meet and the columns line up. The squares stay 4 cm: the marks are drawn over them.
+   tick at every column line on the side of it that stays in sight once page 2 is cut along its top line and laid
+   over page 1's bottom margin: above the line on page 1, below it on page 2. Laid, each column's two ticks meet end
+   to end across the join. Every mark has a white edge, so it shows over dark cloth, and stays at least 6.35 mm
+   (¼ in) from the paper's edges, inside what printers print. The squares stay 4 cm: the marks are drawn over them.
    `footers` holds each page's footer, in page order. `photos` holds each cloth's JPEG by id; a cloth with none is
    drawn plain. */
 Future<Uint8List> sheetPdf(DesignView d, Map<String, Uint8List?> photos, List<Uint8List> footers,
     {Paper paper = Paper.a4, Uint8List? join, bool compress = true}) async {
   const cm = PdfPageFormat.cm, mm = PdfPageFormat.mm, size = patchCm * cm, seam = 0.2 * mm;
-  // The join's marks: 0.3 mm of #1E2027, solid; its line runs 5 mm past the grid each side, its ticks 3 mm each way.
-  const mark = 0.3 * mm, past = 5 * mm, tick = 3 * mm, ink = PdfColor.fromInt(0xFF1E2027);
+  // The join's marks: 0.3 mm of #1E2027, solid, on 0.25 mm of white each side; the line runs 1 mm past the grid each
+  // side (on Letter its white ends 6.7 mm from the paper's edge), the ticks 4 mm into the grid.
+  const mark = 0.3 * mm, halo = 0.25 * mm, past = 1 * mm, tick = 4 * mm;
+  const ink = PdfColor.fromInt(0xFF1E2027), white = PdfColor.fromInt(0xFFFFFFFF);
   final format = switch (paper) { Paper.a4 => PdfPageFormat.a4, Paper.letter => PdfPageFormat.letter };
   final pages = pagesOf(paper);
   if (footers.length != pages.length) {
@@ -62,14 +66,16 @@ Future<Uint8List> sheetPdf(DesignView d, Map<String, Uint8List?> photos, List<Ui
             pw.Positioned(left: left - seam / 2, top: top + r * size - seam / 2,
                 child: pw.Container(width: bw + seam, height: seam, color: PdfColor.fromInt(0xFF1E2027))),
         ])),
-        // The join: along the bottom of a page with one after it, along the top of a page with one before it.
-        for (final y in [if (p > 0) top, if (p < pages.length - 1) bottom]) ...[
-          pw.Positioned(left: left - past, top: y - mark / 2,
-              child: pw.Container(width: bw + 2 * past, height: mark, color: ink)),
-          for (var c = 0; c <= a4.cols; c++)
-            pw.Positioned(left: left + c * size - mark / 2, top: y - tick,
-                child: pw.Container(width: mark, height: 2 * tick, color: ink)),
-        ],
+        // The join: along the bottom of a page with one after it, ticks above; along the top of a page with one before
+        // it, ticks below. All the white first, then the ink, so no white is over a mark.
+        for (final edge in [halo, 0.0])
+          for (final (y, down) in [if (p > 0) (top, true), if (p < pages.length - 1) (bottom, false)]) ...[
+            pw.Positioned(left: left - past - edge, top: y - mark / 2 - edge,
+                child: pw.Container(width: bw + 2 * past + 2 * edge, height: mark + 2 * edge, color: edge > 0 ? white : ink)),
+            for (var c = 0; c <= a4.cols; c++)
+              pw.Positioned(left: left + c * size - mark / 2 - edge, top: (down ? y : y - tick) - edge,
+                  child: pw.Container(width: mark + 2 * edge, height: tick + 2 * edge, color: edge > 0 ? white : ink)),
+          ],
         // On a page after the first, the words to cut it at its top line and lay it on the page before: 4 mm above
         // that line (clear of the ticks), centred.
         if (p > 0 && joinWords != null)
