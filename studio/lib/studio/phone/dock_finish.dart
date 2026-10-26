@@ -10,6 +10,7 @@ import '../../solver/geometry.dart' show Mount, mounts;
 import '../controller.dart';
 import '../pressable.dart';
 import 'phone_theme.dart';
+import 'segments.dart';
 
 /* Each mount's icon in its segment: the panel alone, framed, or on a tote bag. */
 const _mountIcon = <Mount, tabler.Icon>{Mount.none: tabler.Square(), Mount.frame: tabler.Frame(), Mount.tote: tabler.ShoppingBag()};
@@ -26,12 +27,12 @@ class DockFinish extends StatelessWidget {
   Widget build(BuildContext context) {
     final words = L.of(context);
     final rows = [
-      _row(words.canvasMountEyebrow, _segments([
+      labelledRow(words.canvasMountEyebrow, segments([
         for (final m in mounts)
-          _segment(key: 'mount-${m.name}', text: words.mountName(m), icon: _mountIcon[m], on: c.mount == m,
+          segmentCell(key: 'mount-${m.name}', text: words.mountName(m), icon: _mountIcon[m], on: c.mount == m,
               onPressed: () => c.setMount(m)),
       ])),
-      _row(words.canvasZoom, _zoom(words)),
+      labelledRow(words.canvasZoom, _zoom(words)),
     ];
     return LayoutBuilder(
       key: const ValueKey('dock-finish'),
@@ -50,66 +51,6 @@ class DockFinish extends StatelessWidget {
     );
   }
 
-  /* 96 px for the label (the eyebrow role, caps, text2), 8 px, then the control. The caps are a style: a screen reader
-     hears the words as they are written. */
-  Widget _row(String label, Widget control) => Row(children: [
-        SizedBox(
-          width: 96,
-          child: Semantics(label: label, excludeSemantics: true,
-              child: Text(label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: pText(PType.eyebrow, color: PhonePalette.text2))),
-        ),
-        const SizedBox(width: 8),
-        Expanded(child: control),
-      ]);
-
-  /* A 1 px strong edge with 2 px corners round 38 px segments, with 1 px divider lines between them. */
-  Widget _segments(List<Widget> cells) => DecoratedBox(
-        decoration: BoxDecoration(border: Border.all(color: PhonePalette.strong), borderRadius: kControlRadius),
-        child: Padding(
-          padding: const EdgeInsets.all(1),
-          child: SizedBox(
-            height: 38,
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final (i, cell) in cells.indexed) ...[
-                if (i > 0) const SizedBox(width: 1, child: ColoredBox(color: PhonePalette.divider)),
-                cell,
-              ],
-            ]),
-          ),
-        ),
-      );
-
-  /* An equal share of the row, its `icon` before its words: selected, the text colour as its ground and white words.
-     Where the words and the icon would not both fit, the icon goes, so the words are never cut. */
-  Widget _segment({required String key, required String text, tabler.Icon? icon, required bool on,
-      required VoidCallback onPressed}) {
-    final colour = on ? PhonePalette.white : PhonePalette.text;
-    final style = pText(PType.control, color: colour);
-    return Expanded(
-      child: Pressable(
-        key: ValueKey(key),
-        toggled: on,
-        onPressed: onPressed,
-        builder: (context, st) => focusRing(st.focused, Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(color: on ? PhonePalette.text : (st.hovered ? PhonePalette.hover : PhonePalette.white)),
-          child: LayoutBuilder(builder: (context, box) {
-            final words = TextPainter(text: TextSpan(text: text, style: style), maxLines: 1,
-                textDirection: Directionality.of(context), textScaler: MediaQuery.textScalerOf(context))..layout();
-            final withIcon = icon != null && words.width + roleIconSize(PType.control) + iconGap <= box.maxWidth;
-            words.dispose();
-            return Row(mainAxisSize: MainAxisSize.min, children: [
-              if (withIcon) ...[roleIcon(icon, PType.control, color: colour), const SizedBox(width: iconGap)],
-              Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
-            ]);
-          }),
-        )),
-      ),
-    );
-  }
-
   /* − | the percentage | +. The percentage is Fit: a press goes back to 100. */
   Widget _zoom(L words) {
     final step = (c.percent / _zoomStep).round() * _zoomStep;
@@ -117,7 +58,7 @@ class DockFinish extends StatelessWidget {
     final out = step > _zoomLeast && c.ppc > zoomMin ? () => c.zoomTo(math.max(_zoomLeast, step - _zoomStep)) : null;
     final into = step < _zoomMost && c.ppc < zoomMax ? () => c.zoomTo(math.min(_zoomMost, step + _zoomStep)) : null;
     final percent = words.canvasZoomPercent('${c.percent}');
-    return _segments([
+    return segments([
       _zoomEnd('zoom-out', words.canvasZoomOut, const tabler.ZoomOut(), out),
       Expanded(
         child: Pressable(

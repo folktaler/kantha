@@ -13,6 +13,7 @@ import '../downloads/cloth_images.dart';
 import '../downloads/delivery.dart';
 import '../downloads/file_name.dart';
 import '../downloads/footer_png.dart';
+import '../downloads/paper.dart';
 import '../downloads/photo_png.dart';
 // The pdf package is loaded when a sheet is first made, not with the studio's first screen (his decision, 20 Oct).
 import '../downloads/sheet_pdf.dart' deferred as sheet_pdf;
@@ -23,6 +24,7 @@ import '../platform/links.dart' show helpUri;
 import 'controller.dart';
 import 'phone/phone_sheet.dart';
 import 'phone/phone_theme.dart';
+import 'phone/segments.dart';
 import 'shelf_feed.dart';
 import '../platform/report.dart';
 
@@ -47,6 +49,9 @@ class TakeAway {
   final ClothImages images;
   _Photo? _photo;
   Future<({Uint8List png, Uint8List? thumb})?>? _making;
+
+  /* The paper the sheet is made for: A4 until she picks Letter in Share, then hers for the app's life. */
+  Paper paper = Paper.a4;
 
   /* Each cloth the design uses that is still in a box she reads; one that has gone is null,
      and its squares come out plain (usesGoneCloth, 579-585). */
@@ -89,13 +94,17 @@ class TakeAway {
     if (words.any(hasMalayalam)) await loadMalayalam();
   }
 
-  /* The A4 sheet (Print pattern PDF). */
+  /* The sheet on `paper` (Print pattern PDF): one A4 page, or two Letter pages, the second with the words to join it
+     to the first. */
   Future<Uint8List> sheet(StudioController c, DesignView d) async {
+    final paper = this.paper;
     final jpegs = await _jpegs(c, d);
-    final footer = wordsFor(c.words, d).footer;
-    await _faces([footer]);
+    final footers = footersFor(c.words, d, paper), join = paper == Paper.a4 ? null : c.words.canvasSheetJoin;
+    await _faces([...footers, ?join]);
     await loadSheetPdf();
-    return sheet_pdf.sheetPdf(d, jpegs, await footerPng(footer));
+    final pngs = await Future.wait([for (final f in [...footers, ?join]) footerPng(f)]);
+    return sheet_pdf.sheetPdf(d, jpegs, pngs.sublist(0, footers.length),
+        paper: paper, join: join == null ? null : pngs.last);
   }
 
   /* preparePhoto: the photo for the design as it is now, unless it is made or
@@ -230,6 +239,8 @@ class _ExportBodyState extends State<_ExportBody> with _Delivers<_ExportBody> {
   StudioController get c => widget.c;
   TakeAway get t => widget.takeAway;
 
+  static String _paperName(L words, Paper p) => switch (p) { Paper.a4 => words.canvasPaperA4, Paper.letter => words.canvasPaperLetter };
+
   /* Whether Save photo's last failure was the photo not being made, rather than its handing over. */
   var _photoNotMade = false;
 
@@ -272,7 +283,19 @@ class _ExportBodyState extends State<_ExportBody> with _Delivers<_ExportBody> {
                 if (png == null) throw StateError('the photo could not be made');
                 await t.delivery.savePhoto(png, fileName(d.name, 'png'));
               }),
-          _fileRow('pdf', name: words.canvasPrintPattern, note: words.canvasPrintPatternNote, icon: const tabler.Printer(),
+          // The paper: picked here, before Print pattern PDF makes the sheet for it. Its segments are 46 tall, 48 with
+          // their edge, as a sheet's buttons are.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: labelledRow(words.canvasPaper, segments([
+              for (final p in Paper.values)
+                // Not while the sheet is being made: the paper it was asked for stays the one shown.
+                segmentCell(key: 'paper-${p.name}', text: _paperName(words, p), on: t.paper == p,
+                    onPressed: _busy.contains('pdf') ? null : () => setState(() => t.paper = p)),
+            ], height: 46)),
+          ),
+          _fileRow('pdf', name: words.canvasPrintPattern, note: words.canvasPrintPatternNote(_paperName(words, t.paper)),
+              icon: const tabler.Printer(),
               failedText: words.canvasDownloadFailed,
               make: d == null ? null : (origin) async =>
                   t.delivery.sharePdf(await t.sheet(c, d), fileName(d.name, 'pdf'), origin: origin)),
