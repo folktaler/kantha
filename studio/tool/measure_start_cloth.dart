@@ -1,17 +1,20 @@
-/* Measures the named photos in test/fixtures/start-cloth/ again, with the studio's own measure (measureBytes, as for
-   a photo of hers), and writes each one's colour (lab), edge (edgeOf its spread, as for a photo of hers) and the colour
-   word of its name into tool/start_cloth.json. For a photo that has been cropped since it was recorded. Everything else
-   in the file stays as it was, the busy marks (set by hand) included. The source line names every photo measured so
-   far, this run's and earlier runs'. Run in studio/, then tool/start_panels.dart for the home page's panels:
-     dart run tool/measure_start_cloth.dart KF-35.jpg KF-36.jpg … */
+/* Measures the named photos in test/fixtures/start-cloth/ with the studio's own measure (measureBytes, as for a photo
+   of hers) and writes each one's colour (lab), edge (edgeOf its spread) and the colour word of its name into
+   tool/start_cloth.json. A cloth with no busy mark gets busyOf its spread, as a photo of hers does; a busy mark already
+   there, set by hand, stays. Every other field stays as it was. All 47 were measured this way on 26 October 2026, after
+   32 of them were cropped to the cloth; until then the file held values copied from InvenTree. The source line names
+   every photo measured so far, this run's and earlier runs'. Run in studio/, then tool/start_panels.dart for the home
+   page's panels:
+     dart run tool/measure_start_cloth.dart KF-1.jpg KF-2.jpg … */
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:kantha_studio/data/numbers.dart' show edgeOf;
+import 'package:kantha_studio/data/numbers.dart' show busyOf, edgeOf;
 import 'package:kantha_studio/measure/measure.dart';
 import 'package:kantha_studio/measure/named_colours.dart';
 
-const _note = '; the colour, edge and name of these measured from their photos by tool/measure_start_cloth.dart: ';
+const _note = '; the colour, edge, name and any missing busy mark of these measured from their photos by '
+    'tool/measure_start_cloth.dart: ';
 // The note as any run wrote it, and the photos it names.
 final _anyNote = RegExp(r'; the [^;]* measured from their photos by tool/measure_start_cloth\.dart: (.*)$');
 
@@ -38,6 +41,7 @@ Map<String, dynamic> remeasured(Map<String, dynamic> json, Map<String, List<int>
     c['lab'] = [m.lab.l, m.lab.a, m.lab.b];
     c['edge'] = double.parse(edgeOf(m.spread).toStringAsFixed(4)); // spread is to 0.1, so 4 places hold it exactly
     c['name'] = renamed(c['name'] as String, m.name);
+    c['busy'] ??= busyOf(m.spread);
   }
   final source = json['source'] as String;
   final measured = {...measuredPhotos(source), ...photos.keys};

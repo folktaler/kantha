@@ -19,8 +19,8 @@ const _floorShot = {
   'KF-47.jpg': (347, 341), 'KF-48.jpg': (311, 298),
 };
 
-/* tool/measure_start_cloth.dart wrote these colours and edges from these photos, rounded, so they agree to well within
-   0.5 and to 0.0005 (a spread of 0.1). */
+/* tool/measure_start_cloth.dart wrote these colours and edges from these photos: the colour rounded to 0.1, so within
+   0.5, and the edge exactly. */
 const _maxDeltaE = 0.5;
 
 void main() {
@@ -36,15 +36,16 @@ void main() {
     }
   });
 
-  test('every photo measured again since it was cropped measures within $_maxDeltaE of its colour and at its edge', () {
-    expect(measured, hasLength(32));
+  test('all 47 photos measure within $_maxDeltaE of their recorded colour and at their recorded edge', () {
+    expect(cloth, hasLength(47));
+    expect(measured, cloth.map((c) => c['photo']).toSet());
     expect(measured, containsAll(_floorShot.keys));
     for (final c in cloth.where((c) => measured.contains(c['photo']))) {
       final m = measureBytes(File('test/fixtures/start-cloth/${c['photo']}').readAsBytesSync());
       final r = (c['lab'] as List).cast<num>();
       final d = sqrt(pow(m.lab.l - r[0], 2) + pow(m.lab.a - r[1], 2) + pow(m.lab.b - r[2], 2));
       expect(d, lessThanOrEqualTo(_maxDeltaE), reason: '${c['photo']}: measured ${m.lab}, recorded $r');
-      expect(c['edge'] as num, closeTo(edgeOf(m.spread), 0.0005), reason: '${c['photo']}: spread ${m.spread}');
+      expect(c['edge'] as num, closeTo(edgeOf(m.spread), 1e-6), reason: '${c['photo']}: spread ${m.spread}');
     }
   });
 }

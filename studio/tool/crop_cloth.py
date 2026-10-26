@@ -126,11 +126,13 @@ def crop(src: Path, out: Path, trim: bool, session) -> str:
         original = Image.open(src)
     except UnidentifiedImageError:
         raise Refused("it is not an image") from None
+    except (OSError, Image.DecompressionBombError) as e:  # PermissionError is an OSError
+        raise Refused(f"it could not be opened: {e}") from None
     if original.format != "JPEG":
         raise Refused("it is not a JPEG")
     try:
         img = original.convert("RGB")
-    except OSError as e:
+    except (OSError, Image.DecompressionBombError) as e:
         raise Refused(f"it could not be read: {e}") from None
     w, h = img.size
     fixed = TRIM_FIXED.get(src.name) if trim else None
@@ -159,7 +161,9 @@ Examples:
 @click.option("--trim", is_flag=True, help="Trim slivers of floor off a photo that is already cropped close.")
 @click.option("--out", required=True, type=click.Path(file_okay=False, path_type=Path),
               help="Directory the crops are written to, under each photo's own name. Made if missing.")
-@click.argument("photos", nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path))
+# readable=False: a photo that cannot be read is refused on its own, and the others are still cropped.
+@click.argument("photos", nargs=-1, required=True,
+                type=click.Path(exists=True, dir_okay=False, readable=False, path_type=Path))
 def main(trim: bool, out: Path, photos: tuple[Path, ...]) -> None:
     """Crop cloth photos (JPEG) to the cloth alone, losslessly, into --out."""
     if shutil.which("jpegtran") is None:

@@ -1,16 +1,16 @@
 {
- "source": "The 47 factory cloth photos the home page uses, read 6 October 2026; the colour, edge and name of these measured from their photos by tool/measure_start_cloth.dart: KF-3.jpg, KF-4.jpg, KF-6.jpg, KF-7.jpg, KF-8.jpg, KF-10.jpg, KF-12.jpg, KF-13.jpg, KF-18.jpg, KF-19.jpg, KF-20.jpg, KF-21.jpg, KF-23.jpg, KF-27.jpg, KF-28.jpg, KF-31.jpg, KF-32.jpg, KF-33.jpg, KF-35.jpg, KF-36.jpg, KF-37.jpg, KF-38.jpg, KF-39.jpg, KF-40.jpg, KF-41.jpg, KF-42.jpg, KF-43.jpg, KF-44.jpg, KF-45.jpg, KF-46.jpg, KF-47.jpg, KF-48.jpg",
+ "source": "The 47 factory cloth photos the home page uses, read 6 October 2026; the colour, edge, name and any missing busy mark of these measured from their photos by tool/measure_start_cloth.dart: KF-1.jpg, KF-2.jpg, KF-3.jpg, KF-4.jpg, KF-5.jpg, KF-6.jpg, KF-7.jpg, KF-8.jpg, KF-9.jpg, KF-10.jpg, KF-11.jpg, KF-12.jpg, KF-13.jpg, KF-14.jpg, KF-15.jpg, KF-16.jpg, KF-17.jpg, KF-18.jpg, KF-19.jpg, KF-20.jpg, KF-21.jpg, KF-22.jpg, KF-23.jpg, KF-24.jpg, KF-25.jpg, KF-26.jpg, KF-27.jpg, KF-28.jpg, KF-29.jpg, KF-30.jpg, KF-31.jpg, KF-32.jpg, KF-33.jpg, KF-35.jpg, KF-36.jpg, KF-37.jpg, KF-38.jpg, KF-39.jpg, KF-40.jpg, KF-41.jpg, KF-42.jpg, KF-43.jpg, KF-44.jpg, KF-45.jpg, KF-46.jpg, KF-47.jpg, KF-48.jpg",
  "cloth": [
   {
    "id": "KF-1",
    "name": "Thistle 01",
    "lab": [
-    68.2,
-    12.3,
+    67.8,
+    12.1,
     -10.4
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0075,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -20,12 +20,12 @@
    "id": "KF-2",
    "name": "Brown 02",
    "lab": [
-    39.9,
-    50.5,
-    29.3
+    40.1,
+    49.7,
+    28.4
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.009,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -65,12 +65,12 @@
    "id": "KF-5",
    "name": "Sienna 05",
    "lab": [
-    53.4,
-    36.2,
+    53.2,
+    35.7,
     37.5
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.002,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -125,12 +125,12 @@
    "id": "KF-9",
    "name": "Darkslateblue 09",
    "lab": [
-    16.0,
-    23.5,
-    -19.6
+    16.4,
+    23.7,
+    -20.1
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.006,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -155,12 +155,12 @@
    "id": "KF-11",
    "name": "Palevioletred 11",
    "lab": [
-    49.0,
-    36.0,
-    2.4
+    49.1,
+    35.6,
+    2.9
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0055,
    "grain": null,
    "inBox": 200,
    "pieces": 3,
@@ -200,12 +200,12 @@
    "id": "KF-14",
    "name": "Rosybrown 14",
    "lab": [
-    59.5,
-    13.0,
-    -4.1
+    59.3,
+    12.8,
+    -3.9
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.008,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -215,12 +215,12 @@
    "id": "KF-15",
    "name": "Darkgoldenrod 15",
    "lab": [
-    64.4,
-    10.2,
-    59.4
+    64.3,
+    10.8,
+    59.7
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.005,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -230,12 +230,12 @@
    "id": "KF-16",
    "name": "Cadetblue 16",
    "lab": [
-    63.5,
-    -28.2,
-    -9.4
+    63.4,
+    -28.1,
+    -9.6
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.006,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -243,14 +243,14 @@
   },
   {
    "id": "KF-17",
-   "name": "Darkslategray 17",
+   "name": "Slategray 17",
    "lab": [
-    45.2,
-    -6.1,
-    -7.2
+    48.2,
+    -6.5,
+    -6.7
    ],
    "busy": true,
-   "edge": 0.0819,
+   "edge": 0.0855,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -318,14 +318,14 @@
   },
   {
    "id": "KF-22",
-   "name": "Indianred 22",
+   "name": "Palevioletred 22",
    "lab": [
-    48.2,
-    42.8,
-    9.9
+    50.5,
+    40.6,
+    8.2
    ],
    "busy": true,
-   "edge": 0.0996,
+   "edge": 0.0685,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -348,14 +348,14 @@
   },
   {
    "id": "KF-24",
-   "name": "Silver 24",
+   "name": "Darkgray 24",
    "lab": [
-    73.5,
-    -2.6,
+    73.1,
+    -1.8,
     10.1
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0025,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -365,12 +365,12 @@
    "id": "KF-25",
    "name": "Palevioletred 25",
    "lab": [
-    47.5,
-    34.4,
-    -2.8
+    47.2,
+    34.5,
+    -3.1
    ],
    "busy": false,
-   "edge": 0.0016,
+   "edge": 0.01,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -380,12 +380,12 @@
    "id": "KF-26",
    "name": "Dimgray 26",
    "lab": [
-    32.4,
-    20.4,
+    31.5,
+    20.2,
     -3.3
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.005,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -425,12 +425,12 @@
    "id": "KF-29",
    "name": "Darkolivegreen 29",
    "lab": [
-    33.6,
-    -16.4,
-    22.8
+    33.0,
+    -16.6,
+    22.9
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.0095,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -440,12 +440,12 @@
    "id": "KF-30",
    "name": "Dimgray 30",
    "lab": [
-    36.9,
-    21.3,
-    -2.1
+    37.2,
+    21.5,
+    -2.4
    ],
    "busy": false,
-   "edge": 0.0,
+   "edge": 0.007,
    "grain": null,
    "inBox": 200,
    "pieces": 2,
@@ -504,7 +504,7 @@
     0.4,
     -10.7
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.036,
    "grain": null,
    "inBox": 1,
@@ -519,7 +519,7 @@
     36.1,
     11.2
    ],
-   "busy": null,
+   "busy": true,
    "edge": 0.0815,
    "grain": null,
    "inBox": 13,
@@ -534,7 +534,7 @@
     13.1,
     2.3
    ],
-   "busy": null,
+   "busy": true,
    "edge": 0.086,
    "grain": null,
    "inBox": 21,
@@ -549,7 +549,7 @@
     -13.1,
     -10.8
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.044,
    "grain": null,
    "inBox": 10,
@@ -564,7 +564,7 @@
     30.7,
     30.2
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.0345,
    "grain": null,
    "inBox": 6,
@@ -579,7 +579,7 @@
     4.0,
     56.5
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.0295,
    "grain": null,
    "inBox": 6,
@@ -594,7 +594,7 @@
     5.8,
     -3.0
    ],
-   "busy": null,
+   "busy": true,
    "edge": 0.129,
    "grain": null,
    "inBox": 4,
@@ -609,7 +609,7 @@
     4.4,
     2.6
    ],
-   "busy": null,
+   "busy": true,
    "edge": 0.075,
    "grain": null,
    "inBox": 1,
@@ -624,7 +624,7 @@
     13.1,
     14.8
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.042,
    "grain": null,
    "inBox": 4,
@@ -639,7 +639,7 @@
     -22.2,
     29.9
    ],
-   "busy": null,
+   "busy": true,
    "edge": 0.0535,
    "grain": null,
    "inBox": 12,
@@ -654,7 +654,7 @@
     28.8,
     -8.5
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.029,
    "grain": null,
    "inBox": 12,
@@ -669,7 +669,7 @@
     4.6,
     56.6
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.025,
    "grain": null,
    "inBox": 7,
@@ -684,7 +684,7 @@
     66.8,
     24.3
    ],
-   "busy": null,
+   "busy": false,
    "edge": 0.019,
    "grain": null,
    "inBox": 4,
@@ -699,7 +699,7 @@
     3.6,
     -17.9
    ],
-   "busy": null,
+   "busy": true,
    "edge": 0.079,
    "grain": null,
    "inBox": 5,
