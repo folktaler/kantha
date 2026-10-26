@@ -56,11 +56,11 @@ Box meet(Box a, Box b) {
    changed by cm and by "re W n". A picture ("/Ix Do") fills the unit square under the current matrix: `full` is its
    page box, turn and offset included, and `shown` the part of it inside the clip, which is what prints. A filled
    rectangle ("re … f") is its page box. */
-({List<({Box full, Box shown})> pictures, List<Box> rects}) run(String stream, double w, double h) {
+({List<({Box full, Box shown, Matrix m})> pictures, List<Box> rects}) run(String stream, double w, double h) {
   var ctm = identity;
   Box clip = (x: 0, y: 0, w: w, h: h);
   final saved = <(Matrix, Box)>[], path = <Box>[], nums = <double>[];
-  final pictures = <({Box full, Box shown})>[], rects = <Box>[];
+  final pictures = <({Box full, Box shown, Matrix m})>[], rects = <Box>[];
   var clipping = false;
   for (final t in RegExp(r'/\w+|[-+]?(?:\d+\.?\d*|\.\d+)|[A-Za-z*]+').allMatches(stream).map((m) => m[0]!)) {
     final n = double.tryParse(t);
@@ -90,7 +90,7 @@ Box meet(Box a, Box b) {
         path.clear();
       case 'Do':
         final full = boxOf(ctm, 0, 0, 1, 1);
-        pictures.add((full: full, shown: meet(full, clip)));
+        pictures.add((full: full, shown: meet(full, clip), m: ctm));
     }
     nums.clear();
   }
@@ -98,8 +98,8 @@ Box meet(Box a, Box b) {
 }
 
 /* Each page of an uncompressed sheet, in order: its MediaBox; the pictures it paints, as they print (`placed`) and
-   whole (`full`); and the filled rectangles (the seams, and the join's line, ticks and their white). */
-List<({double w, double h, List<Box> placed, List<Box> full, List<Box> rects})> pagesOf_(String pdf) {
+   whole (`full`), and each one's matrix (`mats`); and the filled rectangles (the seams, and the join's line, ticks and their white). */
+List<({double w, double h, List<Box> placed, List<Box> full, List<Matrix> mats, List<Box> rects})> pagesOf_(String pdf) {
   final boxes = RegExp(r'/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)').allMatches(pdf).toList();
   final streams = RegExp(r'stream\r?\n(.*?)endstream', dotAll: true).allMatches(pdf)
       .map((m) => m[1]!).where((s) => s.contains(' Do')).toList();
@@ -109,7 +109,7 @@ List<({double w, double h, List<Box> placed, List<Box> full, List<Box> rects})> 
       if ((double.parse(boxes[i][1]!), double.parse(boxes[i][2]!)) case (final w, final h))
         if (run(streams[i], w, h) case final r)
           (w: w, h: h, placed: [for (final p in r.pictures) p.shown], full: [for (final p in r.pictures) p.full],
-              rects: r.rects),
+              mats: [for (final p in r.pictures) p.m], rects: r.rects),
   ];
 }
 
@@ -132,11 +132,24 @@ List<Box> slotted(List<Box> placed, int rows, String where) {
   return squares;
 }
 
-/* zinnia with its cloth turned: square i a quarter turn i times, so every turn is on both Letter pages. */
+/* zinnia with its cloth turned: square i a quarter turn i % 3 times. 3 does not divide 20, so page 2 (from square 20)
+   does not start the pattern again: a page-2 square that took a page-1 square's turn would show. */
 DesignView turned() {
   final z = zinnia();
-  return z.copyWithRot([for (var i = 0; i < z.grid.length; i++) i % 4]);
+  return z.copyWithRot([for (var i = 0; i < z.grid.length; i++) i % 3]);
 }
+
+/* Where a picture's top-left corner lands: PDF draws a picture over the unit square, its top row at y = 1. */
+(double, double) topLeftOf(Matrix m) => (m[2] + m[4], m[3] + m[5]);
+
+/* Where the top-left corner of a square turned `turn` quarter turns clockwise lands in its slot `s`: top left, top
+   right, bottom right, bottom left (PDF's y runs up the page). */
+(double, double) cornerFor(Box s, int turn) => switch (turn % 4) {
+      0 => (s.x, s.y + s.h),
+      1 => (s.x + s.w, s.y + s.h),
+      2 => (s.x + s.w, s.y),
+      _ => (s.x, s.y),
+    };
 
 void main() {
   test('one A4 page, its squares exactly 40.0 mm', () async {
@@ -174,7 +187,8 @@ void main() {
     for (final (design, how) in [(zinnia, 'cloth as cut'), (turned, 'cloth turned every way')]) {
     test('${paper.name}, $how: ${rows.length} page(s) of ${w.toStringAsFixed(2)} × ${h.toStringAsFixed(2)} pt, '
         'every square 4 cm within 0.01 pt, edge to edge', () async {
-      final pdf = latin1.decode(await sheetPdf(design(), {'KF-1': square}, [for (final _ in rows) footer],
+      final d = design();
+      final pdf = latin1.decode(await sheetPdf(d, {'KF-1': square}, [for (final _ in rows) footer],
           paper: paper, join: join, compress: false));
       final pages = pagesOf_(pdf);
       expect(pages.length, rows.length);
@@ -189,6 +203,19 @@ void main() {
         }
         expect(p.full.where((f) => (f.w - edge).abs() < 1), hasLength(5 * rows[i]));
         final xs = squares.map((s) => s.x).toList()..sort(), ys = squares.map((s) => s.y).toList()..sort();
+        // The grid centred on its page, both ways.
+        expect(xs.first, closeTo((w - 5 * edge) / 2, 0.01), reason: 'page ${i + 1}: centred across');
+        expect(ys.first, closeTo((h - rows[i] * edge) / 2, 0.01), reason: 'page ${i + 1}: centred up and down');
+        // Each square turned as she turned it, clockwise: its photo's top-left corner where that turn puts it. The
+        // squares are painted first, in the grid's order.
+        final from = rows.take(i).fold(0, (a, b) => a + b) * 5;
+        for (final (k, s) in squares.indexed) {
+          final turn = d.rot[from + k];
+          final (cx, cy) = topLeftOf(p.mats[k]);
+          final (ex, ey) = cornerFor(s, turn);
+          expect(cx, closeTo(ex, 0.01), reason: 'page ${i + 1}, square ${from + k + 1}, turned $turn: across');
+          expect(cy, closeTo(ey, 0.01), reason: 'page ${i + 1}, square ${from + k + 1}, turned $turn: up and down');
+        }
         final clear = clearCm / 2.54 * 72 - 0.01;
         expect(xs.first, greaterThanOrEqualTo(clear));
         expect(w - (xs.last + edge), greaterThanOrEqualTo(clear));
