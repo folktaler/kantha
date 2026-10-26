@@ -1,8 +1,14 @@
 # Kantha studio
 
+<img src="studio/assets/icon/kantha-icon.png" alt="Kantha icon: a stitched K" width="96">
+
+**[kantha.app](https://kantha.app)** · [Open the studio](https://kantha.app/studio) · [Help](https://kantha.app/help)
+
 A kantha panel is 35 squares of salvaged cloth, 4 cm each, sewn into a grid. Deciding which square goes
 where takes an afternoon. The Kantha studio is the app that does the deciding. It runs on the web at
 [kantha.app/studio](https://kantha.app/studio), and on Android and iPhone.
+
+<img src="docs/screenshots/studio-phone.png" alt="The studio on a phone: a Wave panel of real cloth, with the patterns below" width="320">
 
 ## What it does
 
