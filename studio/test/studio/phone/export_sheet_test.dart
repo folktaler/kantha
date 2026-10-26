@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:kantha_studio/platform/fonts.dart' show fetchPublicSans, forgetPublicSans, loadPublicSans;
 import 'package:kantha_studio/platform/links.dart' show helpUri;
+import 'package:kantha_studio/studio/pressable.dart' show Pressable;
 import 'package:kantha_studio/studio/studio_screen.dart' show StudioScreen;
 import 'package:kantha_studio/studio/phone/phone_sheet.dart';
 import 'package:kantha_studio/studio/shelf_feed.dart' show ClothPhoto;
@@ -32,7 +33,9 @@ void main() {
     expect(find.text('Save photo'), findsOneWidget);
     expect(tester.widget<SheetRow>(find.widgetWithText(SheetRow, 'Save photo')).note, isNull, reason: 'no note');
     expect(find.text('Print pattern PDF'), findsOneWidget, reason: 'the owner brought the printed sheet back on 19 Oct');
-    expect(find.text('A4 — print at 100%'), findsOneWidget);
+    expect(find.text('A4 — print at 100%'), findsOneWidget, reason: 'every reader starts on A4');
+    expect(tester.widget<Pressable>(find.byKey(const ValueKey('paper-a4'))).toggled, isTrue);
+    expect(tester.widget<Pressable>(find.byKey(const ValueKey('paper-letter'))).toggled, isFalse);
     expect(find.text('Kantha stitching guide'), findsOneWidget);
     expect(find.text('How to lay out and stitch the panel'), findsOneWidget);
     expect(find.text('Share design'), findsNothing, reason: 'the owner took the row out on 19 Oct');
@@ -45,10 +48,52 @@ void main() {
       expect(tester.getRect(find.descendant(of: row, matching: find.byType(icon))).right,
           lessThan(tester.getRect(find.text(t)).left), reason: t);
     }
-    // Top to bottom: Save photo, Print pattern PDF, Kantha stitching guide.
-    final ys = [for (final t in ['Save photo', 'Print pattern PDF', 'Kantha stitching guide']) tester.getTopLeft(find.text(t)).dy];
+    // Top to bottom: Save photo, the paper, Print pattern PDF, Kantha stitching guide.
+    final ys = [for (final t in ['Save photo', 'PAPER', 'Print pattern PDF', 'Kantha stitching guide']) tester.getTopLeft(find.text(t)).dy];
     expect(ys, [...ys]..sort());
     expect(find.text(missing), findsNothing);
+  });
+
+  testWidgets('every reader starts on A4, even in the US; she can pick Letter, and Print pattern PDF makes it for the '
+      'paper she picked', (tester) async {
+    tester.platformDispatcher.localeTestValue = const Locale('en', 'US');
+    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+    final d = CaptureDelivery();
+    await pumpStudio(tester, size: phone, delivery: d);
+    await openShare(tester);
+    expect(find.text('A4 — print at 100%'), findsOneWidget, reason: 'A4 whatever the locale (owner, 26 Oct)');
+    expect(tester.widget<Pressable>(find.byKey(const ValueKey('paper-a4'))).toggled, isTrue);
+    await tester.tap(find.byKey(const ValueKey('paper-letter')));
+    await tester.pump();
+    expect(find.text('Letter — print at 100%'), findsOneWidget);
+    expect(find.text('Kantha stitching guide'), findsOneWidget, reason: 'picking the paper leaves the sheet open');
+    await tester.tap(find.text('Print pattern PDF'));
+    await letWork(tester, done: () => d.pdfs.isNotEmpty, turns: 300);
+    expect(RegExp(r'/Type\s*/Page[^s]').allMatches(latin1.decode(d.bytes['chess.pdf']!)).length, 2,
+        reason: 'two Letter pages');
+    // Her pick stays: the next sheet is Letter too, and A4 again once she picks it.
+    d.pdfs.clear();
+    await openShare(tester);
+    expect(find.text('Letter — print at 100%'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('paper-a4')));
+    await tester.pump();
+    await tester.tap(find.text('Print pattern PDF'));
+    await letWork(tester, done: () => d.pdfs.isNotEmpty, turns: 300);
+    expect(RegExp(r'/Type\s*/Page[^s]').allMatches(latin1.decode(d.bytes['chess.pdf']!)).length, 1,
+        reason: 'one A4 page');
+  });
+
+  testWidgets('the paper cannot be changed while the sheet is being made', (tester) async {
+    final d = CaptureDelivery();
+    await pumpStudio(tester, size: phone, delivery: d);
+    await openShare(tester);
+    await tester.tap(find.text('Print pattern PDF'));
+    await tester.pump();
+    for (final k in ['paper-a4', 'paper-letter']) {
+      expect(tester.widget<Pressable>(find.byKey(ValueKey(k))).onPressed, isNull, reason: k);
+    }
+    await letWork(tester, done: () => d.pdfs.isNotEmpty, turns: 300);
+    expect(RegExp(r'/Type\s*/Page[^s]').allMatches(latin1.decode(d.bytes['chess.pdf']!)).length, 1, reason: 'A4, as asked');
   });
 
   testWidgets('opening Share makes the photo; Save photo hands it over inside the press', (tester) async {

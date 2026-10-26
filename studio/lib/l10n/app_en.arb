@@ -213,7 +213,29 @@
   "canvasTabPreview": "Preview",
   "canvasZoom": "Zoom",
   "canvasPrintPattern": "Print pattern PDF",
-  "canvasPrintPatternNote": "A4 — print at 100%",
+  "canvasPrintPatternNote": "{paper} — print at 100%",
+  "@canvasPrintPatternNote": {
+    "placeholders": {
+      "paper": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasPaper": "Paper",
+  "canvasPaperA4": "A4",
+  "canvasPaperLetter": "Letter",
+  "canvasSheetPage": "Page {page} of {pages}",
+  "@canvasSheetPage": {
+    "placeholders": {
+      "page": {
+        "type": "String"
+      },
+      "pages": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasSheetJoin": "Cut along the line below. Lay the cut edge on the bottom line of page 1.",
   "canvasStitchingGuide": "Kantha stitching guide",
   "canvasStitchingGuideNote": "How to lay out and stitch the panel",
   "canvasOpen": "Open",

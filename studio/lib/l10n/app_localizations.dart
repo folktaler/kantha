@@ -612,8 +612,38 @@ abstract class L {
   /// No description provided for @canvasPrintPatternNote.
   ///
   /// In en, this message translates to:
-  /// **'A4 — print at 100%'**
-  String get canvasPrintPatternNote;
+  /// **'{paper} — print at 100%'**
+  String canvasPrintPatternNote(String paper);
+
+  /// No description provided for @canvasPaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper'**
+  String get canvasPaper;
+
+  /// No description provided for @canvasPaperA4.
+  ///
+  /// In en, this message translates to:
+  /// **'A4'**
+  String get canvasPaperA4;
+
+  /// No description provided for @canvasPaperLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter'**
+  String get canvasPaperLetter;
+
+  /// No description provided for @canvasSheetPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} of {pages}'**
+  String canvasSheetPage(String page, String pages);
+
+  /// No description provided for @canvasSheetJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut along the line below. Lay the cut edge on the bottom line of page 1.'**
+  String get canvasSheetJoin;
 
   /// No description provided for @canvasStitchingGuide.
   ///

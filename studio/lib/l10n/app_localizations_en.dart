@@ -328,7 +328,27 @@ class LEn extends L {
   String get canvasPrintPattern => 'Print pattern PDF';
 
   @override
-  String get canvasPrintPatternNote => 'A4 — print at 100%';
+  String canvasPrintPatternNote(String paper) {
+    return '$paper — print at 100%';
+  }
+
+  @override
+  String get canvasPaper => 'Paper';
+
+  @override
+  String get canvasPaperA4 => 'A4';
+
+  @override
+  String get canvasPaperLetter => 'Letter';
+
+  @override
+  String canvasSheetPage(String page, String pages) {
+    return 'Page $page of $pages';
+  }
+
+  @override
+  String get canvasSheetJoin =>
+      'Cut along the line below. Lay the cut edge on the bottom line of page 1.';
 
   @override
   String get canvasStitchingGuide => 'Kantha stitching guide';
