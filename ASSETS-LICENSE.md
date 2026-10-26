@@ -16,6 +16,7 @@ Copyright 2026 Tinybridge Ventures Private Limited.
   `studio/ios/Runner/Assets.xcassets/AppIcon.appiconset/`.
 - `studio/test/studio/phone/shots/`: screenshots of the studio.
 - `docs/screenshots/`: screenshots of the studio shown in the README.
+- `docs/photos/`: photos of stitched kantha panels shown in the README.
 - `.github/social-preview.png`: the picture GitHub shows when this repository is linked, made from the K
   icon and a photo of a cloth panel.
 
