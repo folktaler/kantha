@@ -1,0 +1,222 @@
+{
+  "canvas": {
+    "save": "Save",
+    "hideControls": "Done",
+    "panelName": "Design name",
+    "defaultName": "{layout}",
+    "panelsEyebrow": "My designs",
+    "newDesign": "New design",
+    "copyName": "{name} copy",
+    "duplicate": "Duplicate",
+    "more": "More",
+    "mountEyebrow": "Mount",
+    "stitchesSwitch": "Show stitches",
+    "stitchColours": {
+      "ecru": "Cream",
+      "madder": "Red",
+      "indigo": "Blue",
+      "turmeric": "Yellow",
+      "leaf": "Green",
+      "black": "Black"
+    },
+    "noSaved": "Nothing saved yet. Press Save and your design waits here.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit",
+    "zoomPercent": "{n}%",
+    "solving": "Arranging the cloth…",
+    "cantSolve": "This box holds fewer than 35 pieces — open another box.",
+    "saved": "Saved to My designs.",
+    "saveFailed": "Could not save: {error}",
+    "missingCloth": "That design uses cloth that is no longer in the box.",
+    "delete": "Delete",
+    "deleteFailed": "Not deleted: {error}",
+    "cellLabel": "Row {r}, column {c} — {name}",
+    "swatchLabel": "{name} — {left} of {stock} pieces still free",
+    "layouts": {
+      "contrast": {
+        "title": "Chess",
+        "name": "Every seam earns its keep, light against dark."
+      },
+      "gradient": {
+        "title": "Gradient",
+        "name": "Pale at the top corner, falling to the darkest cloth."
+      },
+      "medallion": {
+        "title": "Centre",
+        "name": "Dark heart, lightening out to the edge."
+      },
+      "wave": {
+        "title": "Wave",
+        "name": "Bands of tone on the diagonal, the bargello way."
+      },
+      "framed": {
+        "title": "Border",
+        "name": "Dark outer ring anchoring the panel."
+      },
+      "cross": {
+        "title": "Cross",
+        "name": "Dark diagonals, light in the triangles between."
+      },
+      "spectrum": {
+        "title": "Spectrum",
+        "name": "Cool on the left, running warm to the right."
+      },
+      "boro": {
+        "title": "Mixed",
+        "name": "No pattern, just nothing repeating or muddy."
+      },
+      "blocks": {
+        "title": "Blocks",
+        "name": "Colour gathered where the cloth wants to cluster, seams still held apart."
+      },
+      "medallionPrint": {
+        "title": "Ripple",
+        "name": "The busiest cloth at the heart, plainer out to the edge."
+      },
+      "heart": {
+        "title": "Heart",
+        "name": "A red heart on the lightest cloth, every seam around it held apart."
+      }
+    },
+    "mounts": {
+      "none": {
+        "name": "Panel"
+      },
+      "frame": {
+        "name": "Frame"
+      },
+      "tote": {
+        "name": "Tote"
+      }
+    },
+    "notFillable": {
+      "noColour": "this box has no cloth with that colour",
+      "fewPieces": "this box has too few pieces near that colour to fill the shape",
+      "noDarkEnough": "this box has no cloth of that colour dark enough to stand against the ground",
+      "noFamilies": "this box has too few coloured cloths to make its colour families"
+    },
+    "layoutCannot": "{title} — {why}",
+    "cantFill": "This box cannot fill this layout: {why}.",
+    "yourBoxes": "Your boxes",
+    "share": "Share",
+    "savePhoto": "Save photo",
+    "shareTo": "Share…",
+    "sharePhotoFailed": "Couldn’t prepare the photo — try again",
+    "downloadFailed": "The file could not be made. Try again in a minute.",
+    "madeWith": "made with kantha.app",
+    "upcycled": "Upcycled from {n} cloth pieces",
+    "menu": "Menu",
+    "help": "Help",
+    "deleteSure": "Delete “{name}”? This cannot be undone.",
+    "shop": "Shop",
+    "privacy": "Privacy policy",
+    "savedFirst": "Saved on this device. Back up from the menu to keep a copy.",
+    "nothingToSave": "Add 35 pieces to your box before saving.",
+    "addMore": "{n, plural, one {Add # more piece to complete the grid.} other {Add # more pieces to complete the grid.}}",
+    "emptyCell": "Row {r}, column {c} — tap to add cloth",
+    "swatchLeft": "{n} left",
+    "swatchAllUsed": "{name} — all {stock} pieces are in the design. Tap to add more.",
+    "tabCloth": "Cloth box",
+    "tabDesign": "Design",
+    "tabPreview": "Preview",
+    "zoom": "Zoom",
+    "printPattern": "Print pattern PDF",
+    "printPatternNote": "A4 — print at 100%",
+    "stitchingGuide": "Kantha stitching guide",
+    "stitchingGuideNote": "How to lay out and stitch the panel",
+    "open": "Open",
+    "pictureOnly": "Picture only",
+    "view": "View",
+    "add": "Add",
+    "close": "Close",
+    "shopNote": "catsofkochi shop",
+    "backupNote": "Your work is kept on this device only"
+  },
+  "cloth": {
+    "title": "Add a piece",
+    "photo": "Photo of the piece",
+    "photoHint": "Tap to take one, or choose a picture",
+    "busy": "Measuring…",
+    "errors": {
+      "noPhoto": "A photograph of the piece is needed.",
+      "badPhoto": "{name} could not be read as a picture.",
+      "badCount": "A count is a whole number, from 1 to 500.",
+      "badBox": "That box is not a fabric box.",
+      "boxFull": "This box holds {limit} cloths already. Take some out before adding more.",
+      "unreadable": "The factory answered in a way this could not read. Nothing was added.",
+      "notReady": "The cropper is still loading. Give it a moment and press again.",
+      "noSuchCloth": "There is no such cloth.",
+      "pieceFailed": "That did not work. Try again in a moment."
+    },
+    "cropHint": "fill the square with the piece",
+    "retake": "Choose a different picture",
+    "choosePicture": "Choose a picture",
+    "fixTitle": "Fix this cloth",
+    "fixWiden": "You can only crop further in. What was cut away when this cloth was added was never kept, so widening is not possible — if there is no clean square left, photograph the piece again as a new cloth.",
+    "fixBusy": "Measuring…",
+    "howTo": "How to get it right",
+    "howTo1": "Cut each piece 6 cm by 6 cm.",
+    "howTo2": "For best results, photograph it in daylight.",
+    "howTo3": "Lay it flat, and keep the table out of the square.",
+    "howMany": "How many of this piece",
+    "recommend": "Cotton or linen works best.",
+    "piece": "{n, plural, one {# piece} other {# pieces}}",
+    "addOne": "Add to box",
+    "addMany": "Add {n} to box",
+    "saveChanges": "Save changes",
+    "removeThis": "Remove this piece",
+    "removeSure": "Remove it? It comes out of the box, and a pattern already made from it will say so.",
+    "removeUsed": "{n, plural, one {Remove this piece? # saved pattern using it stays as a picture. It can’t be changed or printed.} other {Remove this piece? # saved patterns using it stay as pictures. They can’t be changed or printed.}}",
+    "fewer": "One fewer piece",
+    "more": "One more piece",
+    "addedNext": "{n, plural, one {# piece of {name} added.} other {# pieces of {name} added.}} Photograph the next one.",
+    "piecesInBox": "Pieces in the box",
+    "fixAllUsed": "All {n} pieces are currently in use. Add more to give the pattern solver more options."
+  },
+  "boxes": {
+    "addPieces": "Add pieces",
+    "unread": "Your cloth could not be read just now. Nothing is lost — try again in a few minutes.",
+    "sample": "Sample",
+    "addOne": "Add a box",
+    "addSample": "Add sample cloth",
+    "delete": "Delete box",
+    "deleteAsk": "Delete Box {n}? It holds no cloth.",
+    "deleteSampleAsk": "Delete the Sample box? It holds no cloth.",
+    "deleteFullAsk": "Delete Box {n} and its pieces?",
+    "deleteSampleFullAsk": "Delete the Sample box and its pieces?",
+    "name": "Box {n}",
+    "pieces": "{n, plural, one {# piece} other {# pieces}}",
+    "sampleColours": "sample cloth",
+    "startHere": "Start here: photograph your cloth to fill this box.",
+    "addOneNote": "Makes the next number and opens it"
+  },
+  "editBox": {
+    "rename": "Rename"
+  },
+  "device": {
+    "notKept": "This browser is not keeping what you make here: it will all be gone when this page closes. Private windows do this. Use Back up in the Menu to keep a copy.",
+    "backupTitle": "Back up or move to another device",
+    "backupIntro": "Save everything you have made — boxes, cloth photos and designs — as one file. Open that file on another phone or browser to carry on there.",
+    "exportButton": "Save a backup file",
+    "exportDone": "Saved {file}.",
+    "importButton": "Open a backup file",
+    "importSure": "Opening {file} overwrites all designs and boxes currently on this device. Save a backup first to prevent losing your work.",
+    "importSaveFirst": "Save a backup of this device first",
+    "importReplace": "Replace with the file",
+    "importCancel": "Cancel",
+    "importDone": "This device now holds what was in {file}.",
+    "notBackup": "That file is not a Kantha backup. Nothing was changed.",
+    "tooNew": "That backup was made by a newer Kantha. Update the app, then open it again. Nothing was changed.",
+    "backupFailed": "The backup could not be made. Nothing was changed.",
+    "storageFailed": "this device did not keep it",
+    "deleteCancel": "Cancel",
+    "importNote": "Replaces everything on this device",
+    "safariBanner": "Safari clears this browser's data after 7 days away. Add Kantha to your Home Screen to keep your work.",
+    "spaceUsed": "Kantha is using {mb} MB on this device",
+    "freeSpace": "Free up space",
+    "freeingSpace": "Freeing space…",
+    "spaceFreed": "Freed {freed} MB. Kantha is now using {mb} MB on this device.",
+    "freeSpaceFailed": "Kantha could not free up space. Nothing was lost."
+  }
+}

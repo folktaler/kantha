@@ -1,0 +1,14 @@
+# package:test's own configuration, read by flutter test.
+tags:
+  # The solver's and the colour measure's tests against the snapshots. They run once, in Chrome, where she
+  # uses the studio: the Dart VM skips them, and the deploy script's Chrome step runs them.
+  chrome-only:
+    test_on: browser
+  # Pictures compared pixel by pixel with ones drawn on the Mac. Linux's text rasteriser sets a glyph's edges
+  # differently (the photo's words: 12,324 pixels on GitHub's runner), so `flutter test --exclude-tags pixels` leaves
+  # them out, on GitHub and for contributors; before each release they run on the Mac with `flutter test --tags pixels`.
+  pixels:
+  # The studio built and run with a second language file (test/l10n/generated_test.dart): a minute, so `flutter test`
+  # skips it, and it runs before each release with `flutter test --tags l10n-probe --run-skipped`.
+  l10n-probe:
+    skip: "run before each release: flutter test --tags l10n-probe --run-skipped"

@@ -1,0 +1,424 @@
+{
+  "@@locale": "en",
+  "canvasSave": "Save",
+  "canvasHideControls": "Done",
+  "canvasPanelName": "Design name",
+  "canvasDefaultName": "{layout}",
+  "@canvasDefaultName": {
+    "placeholders": {
+      "layout": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasPanelsEyebrow": "My designs",
+  "canvasNewDesign": "New design",
+  "canvasCopyName": "{name} copy",
+  "@canvasCopyName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasDuplicate": "Duplicate",
+  "canvasMore": "More",
+  "canvasMountEyebrow": "Mount",
+  "canvasStitchesSwitch": "Show stitches",
+  "canvasStitchColoursEcru": "Cream",
+  "canvasStitchColoursMadder": "Red",
+  "canvasStitchColoursIndigo": "Blue",
+  "canvasStitchColoursTurmeric": "Yellow",
+  "canvasStitchColoursLeaf": "Green",
+  "canvasStitchColoursBlack": "Black",
+  "canvasNoSaved": "Nothing saved yet. Press Save and your design waits here.",
+  "canvasZoomIn": "Zoom in",
+  "canvasZoomOut": "Zoom out",
+  "canvasFit": "Fit",
+  "canvasZoomPercent": "{n}%",
+  "@canvasZoomPercent": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasSolving": "Arranging the cloth…",
+  "canvasCantSolve": "This box holds fewer than 35 pieces — open another box.",
+  "canvasSaved": "Saved to My designs.",
+  "canvasSaveFailed": "Could not save: {error}",
+  "@canvasSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasMissingCloth": "That design uses cloth that is no longer in the box.",
+  "canvasDelete": "Delete",
+  "canvasDeleteFailed": "Not deleted: {error}",
+  "@canvasDeleteFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasCellLabel": "Row {r}, column {c} — {name}",
+  "@canvasCellLabel": {
+    "placeholders": {
+      "r": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasSwatchLabel": "{name} — {left} of {stock} pieces still free",
+  "@canvasSwatchLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "left": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasLayoutsContrastTitle": "Chess",
+  "canvasLayoutsContrastName": "Every seam earns its keep, light against dark.",
+  "canvasLayoutsGradientTitle": "Gradient",
+  "canvasLayoutsGradientName": "Pale at the top corner, falling to the darkest cloth.",
+  "canvasLayoutsMedallionTitle": "Centre",
+  "canvasLayoutsMedallionName": "Dark heart, lightening out to the edge.",
+  "canvasLayoutsWaveTitle": "Wave",
+  "canvasLayoutsWaveName": "Bands of tone on the diagonal, the bargello way.",
+  "canvasLayoutsFramedTitle": "Border",
+  "canvasLayoutsFramedName": "Dark outer ring anchoring the panel.",
+  "canvasLayoutsCrossTitle": "Cross",
+  "canvasLayoutsCrossName": "Dark diagonals, light in the triangles between.",
+  "canvasLayoutsSpectrumTitle": "Spectrum",
+  "canvasLayoutsSpectrumName": "Cool on the left, running warm to the right.",
+  "canvasLayoutsBoroTitle": "Mixed",
+  "canvasLayoutsBoroName": "No pattern, just nothing repeating or muddy.",
+  "canvasLayoutsBlocksTitle": "Blocks",
+  "canvasLayoutsBlocksName": "Colour gathered where the cloth wants to cluster, seams still held apart.",
+  "canvasLayoutsMedallionPrintTitle": "Ripple",
+  "canvasLayoutsMedallionPrintName": "The busiest cloth at the heart, plainer out to the edge.",
+  "canvasLayoutsHeartTitle": "Heart",
+  "canvasLayoutsHeartName": "A red heart on the lightest cloth, every seam around it held apart.",
+  "canvasMountsNoneName": "Panel",
+  "canvasMountsFrameName": "Frame",
+  "canvasMountsToteName": "Tote",
+  "canvasNotFillableNoColour": "this box has no cloth with that colour",
+  "canvasNotFillableFewPieces": "this box has too few pieces near that colour to fill the shape",
+  "canvasNotFillableNoDarkEnough": "this box has no cloth of that colour dark enough to stand against the ground",
+  "canvasNotFillableNoFamilies": "this box has too few coloured cloths to make its colour families",
+  "canvasLayoutCannot": "{title} — {why}",
+  "@canvasLayoutCannot": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "why": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasCantFill": "This box cannot fill this layout: {why}.",
+  "@canvasCantFill": {
+    "placeholders": {
+      "why": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasYourBoxes": "Your boxes",
+  "canvasShare": "Share",
+  "canvasSavePhoto": "Save photo",
+  "canvasShareTo": "Share…",
+  "canvasSharePhotoFailed": "Couldn’t prepare the photo — try again",
+  "canvasDownloadFailed": "The file could not be made. Try again in a minute.",
+  "canvasMadeWith": "made with kantha.app",
+  "canvasUpcycled": "Upcycled from {n} cloth pieces",
+  "@canvasUpcycled": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasMenu": "Menu",
+  "canvasHelp": "Help",
+  "canvasDeleteSure": "Delete “{name}”? This cannot be undone.",
+  "@canvasDeleteSure": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasShop": "Shop",
+  "canvasPrivacy": "Privacy policy",
+  "canvasSavedFirst": "Saved on this device. Back up from the menu to keep a copy.",
+  "canvasNothingToSave": "Add 35 pieces to your box before saving.",
+  "canvasAddMore": "{n, plural, one{Add {n} more piece to complete the grid.} other{Add {n} more pieces to complete the grid.}}",
+  "@canvasAddMore": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "canvasEmptyCell": "Row {r}, column {c} — tap to add cloth",
+  "@canvasEmptyCell": {
+    "placeholders": {
+      "r": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasSwatchLeft": "{n} left",
+  "@canvasSwatchLeft": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasSwatchAllUsed": "{name} — all {stock} pieces are in the design. Tap to add more.",
+  "@canvasSwatchAllUsed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasTabCloth": "Cloth box",
+  "canvasTabDesign": "Design",
+  "canvasTabPreview": "Preview",
+  "canvasZoom": "Zoom",
+  "canvasPrintPattern": "Print pattern PDF",
+  "canvasPrintPatternNote": "A4 — print at 100%",
+  "canvasStitchingGuide": "Kantha stitching guide",
+  "canvasStitchingGuideNote": "How to lay out and stitch the panel",
+  "canvasOpen": "Open",
+  "canvasPictureOnly": "Picture only",
+  "canvasView": "View",
+  "canvasAdd": "Add",
+  "canvasClose": "Close",
+  "canvasShopNote": "catsofkochi shop",
+  "canvasBackupNote": "Your work is kept on this device only",
+  "clothTitle": "Add a piece",
+  "clothPhoto": "Photo of the piece",
+  "clothPhotoHint": "Tap to take one, or choose a picture",
+  "clothBusy": "Measuring…",
+  "clothErrorsNoPhoto": "A photograph of the piece is needed.",
+  "clothErrorsBadPhoto": "{name} could not be read as a picture.",
+  "@clothErrorsBadPhoto": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "clothErrorsBadCount": "A count is a whole number, from 1 to 500.",
+  "clothErrorsBadBox": "That box is not a fabric box.",
+  "clothErrorsBoxFull": "This box holds {limit} cloths already. Take some out before adding more.",
+  "@clothErrorsBoxFull": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "clothErrorsUnreadable": "The factory answered in a way this could not read. Nothing was added.",
+  "clothErrorsNotReady": "The cropper is still loading. Give it a moment and press again.",
+  "clothErrorsNoSuchCloth": "There is no such cloth.",
+  "clothErrorsPieceFailed": "That did not work. Try again in a moment.",
+  "clothCropHint": "fill the square with the piece",
+  "clothRetake": "Choose a different picture",
+  "clothChoosePicture": "Choose a picture",
+  "clothFixTitle": "Fix this cloth",
+  "clothFixWiden": "You can only crop further in. What was cut away when this cloth was added was never kept, so widening is not possible — if there is no clean square left, photograph the piece again as a new cloth.",
+  "clothFixBusy": "Measuring…",
+  "clothHowTo": "How to get it right",
+  "clothHowTo1": "Cut each piece 6 cm by 6 cm.",
+  "clothHowTo2": "For best results, photograph it in daylight.",
+  "clothHowTo3": "Lay it flat, and keep the table out of the square.",
+  "clothHowMany": "How many of this piece",
+  "clothRecommend": "Cotton or linen works best.",
+  "clothPiece": "{n, plural, one{{n} piece} other{{n} pieces}}",
+  "@clothPiece": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "clothAddOne": "Add to box",
+  "clothAddMany": "Add {n} to box",
+  "@clothAddMany": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "clothSaveChanges": "Save changes",
+  "clothRemoveThis": "Remove this piece",
+  "clothRemoveSure": "Remove it? It comes out of the box, and a pattern already made from it will say so.",
+  "clothRemoveUsed": "{n, plural, one{Remove this piece? {n} saved pattern using it stays as a picture. It can’t be changed or printed.} other{Remove this piece? {n} saved patterns using it stay as pictures. They can’t be changed or printed.}}",
+  "@clothRemoveUsed": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "clothFewer": "One fewer piece",
+  "clothMore": "One more piece",
+  "clothAddedNext": "{n, plural, one{{n} piece of {name} added.} other{{n} pieces of {name} added.}} Photograph the next one.",
+  "@clothAddedNext": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "clothPiecesInBox": "Pieces in the box",
+  "clothFixAllUsed": "All {n} pieces are currently in use. Add more to give the pattern solver more options.",
+  "@clothFixAllUsed": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "boxesAddPieces": "Add pieces",
+  "boxesUnread": "Your cloth could not be read just now. Nothing is lost — try again in a few minutes.",
+  "boxesSample": "Sample",
+  "boxesAddOne": "Add a box",
+  "boxesAddSample": "Add sample cloth",
+  "boxesDelete": "Delete box",
+  "boxesDeleteAsk": "Delete Box {n}? It holds no cloth.",
+  "@boxesDeleteAsk": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "boxesDeleteSampleAsk": "Delete the Sample box? It holds no cloth.",
+  "boxesDeleteFullAsk": "Delete Box {n} and its pieces?",
+  "@boxesDeleteFullAsk": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "boxesDeleteSampleFullAsk": "Delete the Sample box and its pieces?",
+  "boxesName": "Box {n}",
+  "@boxesName": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "boxesPieces": "{n, plural, one{{n} piece} other{{n} pieces}}",
+  "@boxesPieces": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "boxesSampleColours": "sample cloth",
+  "boxesStartHere": "Start here: photograph your cloth to fill this box.",
+  "boxesAddOneNote": "Makes the next number and opens it",
+  "editBoxRename": "Rename",
+  "deviceNotKept": "This browser is not keeping what you make here: it will all be gone when this page closes. Private windows do this. Use Back up in the Menu to keep a copy.",
+  "deviceBackupTitle": "Back up or move to another device",
+  "deviceBackupIntro": "Save everything you have made — boxes, cloth photos and designs — as one file. Open that file on another phone or browser to carry on there.",
+  "deviceExportButton": "Save a backup file",
+  "deviceExportDone": "Saved {file}.",
+  "@deviceExportDone": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceImportButton": "Open a backup file",
+  "deviceImportSure": "Opening {file} overwrites all designs and boxes currently on this device. Save a backup first to prevent losing your work.",
+  "@deviceImportSure": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceImportSaveFirst": "Save a backup of this device first",
+  "deviceImportReplace": "Replace with the file",
+  "deviceImportCancel": "Cancel",
+  "deviceImportDone": "This device now holds what was in {file}.",
+  "@deviceImportDone": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceNotBackup": "That file is not a Kantha backup. Nothing was changed.",
+  "deviceTooNew": "That backup was made by a newer Kantha. Update the app, then open it again. Nothing was changed.",
+  "deviceBackupFailed": "The backup could not be made. Nothing was changed.",
+  "deviceStorageFailed": "this device did not keep it",
+  "deviceDeleteCancel": "Cancel",
+  "deviceImportNote": "Replaces everything on this device",
+  "deviceSafariBanner": "Safari clears this browser's data after 7 days away. Add Kantha to your Home Screen to keep your work.",
+  "deviceSpaceUsed": "Kantha is using {mb} MB on this device",
+  "@deviceSpaceUsed": {
+    "placeholders": {
+      "mb": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceFreeSpace": "Free up space",
+  "deviceFreeingSpace": "Freeing space…",
+  "deviceSpaceFreed": "Freed {freed} MB. Kantha is now using {mb} MB on this device.",
+  "@deviceSpaceFreed": {
+    "placeholders": {
+      "freed": {
+        "type": "String"
+      },
+      "mb": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceFreeSpaceFailed": "Kantha could not free up space. Nothing was lost."
+}

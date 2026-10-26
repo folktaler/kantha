@@ -1,0 +1,282 @@
+[
+ {
+  "file": "flat-mid.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   40.6,
+   8.3,
+   22.1
+  ],
+  "name": "dimgray",
+  "spread": 0,
+  "width": 211,
+  "height": 211
+ },
+ {
+  "file": "flat-mid.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   40.6,
+   8.3,
+   22.1
+  ],
+  "name": "dimgray",
+  "spread": 0,
+  "width": 352,
+  "height": 352
+ },
+ {
+  "file": "flat-light.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   93.1,
+   -0.9,
+   7.9
+  ],
+  "name": "linen",
+  "spread": 0,
+  "width": 211,
+  "height": 211
+ },
+ {
+  "file": "flat-light.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   93.1,
+   -0.9,
+   7.9
+  ],
+  "name": "linen",
+  "spread": 0,
+  "width": 352,
+  "height": 352
+ },
+ {
+  "file": "gradient.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   41.9,
+   30.6,
+   -17.1
+  ],
+  "name": "darkslateblue",
+  "spread": 3.8,
+  "width": 317,
+  "height": 317
+ },
+ {
+  "file": "gradient.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   43.6,
+   35.3,
+   -17.2
+  ],
+  "name": "palevioletred",
+  "spread": 6.2,
+  "width": 528,
+  "height": 528
+ },
+ {
+  "file": "checker-print.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   74.3,
+   16.6,
+   18.3
+  ],
+  "name": "tan",
+  "spread": 23.7,
+  "width": 317,
+  "height": 317
+ },
+ {
+  "file": "checker-print.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   74.3,
+   16.6,
+   18.3
+  ],
+  "name": "tan",
+  "spread": 23.7,
+  "width": 528,
+  "height": 528
+ },
+ {
+  "file": "noise.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   54.8,
+   -23.7,
+   22.1
+  ],
+  "name": "darkolivegreen",
+  "spread": 6.7,
+  "width": 264,
+  "height": 264
+ },
+ {
+  "file": "noise.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   54.8,
+   -23.7,
+   22.1
+  ],
+  "name": "darkolivegreen",
+  "spread": 6.7,
+  "width": 440,
+  "height": 440
+ },
+ {
+  "file": "alpha.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   29.5,
+   27.3,
+   -57.2
+  ],
+  "name": "darkslateblue",
+  "spread": 0,
+  "width": 158,
+  "height": 158
+ },
+ {
+  "file": "alpha.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   29.5,
+   27.3,
+   -57.2
+  ],
+  "name": "darkslateblue",
+  "spread": 0,
+  "width": 264,
+  "height": 264
+ },
+ {
+  "file": "rotated.jpg",
+  "centre": true,
+  "upright": true,
+  "lab": [
+   67.1,
+   0.3,
+   8.7
+  ],
+  "name": "darkgray",
+  "spread": 38.4,
+  "width": 253,
+  "height": 338
+ },
+ {
+  "file": "rotated.jpg",
+  "centre": false,
+  "upright": true,
+  "lab": [
+   67.1,
+   0.3,
+   8.7
+  ],
+  "name": "darkgray",
+  "spread": 38.4,
+  "width": 422,
+  "height": 563
+ },
+ {
+  "file": "big.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   52.2,
+   -1,
+   2.6
+  ],
+  "name": "gray",
+  "spread": 8.9,
+  "width": 1320,
+  "height": 880
+ },
+ {
+  "file": "big.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   55,
+   -2.4,
+   6.8
+  ],
+  "name": "gray",
+  "spread": 14.5,
+  "width": 2200,
+  "height": 1467
+ },
+ {
+  "file": "grey.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   55.2,
+   0,
+   0
+  ],
+  "name": "gray",
+  "spread": 8.4,
+  "width": 158,
+  "height": 158
+ },
+ {
+  "file": "grey.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   56.7,
+   0,
+   0
+  ],
+  "name": "gray",
+  "spread": 14,
+  "width": 264,
+  "height": 264
+ },
+ {
+  "file": "palette.png",
+  "centre": true,
+  "upright": false,
+  "lab": [
+   49.9,
+   -2,
+   -1
+  ],
+  "name": "gray",
+  "spread": 7.5,
+  "width": 158,
+  "height": 158
+ },
+ {
+  "file": "palette.png",
+  "centre": false,
+  "upright": false,
+  "lab": [
+   52.5,
+   10.3,
+   -6.6
+  ],
+  "name": "gray",
+  "spread": 9.1,
+  "width": 264,
+  "height": 264
+ }
+]

@@ -1,0 +1,710 @@
+{
+ "source": "The 47 factory cloth photos the home page uses, read 6 October 2026",
+ "cloth": [
+  {
+   "id": "KF-1",
+   "name": "Thistle 01",
+   "lab": [
+    68.2,
+    12.3,
+    -10.4
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-1.jpg"
+  },
+  {
+   "id": "KF-2",
+   "name": "Brown 02",
+   "lab": [
+    39.9,
+    50.5,
+    29.3
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-2.jpg"
+  },
+  {
+   "id": "KF-3",
+   "name": "Darkslateblue 03",
+   "lab": [
+    39.8,
+    19.6,
+    -26.1
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-3.jpg"
+  },
+  {
+   "id": "KF-4",
+   "name": "Darkslategray 04",
+   "lab": [
+    43.7,
+    -15.5,
+    -10.3
+   ],
+   "busy": true,
+   "edge": 0.0367,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-4.jpg"
+  },
+  {
+   "id": "KF-5",
+   "name": "Sienna 05",
+   "lab": [
+    53.4,
+    36.2,
+    37.5
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-5.jpg"
+  },
+  {
+   "id": "KF-6",
+   "name": "Sienna 06",
+   "lab": [
+    27.6,
+    22.6,
+    13.9
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-6.jpg"
+  },
+  {
+   "id": "KF-7",
+   "name": "Darkslategray 07",
+   "lab": [
+    37.8,
+    4.1,
+    -5.5
+   ],
+   "busy": true,
+   "edge": 0.0364,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-7.jpg"
+  },
+  {
+   "id": "KF-8",
+   "name": "Rosybrown 08",
+   "lab": [
+    70.6,
+    12.4,
+    10.6
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-8.jpg"
+  },
+  {
+   "id": "KF-9",
+   "name": "Darkslateblue 09",
+   "lab": [
+    16.0,
+    23.5,
+    -19.6
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-9.jpg"
+  },
+  {
+   "id": "KF-10",
+   "name": "Black 10",
+   "lab": [
+    6.9,
+    2.6,
+    -0.2
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-10.jpg"
+  },
+  {
+   "id": "KF-11",
+   "name": "Palevioletred 11",
+   "lab": [
+    49.0,
+    36.0,
+    2.4
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-11.jpg"
+  },
+  {
+   "id": "KF-12",
+   "name": "Palevioletred 12",
+   "lab": [
+    27.3,
+    32.9,
+    -4.5
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-12.jpg"
+  },
+  {
+   "id": "KF-13",
+   "name": "Thistle 13",
+   "lab": [
+    77.2,
+    5.6,
+    -9.8
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 3,
+   "photo": "KF-13.jpg"
+  },
+  {
+   "id": "KF-14",
+   "name": "Rosybrown 14",
+   "lab": [
+    59.5,
+    13.0,
+    -4.1
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-14.jpg"
+  },
+  {
+   "id": "KF-15",
+   "name": "Darkgoldenrod 15",
+   "lab": [
+    64.4,
+    10.2,
+    59.4
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-15.jpg"
+  },
+  {
+   "id": "KF-16",
+   "name": "Cadetblue 16",
+   "lab": [
+    63.5,
+    -28.2,
+    -9.4
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-16.jpg"
+  },
+  {
+   "id": "KF-17",
+   "name": "Darkslategray 17",
+   "lab": [
+    45.2,
+    -6.1,
+    -7.2
+   ],
+   "busy": true,
+   "edge": 0.0819,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-17.jpg"
+  },
+  {
+   "id": "KF-18",
+   "name": "Cadetblue 18",
+   "lab": [
+    61.2,
+    -15.7,
+    -14.5
+   ],
+   "busy": false,
+   "edge": 0.0031,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-18.jpg"
+  },
+  {
+   "id": "KF-19",
+   "name": "Silver 19",
+   "lab": [
+    74.1,
+    -4.4,
+    10.2
+   ],
+   "busy": false,
+   "edge": 0.0002,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-19.jpg"
+  },
+  {
+   "id": "KF-20",
+   "name": "Silver 20",
+   "lab": [
+    75.1,
+    0.4,
+    -2.6
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-20.jpg"
+  },
+  {
+   "id": "KF-21",
+   "name": "Slategray 21",
+   "lab": [
+    43.7,
+    5.3,
+    -11.5
+   ],
+   "busy": false,
+   "edge": 0.0088,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-21.jpg"
+  },
+  {
+   "id": "KF-22",
+   "name": "Indianred 22",
+   "lab": [
+    48.2,
+    42.8,
+    9.9
+   ],
+   "busy": true,
+   "edge": 0.0996,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-22.jpg"
+  },
+  {
+   "id": "KF-23",
+   "name": "Palevioletred 23",
+   "lab": [
+    66.5,
+    41.6,
+    -12.4
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-23.jpg"
+  },
+  {
+   "id": "KF-24",
+   "name": "Silver 24",
+   "lab": [
+    73.5,
+    -2.6,
+    10.1
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-24.jpg"
+  },
+  {
+   "id": "KF-25",
+   "name": "Palevioletred 25",
+   "lab": [
+    47.5,
+    34.4,
+    -2.8
+   ],
+   "busy": false,
+   "edge": 0.0016,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-25.jpg"
+  },
+  {
+   "id": "KF-26",
+   "name": "Dimgray 26",
+   "lab": [
+    32.4,
+    20.4,
+    -3.3
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-26.jpg"
+  },
+  {
+   "id": "KF-27",
+   "name": "Darkslategray 27",
+   "lab": [
+    20.7,
+    2.2,
+    -19.3
+   ],
+   "busy": false,
+   "edge": 0.0041,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-27.jpg"
+  },
+  {
+   "id": "KF-28",
+   "name": "Lightblue 28",
+   "lab": [
+    90.1,
+    -6.0,
+    -8.7
+   ],
+   "busy": false,
+   "edge": 0.0002,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-28.jpg"
+  },
+  {
+   "id": "KF-29",
+   "name": "Darkolivegreen 29",
+   "lab": [
+    33.6,
+    -16.4,
+    22.8
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-29.jpg"
+  },
+  {
+   "id": "KF-30",
+   "name": "Dimgray 30",
+   "lab": [
+    36.9,
+    21.3,
+    -2.1
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-30.jpg"
+  },
+  {
+   "id": "KF-31",
+   "name": "Black 31",
+   "lab": [
+    7.6,
+    1.7,
+    -11.3
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-31.jpg"
+  },
+  {
+   "id": "KF-32",
+   "name": "Thistle 32",
+   "lab": [
+    75.2,
+    12.2,
+    -11.1
+   ],
+   "busy": false,
+   "edge": 0.0,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-32.jpg"
+  },
+  {
+   "id": "KF-33",
+   "name": "Silver 33",
+   "lab": [
+    79.6,
+    -7.0,
+    -2.5
+   ],
+   "busy": true,
+   "edge": 0.0598,
+   "grain": null,
+   "inBox": 200,
+   "pieces": 2,
+   "photo": "KF-33.jpg"
+  },
+  {
+   "id": "KF-35",
+   "name": "KF-035 Darkslategray",
+   "lab": [
+    29.8,
+    0.2,
+    -11.2
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 1,
+   "pieces": 1,
+   "photo": "KF-35.jpg"
+  },
+  {
+   "id": "KF-36",
+   "name": "KF-036 Indianred",
+   "lab": [
+    53.7,
+    37.5,
+    11.9
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 13,
+   "pieces": 2,
+   "photo": "KF-36.jpg"
+  },
+  {
+   "id": "KF-37",
+   "name": "KF-037 Dimgray",
+   "lab": [
+    42.1,
+    12.3,
+    1.9
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 21,
+   "pieces": 2,
+   "photo": "KF-37.jpg"
+  },
+  {
+   "id": "KF-38",
+   "name": "KF-038 Cadetblue",
+   "lab": [
+    71.0,
+    -12.4,
+    -11.4
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 10,
+   "pieces": 2,
+   "photo": "KF-38.jpg"
+  },
+  {
+   "id": "KF-39",
+   "name": "KF-039 Darksalmon",
+   "lab": [
+    63.2,
+    30.4,
+    30.7
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 6,
+   "pieces": 2,
+   "photo": "KF-39.jpg"
+  },
+  {
+   "id": "KF-40",
+   "name": "KF-040 Goldenrod",
+   "lab": [
+    70.2,
+    4.0,
+    57.4
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 6,
+   "pieces": 2,
+   "photo": "KF-40.jpg"
+  },
+  {
+   "id": "KF-41",
+   "name": "KF-041 Dimgray",
+   "lab": [
+    44.2,
+    4.4,
+    -4.3
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 4,
+   "pieces": 2,
+   "photo": "KF-41.jpg"
+  },
+  {
+   "id": "KF-42",
+   "name": "KF-042 Darkgray",
+   "lab": [
+    67.5,
+    6.8,
+    4.3
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 1,
+   "pieces": 1,
+   "photo": "KF-42.jpg"
+  },
+  {
+   "id": "KF-43",
+   "name": "KF-043 Rosybrown",
+   "lab": [
+    68.4,
+    12.7,
+    14.5
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 4,
+   "pieces": 2,
+   "photo": "KF-43.jpg"
+  },
+  {
+   "id": "KF-44",
+   "name": "KF-044 Darkolivegreen",
+   "lab": [
+    59.1,
+    -22.2,
+    30.0
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 12,
+   "pieces": 2,
+   "photo": "KF-44.jpg"
+  },
+  {
+   "id": "KF-45",
+   "name": "KF-045 Plum",
+   "lab": [
+    63.4,
+    29.4,
+    -9.0
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 12,
+   "pieces": 2,
+   "photo": "KF-45.jpg"
+  },
+  {
+   "id": "KF-46",
+   "name": "KF-046 Goldenrod",
+   "lab": [
+    72.8,
+    4.5,
+    57.1
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 7,
+   "pieces": 2,
+   "photo": "KF-46.jpg"
+  },
+  {
+   "id": "KF-47",
+   "name": "KF-047 Crimson",
+   "lab": [
+    50.1,
+    66.7,
+    25.0
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 4,
+   "pieces": 2,
+   "photo": "KF-47.jpg"
+  },
+  {
+   "id": "KF-48",
+   "name": "KF-048 Lightslategray",
+   "lab": [
+    62.0,
+    2.4,
+    -17.1
+   ],
+   "busy": null,
+   "edge": null,
+   "grain": null,
+   "inBox": 5,
+   "pieces": 2,
+   "photo": "KF-48.jpg"
+  }
+ ]
+}

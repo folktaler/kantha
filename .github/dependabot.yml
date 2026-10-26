@@ -1,0 +1,25 @@
+version: 2
+# Monthly, two pull requests at most for each ecosystem: its major updates in one, its minor and patch updates in the other.
+updates:
+  - package-ecosystem: pub
+    directory: /studio
+    schedule:
+      interval: monthly
+    groups:
+      pub-major:
+        patterns: ["*"]
+        update-types: [major]
+      pub-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions-major:
+        patterns: ["*"]
+        update-types: [major]
+      github-actions-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]

@@ -1,0 +1,141 @@
+/* The Design tab of the phone's dock (redesign handover, "Dock panel — Patterns tab"; renamed Design by the owner,
+   19 Oct): the pattern tiles, and under them one row, Show stitches (owner, 20 and 21 Oct): the switch, its words, and
+   the thread that clears this design's cloth best, as a dot and its plain colour. The spacing is always Open and is
+   not said. */
+import 'package:flutter/material.dart';
+import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
+import '../../l10n/app_localizations.dart';
+import '../../l10n/words.dart';
+import '../../solver/icons.dart';
+import '../../solver/layouts.dart';
+import '../controller.dart';
+import '../painters.dart';
+import '../pressable.dart';
+import 'phone_theme.dart';
+import 'phone_toast.dart';
+import 'strip.dart';
+
+final Map<LayoutKey, List<int>> _icons = {for (final k in layoutKeys) k: layoutIconLevels(k)};
+
+/* A tile per pattern in a strip that scrolls sideways, 8 px under the panel's top, then the Show stitches row. A pattern the box
+   cannot fill stays, faded to 35 %, and a tap on it says why and changes nothing (decision 11). The panel scrolls up
+   and down, as Preview does, so with the phone's text set larger nothing runs over the tabs. */
+class DockPatterns extends StatelessWidget {
+  const DockPatterns({super.key, required this.c, required this.toaster});
+  final StudioController c;
+  final Toaster toaster;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+      key: const ValueKey('dock-design'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const SizedBox(height: 8),
+          Strip(
+            scrollKey: const ValueKey('dock-patterns'),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              for (final k in layoutKeys) ...[
+                if (k != layoutKeys.first) const SizedBox(width: 8),
+                _tile(context, k),
+              ],
+            ]),
+          ),
+          const SizedBox(height: 4),
+          _stitches(context),
+        ]),
+      );
+
+  /* One row across the panel, at least 44 tall and one target: 16 px in, the switch, the words "Show stitches", then a
+     dot in the thread's colour and the colour's plain name (canvas.stitchColours), on or off (owner, 21 Oct). A screen
+     reader hears Show stitches, on or off, then the colour. */
+  Widget _stitches(BuildContext context) {
+    final words = L.of(context);
+    final on = c.stitch;
+    final thread = c.threadShown;
+    final name = words.stitchColour(thread.key);
+    return Pressable(
+      key: const ValueKey('stitch-switch'),
+      label: words.canvasStitchesSwitch,
+      value: name,
+      toggled: on,
+      excludeChildSemantics: true,
+      onPressed: () => c.setStitch(!on),
+      builder: (context, st) => focusRing(st.focused, Container(
+        constraints: const BoxConstraints(minHeight: 44),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        color: st.hovered ? PhonePalette.hover : PhonePalette.white,
+        child: Row(children: [
+          _switch(on),
+          const SizedBox(width: 12),
+          Flexible(child: Text(words.canvasStitchesSwitch, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: pText(PType.bodySmall))),
+          const SizedBox(width: 16),
+          Row(key: const ValueKey('stitch-thread'), mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: hexColor(thread.hex), shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFA9A392)))),
+            const SizedBox(width: iconGap),
+            Text(name, maxLines: 1, style: pText(PType.bodySmall, color: PhonePalette.text2)),
+          ]),
+        ]),
+      )),
+    );
+  }
+
+  /* 40 × 24 with the control's 2 px corners: on, the text colour with a white 18 px square at the right; off, white in
+     a 1 px strong edge, the square in strong at the left. */
+  Widget _switch(bool on) => Container(
+        key: const ValueKey('stitch-switch-track'),
+        width: 40, height: 24,
+        padding: const EdgeInsets.all(2),
+        alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+        decoration: BoxDecoration(borderRadius: kControlRadius, color: on ? PhonePalette.text : PhonePalette.white,
+            border: Border.all(color: on ? PhonePalette.text : PhonePalette.strong)),
+        child: SizedBox.square(dimension: 18,
+            child: DecoratedBox(decoration: BoxDecoration(borderRadius: kControlRadius,
+                color: on ? PhonePalette.white : PhonePalette.strong))),
+      );
+
+  /* 80 × 124 with 2 px corners: the pattern's icon in a 46 × 64 box, the name under it. Selected: the tint, a 2 px
+     edge in the action colour and the check in a square of it at the top right. */
+  Widget _tile(BuildContext context, LayoutKey k) {
+    final words = L.of(context), f = c.feasible[k];
+    final cannot = f != null && !f.fills;
+    final title = words.layoutTitle(k);
+    final why = cannot ? words.canvasLayoutCannot(title, words.notFillable(f.why!)) : null;
+    final on = k == c.layout;
+    return Pressable(
+      key: ValueKey('tile-${k.name}'),
+      label: why ?? title,
+      excludeChildSemantics: true,
+      selected: on,
+      onPressed: () => why != null ? toaster.say(why) : c.loadLayout(k),
+      builder: (context, st) => Opacity(
+        opacity: cannot ? 0.35 : 1,
+        child: focusRing(st.focused, Container(
+          width: 80, height: 124,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(borderRadius: kControlRadius,
+              color: on ? PhonePalette.tint : (st.hovered ? PhonePalette.hover : PhonePalette.white)),
+          foregroundDecoration: BoxDecoration(borderRadius: kControlRadius,
+              border: on ? Border.all(color: PhonePalette.blue, width: 2) : Border.all(color: PhonePalette.border)),
+          child: Stack(fit: StackFit.expand, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 10, 4, 4),
+              child: Column(children: [
+                SizedBox(width: 46, height: 64, child: CustomPaint(painter: LayoutIconPainter(levels: _icons[k]!, active: on))),
+                const SizedBox(height: 6),
+                SizedBox(height: 28, child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                    style: pText(PType.tile))),
+              ]),
+            ),
+            if (on)
+              Positioned(top: 0, right: 0, child: SizedBox.square(dimension: 20,
+                  child: ColoredBox(color: PhonePalette.blue,
+                      child: Center(child: tablerIcon(const tabler.Check(), size: 14, color: PhonePalette.white))))),
+          ]),
+        )),
+      ),
+    );
+  }
+}

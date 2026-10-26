@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Replaced by `flutter build web --base-href /studio/` (tool/build_web.sh): the studio is served at kantha.app/studio. -->
+  <base href="$FLUTTER_BASE_HREF">
+  <!-- tool/build_web.sh points the four files below (the icon, the favicon, the manifest, the bootstrap)
+       into r/<release>/, where every file but this one sits. This file is the only one that names the release. -->
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Kantha studio">
+  <!-- The studio stays out of search results. -->
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kantha">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Kantha</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- The loading screen: the home page's panels (kantha.app's panel stack) in the Sample cloth's five
+       plain colours, three of the studio's templates in turn, until the studio is drawn: the app removes #loading
+       then (lib/platform/loading.dart). It shows .4 s in, so a visit that opens in less sees no flash.
+
+       One cycle is three slots; panel i owns slot i. A slot is the home page's: fill 35 + hold 24 + clear 4 ticks
+       of 110 ms = 6.93 s, so the cycle is 20.79 s and the keyframe percentages are fractions of it:
+         one slot                                      6.93 s = 33.333 %
+         one square's drop                              .36 s = 1.732 %
+         a square solid, .1 s into its drop             .1 s = 0.481 %
+         the clear, the slot's last .5 s               6.43 s = 30.928 %
+       Each square stays landed to 33.4 % of its own timeline and is back above the panel by 33.6 %: at most
+       3.74 s + 6.99 s = 10.7 s into the cycle, inside the two slots its panel is hidden.
+
+       Each panel fades as a whole for its clear, so 3 elements animate it rather than 105 squares; the grid
+       lines and shadow are .loading-panels', and stay while the panels take turns, as on the home page.
+
+       With reduced motion nothing moves: every rule's base value is the landed state, only the first panel
+       shows, and the screen still appears .4 s in, at once rather than faded. -->
+  <style>
+    .loading {
+      --slot: 6.93s; --cycle: calc(3 * var(--slot)); --s: 30px;
+      position: fixed; inset: 0; z-index: 1; background: #F3EFE7;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #211E1C;
+      animation: loading-in .2s .4s both;
+    }
+    .loading-panels {
+      display: grid; background: #DBD5C4;
+      box-shadow: 0 1px 2px rgba(30, 32, 39, .06), 0 10px 28px rgba(30, 32, 39, .10);
+    }
+    .loading-panel {
+      --at: calc((var(--i) - 3) * var(--slot) + .4s);
+      grid-area: 1 / 1;
+      display: grid; grid-template-columns: repeat(5, var(--s)); grid-auto-rows: var(--s); gap: 1px; padding: 1px;
+      overflow: hidden;
+      animation: loading-cycle var(--cycle) linear infinite; animation-delay: var(--at);
+    }
+    .loading-panel i {
+      --up: calc(-1 * (var(--row) + 1) * (var(--s) + 1px));
+      display: block;
+      animation: loading-drop var(--cycle) linear infinite;
+      animation-delay: calc(var(--at) + var(--n) * 110ms);
+    }
+    .loading-name { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+    .loading-late {
+      margin: 0; max-width: 280px; text-align: center; font-size: 14px; line-height: 1.5; color: #584F4B;
+      animation: loading-late .4s 10s both;
+    }
+    @keyframes loading-in { from { opacity: 0; } }
+    @keyframes loading-cycle { /* shown for its slot, cleared over the slot's last .5 s */
+      0%, 30.928% { visibility: visible; opacity: 1; }
+      33.33% { visibility: visible; opacity: 0; }
+      33.3334%, 100% { visibility: hidden; opacity: 0; }  /* 100 / 3: hidden as the next panel shows, never both */
+    }
+    @keyframes loading-drop {
+      0% { transform: translateY(var(--up)); opacity: 0; animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+      0.481% { opacity: 1; }                                        /* falls solid; the transform keeps its curve */
+      1.732%, 33.4% { transform: none; opacity: 1; }               /* landed, held through the panel's slot */
+      33.6%, 100% { transform: translateY(var(--up)); opacity: 0; } /* reset while the panel is hidden */
+    }
+    @keyframes loading-late {
+      from { opacity: 0; visibility: hidden; }
+      to { opacity: 1; visibility: visible; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .loading { animation: loading-in 0s .4s both; }
+      .loading-panel, .loading-panel i { animation: none; }
+      .loading-panel + .loading-panel { display: none; }
+    }
+  </style>
+</head>
+<body style="background: #F3EFE7">
+  <div id="loading" class="loading">
+    <div class="loading-panels" aria-hidden="true">
+      <div class="loading-panel" style="--i:0"><!-- heart -->
+        <i style="--row:0;--n:24;background:#EDE3CC"></i><i style="--row:0;--n:15;background:#EDE3CC"></i><i style="--row:0;--n:34;background:#EDE3CC"></i><i style="--row:0;--n:25;background:#EDE3CC"></i><i style="--row:0;--n:31;background:#EDE3CC"></i>
+        <i style="--row:1;--n:16;background:#EDE3CC"></i><i style="--row:1;--n:12;background:#9E2B25"></i><i style="--row:1;--n:33;background:#EDE3CC"></i><i style="--row:1;--n:22;background:#9E2B25"></i><i style="--row:1;--n:30;background:#EDE3CC"></i>
+        <i style="--row:2;--n:14;background:#9E2B25"></i><i style="--row:2;--n:10;background:#9E2B25"></i><i style="--row:2;--n:32;background:#9E2B25"></i><i style="--row:2;--n:20;background:#9E2B25"></i><i style="--row:2;--n:29;background:#9E2B25"></i>
+        <i style="--row:3;--n:13;background:#9E2B25"></i><i style="--row:3;--n:8;background:#9E2B25"></i><i style="--row:3;--n:28;background:#9E2B25"></i><i style="--row:3;--n:19;background:#9E2B25"></i><i style="--row:3;--n:23;background:#9E2B25"></i>
+        <i style="--row:4;--n:11;background:#EDE3CC"></i><i style="--row:4;--n:7;background:#9E2B25"></i><i style="--row:4;--n:27;background:#9E2B25"></i><i style="--row:4;--n:17;background:#9E2B25"></i><i style="--row:4;--n:21;background:#EDE3CC"></i>
+        <i style="--row:5;--n:6;background:#EDE3CC"></i><i style="--row:5;--n:5;background:#EDE3CC"></i><i style="--row:5;--n:26;background:#9E2B25"></i><i style="--row:5;--n:9;background:#EDE3CC"></i><i style="--row:5;--n:3;background:#EDE3CC"></i>
+        <i style="--row:6;--n:4;background:#EDE3CC"></i><i style="--row:6;--n:0;background:#EDE3CC"></i><i style="--row:6;--n:18;background:#EDE3CC"></i><i style="--row:6;--n:2;background:#EDE3CC"></i><i style="--row:6;--n:1;background:#EDE3CC"></i>
+      </div>
+      <div class="loading-panel" style="--i:1"><!-- framed -->
+        <i style="--row:0;--n:30;background:#2B3A67"></i><i style="--row:0;--n:25;background:#2B3A67"></i><i style="--row:0;--n:20;background:#2B3A67"></i><i style="--row:0;--n:34;background:#2B3A67"></i><i style="--row:0;--n:33;background:#2B3A67"></i>
+        <i style="--row:1;--n:29;background:#2B3A67"></i><i style="--row:1;--n:15;background:#5E7D3A"></i><i style="--row:1;--n:19;background:#5E7D3A"></i><i style="--row:1;--n:31;background:#5E7D3A"></i><i style="--row:1;--n:32;background:#2B3A67"></i>
+        <i style="--row:2;--n:26;background:#2B3A67"></i><i style="--row:2;--n:14;background:#5E7D3A"></i><i style="--row:2;--n:18;background:#EDE3CC"></i><i style="--row:2;--n:28;background:#5E7D3A"></i><i style="--row:2;--n:17;background:#2B3A67"></i>
+        <i style="--row:3;--n:24;background:#2B3A67"></i><i style="--row:3;--n:11;background:#5E7D3A"></i><i style="--row:3;--n:13;background:#EDE3CC"></i><i style="--row:3;--n:27;background:#5E7D3A"></i><i style="--row:3;--n:12;background:#2B3A67"></i>
+        <i style="--row:4;--n:21;background:#2B3A67"></i><i style="--row:4;--n:5;background:#5E7D3A"></i><i style="--row:4;--n:10;background:#EDE3CC"></i><i style="--row:4;--n:23;background:#5E7D3A"></i><i style="--row:4;--n:7;background:#2B3A67"></i>
+        <i style="--row:5;--n:16;background:#2B3A67"></i><i style="--row:5;--n:4;background:#5E7D3A"></i><i style="--row:5;--n:9;background:#5E7D3A"></i><i style="--row:5;--n:22;background:#5E7D3A"></i><i style="--row:5;--n:6;background:#2B3A67"></i>
+        <i style="--row:6;--n:3;background:#2B3A67"></i><i style="--row:6;--n:2;background:#2B3A67"></i><i style="--row:6;--n:1;background:#2B3A67"></i><i style="--row:6;--n:8;background:#2B3A67"></i><i style="--row:6;--n:0;background:#2B3A67"></i>
+      </div>
+      <div class="loading-panel" style="--i:2"><!-- boro -->
+        <i style="--row:0;--n:30;background:#2B3A67"></i><i style="--row:0;--n:24;background:#D9A21B"></i><i style="--row:0;--n:34;background:#9E2B25"></i><i style="--row:0;--n:26;background:#EDE3CC"></i><i style="--row:0;--n:21;background:#5E7D3A"></i>
+        <i style="--row:1;--n:28;background:#5E7D3A"></i><i style="--row:1;--n:22;background:#2B3A67"></i><i style="--row:1;--n:33;background:#D9A21B"></i><i style="--row:1;--n:25;background:#9E2B25"></i><i style="--row:1;--n:17;background:#EDE3CC"></i>
+        <i style="--row:2;--n:23;background:#EDE3CC"></i><i style="--row:2;--n:20;background:#5E7D3A"></i><i style="--row:2;--n:32;background:#2B3A67"></i><i style="--row:2;--n:15;background:#D9A21B"></i><i style="--row:2;--n:16;background:#9E2B25"></i>
+        <i style="--row:3;--n:11;background:#9E2B25"></i><i style="--row:3;--n:19;background:#EDE3CC"></i><i style="--row:3;--n:31;background:#5E7D3A"></i><i style="--row:3;--n:13;background:#2B3A67"></i><i style="--row:3;--n:14;background:#D9A21B"></i>
+        <i style="--row:4;--n:9;background:#D9A21B"></i><i style="--row:4;--n:7;background:#9E2B25"></i><i style="--row:4;--n:29;background:#EDE3CC"></i><i style="--row:4;--n:10;background:#5E7D3A"></i><i style="--row:4;--n:12;background:#2B3A67"></i>
+        <i style="--row:5;--n:2;background:#2B3A67"></i><i style="--row:5;--n:6;background:#D9A21B"></i><i style="--row:5;--n:27;background:#9E2B25"></i><i style="--row:5;--n:8;background:#EDE3CC"></i><i style="--row:5;--n:4;background:#5E7D3A"></i>
+        <i style="--row:6;--n:0;background:#5E7D3A"></i><i style="--row:6;--n:5;background:#2B3A67"></i><i style="--row:6;--n:18;background:#D9A21B"></i><i style="--row:6;--n:3;background:#9E2B25"></i><i style="--row:6;--n:1;background:#EDE3CC"></i>
+      </div>
+    </div>
+    <p class="loading-name">Kantha</p>
+    <p class="loading-late">Opening the studio… a slow connection can take a little longer.</p>
+  </div>
+  <script>
+    // The app takes the loading screen away once it has drawn the studio (lib/platform/loading.dart). If the
+    // studio can never start, nothing would, and it would animate for good. So these take it away instead: a
+    // script that will not load (flutter_bootstrap.js, main.dart.js; seen as it is dispatched, since it does
+    // not bubble), an uncaught exception (a script this browser cannot parse), or a rejected promise (a
+    // missing canvaskit.wasm). Any other file that fails, an image say, leaves it. Here, ahead of the
+    // bootstrap, so a missing or unreadable bootstrap is covered; and in old JavaScript, so a browser too
+    // old for the app still runs it.
+    (function () {
+      function noStudio() {
+        var loading = document.getElementById('loading');
+        if (loading) loading.parentNode.removeChild(loading);
+      }
+      window.addEventListener('error', function (e) {
+        if (e.target === window || e.target instanceof HTMLScriptElement) noStudio();
+      }, true);
+      window.addEventListener('unhandledrejection', noStudio);
+    })();
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

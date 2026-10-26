@@ -1,0 +1,92 @@
+name: kantha_studio
+description: "Kantha studio"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+  flutter: 3.47.6
+
+dependencies:
+  archive: 4.3.0
+  crop_your_image: 2.0.1
+  drift: 2.35.2
+  drift_flutter: 0.3.1
+  file_picker: 13.1.0
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  image: 4.10.1
+  image_picker: 1.2.4
+  intl: 0.20.3
+  material_color_utilities: 0.13.0
+  path_provider: 2.1.6
+  pdf: 3.13.1
+  pool: 1.5.3
+  printing: 5.15.1
+  share_plus: 13.3.1
+  sqlite3: 3.7.0
+  tabler_icons_next: 3.48.0
+  url_launcher: 6.3.3
+  web: 1.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+  drift_dev: 2.35.1
+  build_runner: 2.16.1
+  integration_test:
+    sdk: flutter
+  icons_launcher: 3.1.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+  # Public Sans and Noto Sans Malayalam are loaded when needed (lib/platform/fonts.dart), not before the first frame:
+  # assets, so the font manifest does not name them.
+  assets:
+    - assets/fonts/PublicSans-Regular.ttf
+    - assets/fonts/PublicSans-Medium.ttf
+    - assets/fonts/PublicSans-SemiBold.ttf
+    - assets/fonts/PublicSans-Bold.ttf
+    - assets/fonts/NotoSansMalayalam-Regular.ttf
+    - assets/fonts/NotoSansMalayalam-SemiBold.ttf
+    - assets/fonts/NotoSansMalayalam-Bold.ttf
+    # The Sample box's ten cloth photos, read only when a Sample box is made (lib/data/sample_box.dart).
+    - assets/sample/
+  fonts:
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist-Regular.ttf
+        - asset: assets/fonts/Geist-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Geist-SemiBold.ttf
+          weight: 600
+    - family: Newsreader
+      fonts:
+        - asset: assets/fonts/Newsreader-Regular.ttf
+
+# The app icon: the stitched K, a bold K (Public Sans Bold) in #33507F with a running stitch around it in the
+# same blue, on the canvas colour #F3EFE7 (owner, 26 Oct 2026). Its source is assets/icon/kantha-icon.svg.
+# The three PNGs in assets/icon/ are rendered from it; then `dart run icons_launcher:create` makes every size
+# below. iOS takes the alpha channel off itself.
+icons_launcher:
+  image_path: "assets/icon/kantha-icon.png"
+  platforms:
+    android:
+      enable: true
+      image_path: "assets/icon/kantha-icon.png"
+      adaptive_background_color: "#F3EFE7"
+      adaptive_foreground_image: "assets/icon/kantha-foreground.png"
+    ios:
+      enable: true
+      image_path: "assets/icon/kantha-icon.png"
+    web:
+      enable: true
+      image_path: "assets/icon/kantha-icon.png"
+      maskable_image_path: "assets/icon/kantha-maskable.png"
+      favicon_path: "assets/icon/kantha-icon.png"
