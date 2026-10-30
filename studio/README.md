@@ -7,6 +7,7 @@ and the photo. Boxes, photos and designs are kept in a local database (drift, SQ
 | Path | What it holds |
 |---|---|
 | `lib/solver/` | Geometry, patterns, colour and the solver. No network, no database. |
+| `lib/finder/` | Finds the pieces in one photo and counts the cloths, on the device. |
 | `lib/data/`, `lib/backup/` | The local database, and the backup file. |
 | `lib/studio/` | The screens. |
 | `lib/l10n/` | The word files, made from `../messages/en.json` by `tool/l10n_from_messages.dart`. Do not edit them by hand. |
