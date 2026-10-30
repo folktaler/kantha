@@ -8,7 +8,7 @@ import 'dart:typed_data';
 import 'cv.dart';
 
 // OpenCV's constants, as numbered in its headers.
-const _cv8U = 0, _cv8UC4 = 24, _cv32F = 5, _cv32SC2 = 12;
+const _cv8U = 0, _cv8UC4 = 24, _cv32F = 5, _cv32FC2 = 13, _cv32SC2 = 12;
 const _interArea = 3, _threshBinary = 0, _adaptiveMeanC = 0, _morphOpen = 2;
 const _retrList = 1, _chainApproxSimple = 2, _histcmpBhattacharyya = 3;
 
@@ -57,6 +57,8 @@ extension type _OpenCv._(JSObject _) implements JSObject {
     JSArray<JSNumber> ranges,
   );
   external double compareHist(_Mat a, _Mat b, int method);
+  external _Mat getPerspectiveTransform(_Mat src, _Mat dst);
+  external void warpPerspective(_Mat src, _Mat dst, _Mat m, _Size dsize);
 }
 
 extension type _Mat._(JSObject _) implements JSObject {
@@ -205,6 +207,7 @@ class OpenCvJs implements FinderCv {
       CvColour.rgbaToBgr => 3, // COLOR_RGBA2BGR
       CvColour.bgrToLab => 44, // COLOR_BGR2Lab
       CvColour.bgrToGray => 6, // COLOR_BGR2GRAY
+      CvColour.bgrToRgb => 4, // COLOR_BGR2RGB
     }),
   );
   @override
@@ -306,13 +309,13 @@ class OpenCvJs implements FinderCv {
   CvMat bitwiseAnd(CvMat a, CvMat b) => _out((d) => _cvm.bitwiseAnd(_m(a), _m(b), d));
 
   @override
-  Float32List calcHist(CvMat m, List<int> channels, CvMat mask, int bins) {
-    final v = _MatVector._(_cvm._matVector.callAsConstructor()), hist = _new();
+  Float32List calcHist(CvMat m, List<int> channels, CvMat? mask, int bins) {
+    final v = _MatVector._(_cvm._matVector.callAsConstructor()), hist = _new(), none = _new();
     v.pushBack(_m(m));
     _cvm.calcHist(
       v,
       [for (final c in channels) c.toJS].toJS,
-      _m(mask),
+      mask == null ? none : _m(mask),
       hist,
       [for (final _ in channels) bins.toJS].toJS,
       [
@@ -321,6 +324,7 @@ class OpenCvJs implements FinderCv {
     );
     final out = Float32List.fromList(hist.data32F.toDart);
     hist.delete();
+    none.delete();
     v.delete();
     return out;
   }
@@ -333,5 +337,18 @@ class OpenCvJs implements FinderCv {
     ma.delete();
     mb.delete();
     return d;
+  }
+
+  @override
+  CvMat warpQuad(CvMat m, Float32List corners, int size) {
+    final s = size.toDouble();
+    final src = _cvm._matFromArray(4, 1, _cv32FC2, [for (final v in corners) v.toJS].toJS);
+    final dst = _cvm._matFromArray(4, 1, _cv32FC2, [for (final v in [0.0, 0.0, s, 0.0, s, s, 0.0, s]) v.toJS].toJS);
+    final t = _cvm.getPerspectiveTransform(src, dst);
+    final out = _out((d) => _cvm.warpPerspective(_m(m), d, t, _Size(width: size, height: size)));
+    for (final x in [src, dst, t]) {
+      x.delete();
+    }
+    return out;
   }
 }

@@ -12,7 +12,7 @@ abstract interface class CvMat {
 }
 
 /// The colour conversions the finder uses.
-enum CvColour { rgbaToBgr, bgrToLab, bgrToGray }
+enum CvColour { rgbaToBgr, bgrToLab, bgrToGray, bgrToRgb }
 
 /// One findContours result. Points are x, y pairs, in the image the contours were found in.
 abstract interface class CvContours {
@@ -80,7 +80,12 @@ abstract interface class FinderCv {
   int countNonZero(CvMat m);
   CvMat bitwiseAnd(CvMat a, CvMat b);
 
-  /// calcHist of [channels] of [m] under [mask], [bins] bins each over 0 to 256, flattened.
-  Float32List calcHist(CvMat m, List<int> channels, CvMat mask, int bins);
+  /// calcHist of [channels] of [m] under [mask] (all of [m] when null), [bins] bins each over 0 to 256, flattened.
+  Float32List calcHist(CvMat m, List<int> channels, CvMat? mask, int bins);
   double compareHistBhattacharyya(Float32List a, Float32List b);
+
+  /// The quad [corners] (x0, y0 … x3, y3) straightened to a [size] x [size] square: getPerspectiveTransform and
+  /// warpPerspective with their defaults (bilinear, black outside the picture). Corner 0 goes to the top left,
+  /// then round in order.
+  CvMat warpQuad(CvMat m, Float32List corners, int size);
 }

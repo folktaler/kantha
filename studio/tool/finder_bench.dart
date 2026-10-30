@@ -1,6 +1,8 @@
 /* Runs the square finder's Web Worker in headless Chrome on a folder of photos, and reports per photo the
    squares found, the time taken (as it is and with Chrome's CPU slowed down), and, given the Python
-   reference's JSON for each photo, how the squares compare with it.
+   reference's JSON for each photo, how the squares compare with it. It also scores the grouping of repeated
+   cloths on a folder of single-square pictures with an answer key, and, with --measure, cuts every found square
+   from the photo as the studio would and reads it with the studio's own measure.
 
    Run in studio/, after tool/prepare_web.sh has compiled web/finder_worker.js:
      dart run tool/finder_bench.dart [--photos DIR] [--reference DIR] [--slow 6] [--runs 1] [--json FILE] [photo.jpg ...]
@@ -9,11 +11,19 @@
                 the finder's 900 px working picture
    --slow       Chrome's CPU slow-down for the slowed timing (Emulation.setCPUThrottlingRate); 1 skips it
    --chrome     the Chrome to run (default: Google Chrome on a Mac)
+   --cells      a folder holding crops/00.png, 01.png … (one cloth square each) and key.json ({"cloth": [picture
+                numbers], …}); default <photos>/halloween, skipped when it has no key.json. A <reference>/
+                <folder name>.json, {"labels": […]}, is the Python grouping to compare with
+   --measure    cut and measure every found square (lib/measure/measure.dart), and print the readings
    With no photo names, every .jpg in --photos. */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
+import 'package:kantha_studio/data/numbers.dart' show busyOf;
+import 'package:kantha_studio/measure/measure.dart';
 
 Future<void> main(List<String> args) async {
   String opt(String name, String fallback) {
@@ -28,10 +38,12 @@ Future<void> main(List<String> args) async {
   final runs = int.parse(opt('runs', '1'));
   final chrome = opt('chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
   final jsonOut = opt('json', '');
-  final valued = {'--photos', '--reference', '--slow', '--runs', '--chrome', '--json'};
+  final cells = Directory(opt('cells', '${photos.path}/halloween'));
+  final measure = args.contains('--measure');
+  final valued = {'--photos', '--reference', '--slow', '--runs', '--chrome', '--json', '--cells'};
   final named = [
     for (var i = 0; i < args.length; i++)
-      if (valued.contains(args[i])) ...[] else if (i > 0 && valued.contains(args[i - 1])) ...[] else args[i]
+      if (args[i].startsWith('--')) ...[] else if (i > 0 && valued.contains(args[i - 1])) ...[] else args[i]
   ];
   final names = named.isNotEmpty
       ? named
@@ -47,7 +59,9 @@ Future<void> main(List<String> args) async {
   // at 6x). So the slowed timing runs the same compiled worker on the page's thread (page.html), and so does
   // one at 1x, to show the two threads take the same time unslowed.
   final runsOn = [('worker', 1), if (slow > 1) ...[('page', 1), ('page', slow)]];
-  final server = await _serve(photos);
+  final server = await _serve(photos, cells);
+  final keyFile = File('${cells.path}/key.json');
+  Map<String, dynamic>? cellResult;
   final browser = await _Chrome.start(chrome);
   final results = <String, Map<String, Object?>>{};
   try {
@@ -57,14 +71,23 @@ Future<void> main(List<String> args) async {
       stdout.writeln('$where, CPU ${rate}x: OpenCV.js loaded and started in ${ready}ms');
       for (final name in names) {
         for (var r = 0; r < runs; r++) {
-          final m = jsonDecode(await page.eval('find(${jsonEncode(name)})') as String) as Map<String, dynamic>;
+          final cut = measure && where == 'worker' && r == 0;
+          final m = jsonDecode(await page.eval('find(${jsonEncode(name)}, $cut)') as String) as Map<String, dynamic>;
           if (m['error'] != null) throw StateError('$name: ${m['error']}');
-          final row = results.putIfAbsent(name, () => {'name': name, 'squares': m['squares'], 'side': m['side']});
+          final row = results.putIfAbsent(name,
+              () => {'name': name, 'squares': m['squares'], 'groups': m['groups'], 'side': m['side'], 'scale': m['scale']});
+          if (cut) row['crops'] = m['crops'];
           if (jsonEncode(row['squares']) != jsonEncode(m['squares'])) throw StateError('$name: squares differ between runs');
           ((row['ms $where ${rate}x'] ??= <int>[]) as List<int>).add(m['totalMs'] as int);
-          row['parts $where ${rate}x'] = 'decode ${m['decodeMs']}, outlines ${m['outlineMs']}, lines+checks ${m['linesMs']}';
+          row['parts $where ${rate}x'] =
+              'decode ${m['decodeMs']}, outlines ${m['outlineMs']}, lines+checks ${m['linesMs']}, groups ${m['groupMs']}';
           row['fromLines'] = m['fromLines'];
         }
+      }
+      if (where == 'worker' && keyFile.existsSync()) {
+        final n = Directory('${cells.path}/crops').listSync().where((f) => f.path.endsWith('.png')).length;
+        cellResult = jsonDecode(await page.eval('group($n)') as String) as Map<String, dynamic>;
+        if (cellResult['error'] != null) throw StateError('cells: ${cellResult['error']}');
       }
       await page.close();
     }
@@ -82,6 +105,8 @@ Future<void> main(List<String> args) async {
       stdout.writeln('  $where, CPU ${rate}x: ${ms.map((v) => (v / 1000).toStringAsFixed(2)).join(', ')} s '
           '(last run: ${row['parts $where ${rate}x']} ms)');
     }
+    _reportGroups(row, web);
+    if (row['crops'] != null) _reportMeasure(row);
     if (reference.isEmpty) continue;
     final stem = name.replaceAll(RegExp(r'\.jpe?g$'), '');
     final refs = Directory(reference).listSync().whereType<File>().where((f) {
@@ -97,9 +122,114 @@ Future<void> main(List<String> args) async {
       stdout.writeln('  vs ${f.uri.pathSegments.last} (${py.length} squares, ${ref['seconds']} s in Python): '
           '${c['matched']} the same within 5 px, ${c['near']} within 15 px, ${c['extra']} only on the web, '
           '${c['missing']} only in Python; matched corners ${c['mean']} px apart on average, ${c['max']} at most');
+      final pyGroups = ref['groups'] as List?;
+      if (pyGroups != null) {
+        stdout.writeln('    Python made ${pyGroups.toSet().length} groups of its ${py.length} squares; '
+            'of the squares both found, the two groupings agree with adjusted Rand index '
+            '${_sharedAri(web, row['groups'] as List, py, pyGroups)}');
+      }
     }
   }
-  if (jsonOut.isNotEmpty) File(jsonOut).writeAsStringSync(jsonEncode(results.values.toList()));
+  if (cellResult != null) _reportCells(cells, keyFile, cellResult, reference);
+  if (jsonOut.isNotEmpty) {
+    File(jsonOut).writeAsStringSync(jsonEncode([for (final r in results.values) {...r}..remove('crops')]));
+  }
+}
+
+String _centre(List<math.Point<double>> q) {
+  final c = q.reduce((a, b) => a + b) * 0.25;
+  return '(${c.x.round()}, ${c.y.round()})';
+}
+
+/// The groups the worker made of a photo's squares; every group of more than one square, by centre.
+void _reportGroups(Map<String, Object?> row, List<List<math.Point<double>>> web) {
+  final groups = (row['groups'] as List).cast<int>();
+  final count = groups.toSet().length;
+  stdout.writeln('  groups: $count of ${web.length} squares');
+  for (var g = 0; g < count; g++) {
+    final members = [for (var i = 0; i < groups.length; i++) if (groups[i] == g) i];
+    if (members.length < 2) continue;
+    stdout.writeln('    joined: ${members.map((i) => 'square $i at ${_centre(web[i])}').join(', ')}');
+  }
+}
+
+/// Each found square, cut and read by the studio's measure.
+void _reportMeasure(Map<String, Object?> row) {
+  final crops = (row['crops'] as List).cast<Map<String, dynamic>>();
+  final sides = [for (final c in crops) c['side'] as int]..sort();
+  stdout.writeln('  cut at ${sides.first} to ${sides.last} px a side (middle ${sides[sides.length ~/ 2]}), '
+      'from a picture ${math.min(2560, (900 / (row['scale'] as num)).round())} px on its long side');
+  final groups = (row['groups'] as List).cast<int>();
+  var prints = 0;
+  for (var i = 0; i < crops.length; i++) {
+    final side = crops[i]['side'] as int;
+    final rgb = base64Decode(crops[i]['rgb'] as String);
+    final m = measureImage(img.Image.fromBytes(width: side, height: side, bytes: Uint8List.fromList(rgb).buffer, numChannels: 3));
+    stdout.writeln('    square $i (group ${groups[i]}): $side px, L*a*b* ${m.lab.l} ${m.lab.a} ${m.lab.b}, '
+        '${m.name}, spread ${m.spread} (${busyOf(m.spread) ? 'print' : 'plain'}), measured on ${m.width} x ${m.height}');
+    prints += busyOf(m.spread) ? 1 : 0;
+  }
+  stdout.writeln('  read as print: $prints of ${crops.length}');
+}
+
+/// The adjusted Rand index (Hubert and Arabie) of two labellings of the same items.
+double _ari(List<int> a, List<int> b) {
+  double pairs(int n) => n * (n - 1) / 2;
+  final table = <(int, int), int>{}, rows = <int, int>{}, cols = <int, int>{};
+  for (var i = 0; i < a.length; i++) {
+    table[(a[i], b[i])] = (table[(a[i], b[i])] ?? 0) + 1;
+    rows[a[i]] = (rows[a[i]] ?? 0) + 1;
+    cols[b[i]] = (cols[b[i]] ?? 0) + 1;
+  }
+  final index = table.values.map(pairs).fold(0.0, (x, y) => x + y);
+  final ra = rows.values.map(pairs).fold(0.0, (x, y) => x + y), cb = cols.values.map(pairs).fold(0.0, (x, y) => x + y);
+  final expected = ra * cb / pairs(a.length), most = (ra + cb) / 2;
+  return most == expected ? 1 : (index - expected) / (most - expected);
+}
+
+/// The adjusted Rand index of two groupings over the squares both runs found (the same within 5 px).
+String _sharedAri(List<List<math.Point<double>>> web, List webGroups, List<List<math.Point<double>>> py, List pyGroups) {
+  final a = <int>[], b = <int>[];
+  for (var i = 0; i < web.length; i++) {
+    for (var j = 0; j < py.length; j++) {
+      if (_apart(web[i], py[j]) <= 5) {
+        a.add(webGroups[i] as int);
+        b.add(pyGroups[j] as int);
+        break;
+      }
+    }
+  }
+  return '${_ari(a, b).toStringAsFixed(2)} (${a.length} squares)';
+}
+
+/// The grouping of single-square pictures against their answer key: squares in the right group (each group's
+/// most common cloth counts as right, as the Python scored it) and the adjusted Rand index.
+void _reportCells(Directory cells, File keyFile, Map<String, dynamic> result, String reference) {
+  final key = (jsonDecode(keyFile.readAsStringSync()) as Map<String, dynamic>).values.toList();
+  final groups = (result['groups'] as List).cast<int>();
+  final truth = List.filled(groups.length, -1);
+  for (var k = 0; k < key.length; k++) {
+    for (final i in key[k] as List) {
+      truth[i as int] = k;
+    }
+  }
+  var right = 0;
+  for (final g in groups.toSet()) {
+    final counts = <int, int>{};
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i] == g) counts[truth[i]] = (counts[truth[i]] ?? 0) + 1;
+    }
+    right += counts.values.reduce(math.max);
+  }
+  final name = cells.uri.pathSegments.where((s) => s.isNotEmpty).last;
+  stdout.writeln('\n$name: ${groups.length} squares in ${groups.toSet().length} groups (the key has ${key.length}); '
+      '$right in the right group; adjusted Rand index ${_ari(truth, groups).toStringAsFixed(2)}; ${result['totalMs']} ms');
+  final ref = File('$reference/$name.json');
+  if (reference.isNotEmpty && ref.existsSync()) {
+    final py = ((jsonDecode(ref.readAsStringSync()) as Map)['labels'] as List).cast<int>();
+    stdout.writeln('  vs Python: ${py.toSet().length} groups; the two groupings agree with adjusted Rand index '
+        '${_ari(py, groups).toStringAsFixed(2)}');
+  }
 }
 
 List<math.Point<double>> _corners(List flat) =>
@@ -148,10 +278,16 @@ function heard(data) {
   if (m.type === 'ready') return readyMs(m.ms);
   waiting[m.id](data);
 }
-async function find(name) {
+async function find(name, crops) {
   const photo = await (await fetch('/photo/' + encodeURIComponent(name))).arrayBuffer();
   const id = ++next;
-  return new Promise((r) => { waiting[id] = r; ask({id, photo}); });
+  return new Promise((r) => { waiting[id] = r; ask({id, photo, crops}); });
+}
+async function group(n) {
+  const cells = [];
+  for (let i = 0; i < n; i++) cells.push(await (await fetch('/cell/' + String(i).padStart(2, '0') + '.png')).arrayBuffer());
+  const id = ++next;
+  return new Promise((r) => { waiting[id] = r; ask({id, cells}); });
 }
 </script>''';
 
@@ -170,8 +306,8 @@ self.postMessage = heard;
 const ask = (m) => self.onmessage({data: m});
 </script><script src="/opencv_finder.js"></script><script src="/finder_worker.js"></script>''';
 
-/// The bench page, the worker and OpenCV.js from web/, and the photos from their folder, on 127.0.0.1 only.
-Future<HttpServer> _serve(Directory photos) async {
+/// The bench page, the worker and OpenCV.js from web/, and the photos and cells from their folders, on 127.0.0.1 only.
+Future<HttpServer> _serve(Directory photos, Directory cells) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   server.listen((req) async {
     final path = req.uri.path;
@@ -187,6 +323,10 @@ Future<HttpServer> _serve(Directory photos) async {
       final name = Uri.decodeComponent(path.substring(7));
       if (!name.contains('/')) file = File('${photos.path}/$name');
       res.headers.contentType = ContentType('image', 'jpeg');
+    } else if (path.startsWith('/cell/')) {
+      final name = Uri.decodeComponent(path.substring(6));
+      if (!name.contains('/')) file = File('${cells.path}/crops/$name');
+      res.headers.contentType = ContentType('image', 'png');
     }
     if (file != null && file.existsSync()) {
       await res.addStream(file.openRead());
