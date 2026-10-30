@@ -10,6 +10,10 @@
       refined by small shifts, turns and sizes, and kept if well supported and not split by a seam.
    3. Checks. A square needs different cloth across at least 3 of its sides, and cloth inside that is not
       the cloth around it.
+   4. Panels. Squares found side by side in a regular grid are a sewn panel: each missing square inside the
+      grid the found ones span is predicted from its found neighbours, row by row and column by column, and
+      kept where edges run along its sides (a lighter check than step 2's, since a seam between two like
+      cloths shows little). Loose squares do not touch in a grid, so they are never filled.
    Unlike the Python, each check works on the square's own bounding box, not a mask of the whole photo,
    and runs once per square. Every OpenCV call goes through FinderCv (cv.dart). */
 import 'dart:math' as math;
@@ -32,6 +36,8 @@ class FoundSquares {
     this.ringDropped,
     this.outlineMs,
     this.linesMs,
+    this.fromPanels,
+    this.panelMs,
   );
 
   /// The working picture, and its size over the photo's.
@@ -47,6 +53,9 @@ class FoundSquares {
   /// How many squares step 2 added before the ring check; how many were dropped by the side check and the ring check.
   final int fromLines, outlineDropped, ringDropped;
   final int outlineMs, linesMs;
+
+  /// How many squares step 4 added inside sewn panels.
+  final int fromPanels, panelMs;
 }
 
 FoundSquares findSquares(FinderCv cv, CvMat photo) => _Finder(cv).run(photo);
@@ -76,6 +85,7 @@ class _Finder {
   late double side;
   late Float32List gx, gy;
   late Uint8List edgeOn, labBytes;
+  late Float64List gLength;
 
   FoundSquares run(CvMat photo) {
     final clock = Stopwatch()..start();
@@ -176,8 +186,13 @@ class _Finder {
     final magF = cv.floats(mag);
     final cut = _percentile(magF, 80);
     edgeOn = Uint8List(magF.length);
+    gLength = Float64List(magF.length);
     for (var i = 0; i < magF.length; i++) {
-      if (magF[i] > cut) edgeOn[i] = 1;
+      if (magF[i] > cut) {
+        edgeOn[i] = 1;
+        final a = gx[i], b = gy[i];
+        gLength[i] = math.sqrt(a * a + b * b) + 1e-6;
+      }
     }
     labBytes = cv.bytes(lab);
     for (final m in [grayF, sx, sy, labF, mag, ...labCh]) {
@@ -256,6 +271,9 @@ class _Finder {
     for (final q in kept) {
       if (_ringDistance(q, lab) >= 0.5) squares.add(q);
     }
+    final linesMs = clock.elapsedMilliseconds - outlineMs;
+    final checked = squares.length;
+    if (side > 0) squares.addAll(_panels(squares));
     for (final m in [img, blur, lab]) {
       m.dispose();
     }
@@ -267,10 +285,165 @@ class _Finder {
       squares,
       lines.length,
       outlineDropped,
-      kept.length - squares.length,
+      kept.length - checked,
       outlineMs,
-      clock.elapsedMilliseconds - outlineMs,
+      linesMs,
+      squares.length - checked,
+      clock.elapsedMilliseconds - outlineMs - linesMs,
     );
+  }
+
+  /// Step 4: the squares missing inside sewn panels, from the squares already found ([anchors]).
+  List<Float32List> _panels(List<Float32List> anchors) {
+    final n = anchors.length;
+    final cs = [for (final q in anchors) _centre(q)];
+    final sides = [for (final q in anchors) _meanSide(q)];
+    List<_Vec> edgesOf(Float32List q) => [
+      for (var i = 0; i < 4; i++)
+        (q[2 * ((i + 1) % 4)] - q[2 * i].toDouble(), q[2 * ((i + 1) % 4) + 1] - q[2 * i + 1].toDouble()),
+    ];
+    final edges = [for (final q in anchors) edgesOf(q)];
+    // Neighbours: a square whose centre is one step (across, down or diagonal) of this square's own sides away,
+    // within 0.2 of a side, turned within 10 degrees, and no more than 1.25 times larger or smaller.
+    final near = List.generate(n, (_) => <int>[]);
+    for (var m = 0; m < n; m++) {
+      final (um, vm) = _aligned(edges[m], (1, 0));
+      for (var k = 0; k < n; k++) {
+        if (k == m || math.max(sides[k], sides[m]) / math.min(sides[k], sides[m]) > 1.25) continue;
+        final (uk, _) = _aligned(edges[k], um);
+        if (math.atan2(um.$1 * uk.$2 - um.$2 * uk.$1, um.$1 * uk.$1 + um.$2 * uk.$2).abs() > 10 * math.pi / 180) continue;
+        final d = (cs[k].$1 - cs[m].$1, cs[k].$2 - cs[m].$2);
+        final (a, b) = _solve(um, vm, d);
+        final ra = _roundEven(a), rb = _roundEven(b);
+        if ((ra == 0 && rb == 0) || math.max(ra.abs(), rb.abs()) > 1) continue;
+        final rx = d.$1 - ra * um.$1 - rb * vm.$1, ry = d.$2 - ra * um.$2 - rb * vm.$2;
+        if (_hypot(rx, ry) / sides[m] < 0.2) near[m].add(k);
+      }
+    }
+    // Panels: groups of 3 or more joined by neighbours who count each other.
+    final seen = List.filled(n, false);
+    final panels = <List<int>>[];
+    for (var s = 0; s < n; s++) {
+      if (seen[s]) continue;
+      final stack = [s], group = <int>[];
+      seen[s] = true;
+      while (stack.isNotEmpty) {
+        final m = stack.removeLast();
+        group.add(m);
+        for (final k in near[m]) {
+          if (near[k].contains(m) && !seen[k]) {
+            seen[k] = true;
+            stack.add(k);
+          }
+        }
+      }
+      if (group.length >= 3) panels.add(group);
+    }
+    final found = cv.zeros(w, h);
+    for (final q in anchors) {
+      cv.fillPoly(found, _trunc(q), 1);
+    }
+    bool isFound(double x, double y) {
+      final at = cv.roi(found, x.toInt(), y.toInt(), 1, 1);
+      final hit = cv.countNonZero(at) > 0;
+      at.dispose();
+      return hit;
+    }
+
+    final added = <Float32List>[];
+    for (final group in panels) {
+      // Grid places, walking the panel from its best-joined square in each square's own frame.
+      final inGroup = group.toSet();
+      var seed = group.first;
+      for (final m in group) {
+        if (near[m].length > near[seed].length) seed = m;
+      }
+      final place = <int, (int, int)>{seed: (0, 0)};
+      final frame = <int, (_Vec, _Vec)>{seed: _aligned(edges[seed], (1, 0))};
+      final taken = <(int, int), int>{(0, 0): seed};
+      final queue = [seed];
+      for (var qi = 0; qi < queue.length; qi++) {
+        final m = queue[qi];
+        final (um, vm) = frame[m]!;
+        for (final k in near[m]) {
+          if (place.containsKey(k) || !inGroup.contains(k)) continue;
+          final (a, b) = _solve(um, vm, (cs[k].$1 - cs[m].$1, cs[k].$2 - cs[m].$2));
+          final cell = (place[m]!.$1 + _roundEven(a), place[m]!.$2 + _roundEven(b));
+          if (taken.containsKey(cell)) continue;
+          place[k] = cell;
+          taken[cell] = k;
+          frame[k] = _aligned(edges[k], um);
+          queue.add(k);
+        }
+      }
+      final cols = {for (final p in place.values) p.$1}, rows = {for (final p in place.values) p.$2};
+      if (cols.length < 2 || rows.length < 2) continue;
+      final i0 = cols.reduce(math.min), i1 = cols.reduce(math.max);
+      final j0 = rows.reduce(math.min), j1 = rows.reduce(math.max);
+      final geo = <(int, int), (_Vec, _Vec, _Vec)>{
+        for (final MapEntry(key: cell, value: k) in taken.entries) cell: (cs[k], frame[k]!.$1, frame[k]!.$2),
+      };
+      var frontier = taken.keys.toList();
+      while (frontier.isNotEmpty) {
+        final next = <(int, int)>[];
+        for (final (i, j) in frontier) {
+          for (final (di, dj) in const [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+            final cell = (i + di, j + dj);
+            if (geo.containsKey(cell) || next.contains(cell)) continue;
+            if (cell.$1 < i0 || cell.$1 > i1 || cell.$2 < j0 || cell.$2 > j1) continue;
+            // Where its found neighbours (all 8) say it is: the mean of each one's step to it.
+            var px = 0.0, py = 0.0, ux = 0.0, uy = 0.0, vx = 0.0, vy = 0.0, count = 0;
+            for (final (si, sj) in const [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]) {
+              final g = geo[(cell.$1 - si, cell.$2 - sj)];
+              if (g == null) continue;
+              final (c, u, v) = g;
+              px += c.$1 + si * u.$1 + sj * v.$1;
+              py += c.$2 + si * u.$2 + sj * v.$2;
+              ux += u.$1;
+              uy += u.$2;
+              vx += v.$1;
+              vy += v.$2;
+              count++;
+            }
+            if (count == 0) continue;
+            px /= count;
+            py /= count;
+            ux /= count;
+            uy /= count;
+            vx /= count;
+            vy /= count;
+            if (!(px >= 0 && px < w && py >= 0 && py < h) || isFound(px, py)) continue;
+            final ang = math.atan2(uy, ux);
+            final size = (2 * _hypot(ux, uy) + 2 * _hypot(vx, vy)) / 4;
+            var top = double.negativeInfinity;
+            late double bx, by, ba, bs, bSup, bMid;
+            for (final fx in const [-0.12, -0.06, 0.0, 0.06, 0.12]) {
+              for (final fy in const [-0.12, -0.06, 0.0, 0.06, 0.12]) {
+                for (final da in const [-0.06, 0.0, 0.06]) {
+                  for (final sc in const [0.92, 1.0, 1.08]) {
+                    final (sup, mid, _) = _support(px + fx * size, py + fy * size, ang + da, size * sc / side);
+                    if (sup - mid > top) {
+                      top = sup - mid;
+                      (bx, by, ba, bs, bSup, bMid) = (px + fx * size, py + fy * size, ang + da, size * sc, sup, mid);
+                    }
+                  }
+                }
+              }
+            }
+            if (bSup < 0.4 || bMid >= 0.5 * bSup) continue;
+            final q = _squareAt(bx, by, ba, bs / side);
+            added.add(q);
+            cv.fillPoly(found, _trunc(q), 1);
+            final d = (math.cos(ba) * bs, math.sin(ba) * bs);
+            geo[cell] = ((bx, by), d, (-d.$2, d.$1));
+            next.add(cell);
+          }
+        }
+        frontier = next;
+      }
+    }
+    found.dispose();
+    return added;
   }
 
   /// The candidates among one binary picture's outlines; [ox], [oy] place the picture in the frame.
@@ -375,45 +548,46 @@ class _Finder {
     return null;
   }
 
-  static final _t = _linspace(-0.85, 0.85, 24);
+  static final _t = Float64List.fromList(_linspace(-0.85, 0.85, 24));
 
   /// How much of the square's sides (centre, turn, size) lies on an edge running across that side, judged
   /// on its best 3 sides (one may be hidden under another piece); the same for its two mid-lines; and how
-  /// many sides are there.
+  /// many sides are there. The search calls this some 200,000 times a photo, so it makes no lists.
   (double, double, int) _support(double cx, double cy, double ang, double sc) {
     final dx = math.cos(ang), dy = math.sin(ang), nx = -dy, ny = dx;
     final hh = side * sc / 2;
-    int count(double bx, double by, double ax, double ay, double mx, double my) {
-      var n = 0;
-      for (final t in _t) {
-        final tt = t * hh;
-        if (_on(bx + tt * ax, by + tt * ay, mx, my)) n++;
-      }
-      return n;
-    }
+    final s0 = _count(cx + -1 * hh * nx, cy + -1 * hh * ny, dx, dy, nx, ny, hh);
+    final s1 = _count(cx + 1 * hh * nx, cy + 1 * hh * ny, dx, dy, nx, ny, hh);
+    final s2 = _count(cx + -1 * hh * dx, cy + -1 * hh * dy, nx, ny, dx, dy, hh);
+    final s3 = _count(cx + 1 * hh * dx, cy + 1 * hh * dy, nx, ny, dx, dy, hh);
+    final mid = _count(cx, cy, dx, dy, nx, ny, hh) + _count(cx, cy, nx, ny, dx, dy, hh);
+    final least = math.min(math.min(s0, s1), math.min(s2, s3));
+    final n = _t.length;
+    final there = (s0 / n >= 0.5 ? 1 : 0) + (s1 / n >= 0.5 ? 1 : 0) + (s2 / n >= 0.5 ? 1 : 0) + (s3 / n >= 0.5 ? 1 : 0);
+    return ((s0 + s1 + s2 + s3 - least) / (3 * n), mid / (2 * n), there);
+  }
 
-    final on = [
-      count(cx + -1 * hh * nx, cy + -1 * hh * ny, dx, dy, nx, ny),
-      count(cx + 1 * hh * nx, cy + 1 * hh * ny, dx, dy, nx, ny),
-      count(cx + -1 * hh * dx, cy + -1 * hh * dy, nx, ny, dx, dy),
-      count(cx + 1 * hh * dx, cy + 1 * hh * dy, nx, ny, dx, dy),
-    ];
-    final mid = count(cx, cy, dx, dy, nx, ny) + count(cx, cy, nx, ny, dx, dy);
-    final sorted = [...on]..sort();
-    return (
-      (sorted[1] + sorted[2] + sorted[3]) / (3 * _t.length),
-      mid / (2 * _t.length),
-      on.where((n) => n / _t.length >= 0.5).length,
-    );
+  /// How many of the sample points along a line (from [bx], [by] along [ax], [ay]) are on an edge across it.
+  int _count(double bx, double by, double ax, double ay, double mx, double my, double hh) {
+    var n = 0;
+    final t = _t;
+    for (var k = 0; k < t.length; k++) {
+      final tt = t[k] * hh;
+      if (_on(bx + tt * ax, by + tt * ay, mx, my)) n++;
+    }
+    return n;
   }
 
   /// A point on a strong edge whose direction is across the line (normal [mx], [my]).
   bool _on(double px, double py, double mx, double my) {
     if (!(px >= 0 && px < w && py >= 0 && py < h)) return false;
-    final i = _roundEven(py).clamp(0, h - 1) * w + _roundEven(px).clamp(0, w - 1);
+    var x = _roundEven(px), y = _roundEven(py);
+    if (x > w - 1) x = w - 1;
+    if (y > h - 1) y = h - 1;
+    final i = y * w + x;
     if (edgeOn[i] == 0) return false;
     final a = gx[i], b = gy[i];
-    return (a * mx + b * my).abs() / (math.sqrt(a * a + b * b) + 1e-6) > 0.8;
+    return (a * mx + b * my).abs() / gLength[i] > 0.8;
   }
 
   Float32List _squareAt(double cx, double cy, double ang, double sc) {
@@ -546,6 +720,33 @@ _Box _boxOf(Int32List q) {
   return (x0: x0, y0: y0, x1: x1, y1: y1);
 }
 
+typedef _Vec = (double, double);
+
+/// Of a square's 4 sides, either way round, the one pointing most like [ref], and the side 90 degrees on from it
+/// (down the picture when the first points right), as long.
+(_Vec, _Vec) _aligned(List<_Vec> edges, _Vec ref) {
+  _Vec? best;
+  var bestCos = double.negativeInfinity;
+  for (final e in edges) {
+    for (final s in const [1, -1]) {
+      final x = s * e.$1, y = s * e.$2;
+      final cos = (x * ref.$1 + y * ref.$2) / (_hypot(x, y) + 1e-9);
+      if (cos > bestCos) {
+        bestCos = cos;
+        best = (x, y);
+      }
+    }
+  }
+  final u = best!;
+  return (u, (-u.$2, u.$1));
+}
+
+/// a and b with a * u + b * v = d.
+(double, double) _solve(_Vec u, _Vec v, _Vec d) {
+  final det = u.$1 * v.$2 - v.$1 * u.$2;
+  return ((d.$1 * v.$2 - v.$1 * d.$2) / det, (u.$1 * d.$2 - d.$1 * u.$2) / det);
+}
+
 /// Corners to whole pixels, toward zero (numpy's astype(int32)).
 Int32List _trunc(Float32List q) => Int32List.fromList([for (final v in q) v.toInt()]);
 
@@ -600,6 +801,7 @@ List<double> _linspace(double a, double b, int n) {
 /// numpy's round: halves to even.
 int _roundEven(double x) {
   final f = x.floorToDouble(), d = x - f;
+  if (d != 0.5) return d < 0.5 ? f.toInt() : f.toInt() + 1;
   final r = d < 0.5
       ? f
       : d > 0.5

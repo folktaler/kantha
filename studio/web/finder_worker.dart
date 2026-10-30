@@ -86,7 +86,7 @@ Future<void> _find(OpenCvJs cv, _Ask ask) async {
     'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
     'squares': [for (final q in f.squares) q], 'groups': groups, 'fromLines': f.fromLines,
     'outlineDropped': f.outlineDropped, 'ringDropped': f.ringDropped, 'decodeMs': decodeMs, 'outlineMs': f.outlineMs,
-    'linesMs': f.linesMs, 'groupMs': groupMs, 'totalMs': findMs + groupMs, 'crops': ?crops,
+    'linesMs': f.linesMs, 'fromPanels': f.fromPanels, 'panelMs': f.panelMs, 'groupMs': groupMs, 'totalMs': findMs + groupMs, 'crops': ?crops,
   }).toJS);
 }
 
