@@ -891,6 +891,144 @@ abstract class L {
   /// **'All {n} pieces are currently in use. Add more to give the pattern solver more options.'**
   String clothFixAllUsed(String n);
 
+  /// No description provided for @clothManyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add pieces'**
+  String get clothManyTitle;
+
+  /// No description provided for @clothManyPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo of the pieces'**
+  String get clothManyPhoto;
+
+  /// No description provided for @clothManyPhotoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One piece or many: lay them out and take one photo.'**
+  String get clothManyPhotoHint;
+
+  /// No description provided for @clothManyHowTo3.
+  ///
+  /// In en, this message translates to:
+  /// **'Lay them flat, apart or sewn together, and fill the photo with them.'**
+  String get clothManyHowTo3;
+
+  /// No description provided for @clothManyFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the pieces'**
+  String get clothManyFind;
+
+  /// No description provided for @clothManyFinding.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding the pieces…'**
+  String get clothManyFinding;
+
+  /// No description provided for @clothManyFindingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding…'**
+  String get clothManyFindingShort;
+
+  /// No description provided for @clothManyTooSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'The pieces are too small in this photo to find. Come closer, so the pieces fill the photo, and take it again.'**
+  String get clothManyTooSmall;
+
+  /// No description provided for @clothManyCheckTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Are these your pieces?'**
+  String get clothManyCheckTitle;
+
+  /// No description provided for @clothManyCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{{n} piece} other{{n} pieces}}'**
+  String clothManyCount(num n);
+
+  /// No description provided for @clothManyCountRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{{n} piece} other{{n} pieces}}, {gone} removed'**
+  String clothManyCountRemoved(num n, String gone);
+
+  /// No description provided for @clothManyUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get clothManyUndo;
+
+  /// No description provided for @clothManyZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get clothManyZoomOut;
+
+  /// No description provided for @clothManyZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get clothManyZoomIn;
+
+  /// No description provided for @clothManyZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} %'**
+  String clothManyZoom(String n);
+
+  /// No description provided for @clothManyCheckHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a box to remove it. Tap a piece we missed to add it. Zoom in to move a box\'s corners.'**
+  String get clothManyCheckHint;
+
+  /// No description provided for @clothManyNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get clothManyNext;
+
+  /// No description provided for @clothManyClothsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cloths'**
+  String get clothManyClothsTitle;
+
+  /// No description provided for @clothManyClothsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pieces of the same cloth are counted together. Change a count if it is wrong.'**
+  String get clothManyClothsHint;
+
+  /// No description provided for @clothManyFound.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Found once} other{Found {n} times}}'**
+  String clothManyFound(num n);
+
+  /// No description provided for @clothManyBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the pieces'**
+  String get clothManyBack;
+
+  /// No description provided for @clothManyAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Add {n} piece to box} other{Add {n} pieces to box}}'**
+  String clothManyAdd(num n);
+
+  /// No description provided for @clothManyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{cloths, plural, one{{cloths} cloth} other{{cloths} cloths}}, {pieces, plural, one{{pieces} piece} other{{pieces} pieces}}, added to {box}.'**
+  String clothManyAdded(num cloths, num pieces, String box);
+
   /// No description provided for @boxesAddPieces.
   ///
   /// In en, this message translates to:

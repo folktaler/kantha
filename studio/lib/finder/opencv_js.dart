@@ -208,6 +208,7 @@ class OpenCvJs implements FinderCv {
       CvColour.bgrToLab => 44, // COLOR_BGR2Lab
       CvColour.bgrToGray => 6, // COLOR_BGR2GRAY
       CvColour.bgrToRgb => 4, // COLOR_BGR2RGB
+      CvColour.bgrToRgba => 2, // COLOR_BGR2RGBA
     }),
   );
   @override

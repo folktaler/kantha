@@ -83,6 +83,7 @@ Future<void> main(List<String> args) async {
               'decode ${m['decodeMs']}, outlines ${m['outlineMs']}, lines+checks ${m['linesMs']}, panels ${m['panelMs']}, groups ${m['groupMs']}';
           row['fromLines'] = m['fromLines'];
           row['fromPanels'] = m['fromPanels'];
+          row['tiny'] = m['tiny'];
         }
       }
       if (where == 'worker' && keyFile.existsSync()) {
@@ -100,7 +101,7 @@ Future<void> main(List<String> args) async {
   for (final name in names) {
     final row = results[name]!;
     final web = [for (final q in row['squares'] as List) _corners(q as List)];
-    stdout.writeln('\n$name: ${web.length} squares (${row['fromLines']} from lines, ${row['fromPanels']} from panels), side ${(row['side'] as num).round()} px');
+    stdout.writeln('\n$name: ${web.length} squares (${row['fromLines']} from lines, ${row['fromPanels']} from panels), side ${(row['side'] as num).round()} px, ${row['tiny']} tiny outlines');
     for (final (where, rate) in runsOn) {
       final ms = row['ms $where ${rate}x'] as List<int>;
       stdout.writeln('  $where, CPU ${rate}x: ${ms.map((v) => (v / 1000).toStringAsFixed(2)).join(', ')} s '

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 import 'package:kantha_studio/finder/cv.dart';
 import 'package:kantha_studio/finder/find_squares.dart';
@@ -16,7 +17,14 @@ import 'package:web/web.dart' as web;
      with crops true, each square too, cut from the picture at pickedLongSide or less (never enlarged) and
      straightened, as RGB bytes in base64.
    - {id, cells}: cells, pictures of single squares (ArrayBuffers). The answer: a group number per picture,
-     each measured on its middle 80 %. */
+     each measured on its middle 80 %.
+   The studio's Add a piece sheet (lib/finder/finder_runner_web.dart) asks with the picture it already read:
+   - {id, pixels, width, height}: the picture as RGBA bytes. The answer as for photo (no crops), with `tiny`
+     (FoundSquares.tiny); the picture and what the finder read of it are kept for the asks below.
+   - {id, snap: [x, y]}: the square around a tap on the kept picture, in working pixels, or null.
+   - {id, cut: [[x0, y0, … y3], …]}: each square (working pixels) cut from the kept picture and straightened, at
+     its own size; the answer is not JSON but {id, sides, rgba}, rgba an ArrayBuffer per square, handed over.
+   - {id, forget: true}: the kept picture let go. */
 @JS('self')
 external web.DedicatedWorkerGlobalScope get _self;
 
@@ -31,7 +39,18 @@ extension type _Ask._(JSObject _) implements JSObject {
   external JSArrayBuffer? get photo;
   external bool? get crops;
   external JSArray<JSArrayBuffer>? get cells;
+  external JSArrayBuffer? get pixels;
+  external int? get width;
+  external int? get height;
+  external JSArray<JSNumber>? get snap;
+  external JSArray<JSArray<JSNumber>>? get cut;
+  external bool? get forget;
 }
+
+/// The picture the studio last asked about, as BGR, its finder, and the working scale.
+CvMat? _kept;
+SquareFinder? _finder;
+double _keptScale = 1;
 
 void main() {
   _importScripts('opencv_finder.js'.toJS);
@@ -46,6 +65,10 @@ void main() {
     unawaited(() async {
       try {
         final cv = await ready;
+        if (ask.pixels != null) return _findPixels(cv, ask);
+        if (ask.snap != null) return _snap(ask);
+        if (ask.cut != null) return _cut(cv, ask);
+        if (ask.forget == true) return _letGo();
         await (ask.cells != null ? _group(cv, ask) : _find(cv, ask));
       } catch (error) {
         _self.postMessage(jsonEncode({'id': ask.id, 'error': '$error'}).toJS);
@@ -86,7 +109,7 @@ Future<void> _find(OpenCvJs cv, _Ask ask) async {
     'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
     'squares': [for (final q in f.squares) q], 'groups': groups, 'fromLines': f.fromLines,
     'outlineDropped': f.outlineDropped, 'ringDropped': f.ringDropped, 'decodeMs': decodeMs, 'outlineMs': f.outlineMs,
-    'linesMs': f.linesMs, 'fromPanels': f.fromPanels, 'panelMs': f.panelMs, 'groupMs': groupMs, 'totalMs': findMs + groupMs, 'crops': ?crops,
+    'linesMs': f.linesMs, 'fromPanels': f.fromPanels, 'tiny': f.tiny, 'panelMs': f.panelMs, 'groupMs': groupMs, 'totalMs': findMs + groupMs, 'crops': ?crops,
   }).toJS);
 }
 
@@ -126,4 +149,58 @@ Future<void> _group(OpenCvJs cv, _Ask ask) async {
     cell.dispose();
   }
   _self.postMessage(jsonEncode({'id': ask.id, 'groups': groupsOf(cv, hists), 'totalMs': clock.elapsedMilliseconds}).toJS);
+}
+
+void _letGo() {
+  _kept?.dispose();
+  _kept = null;
+  _finder = null;
+}
+
+void _findPixels(OpenCvJs cv, _Ask ask) {
+  final clock = Stopwatch()..start();
+  _letGo();
+  final rgba = ask.pixels!.toDart.asUint8List();
+  final four = cv.fromRgba(rgba, ask.width!, ask.height!);
+  final photo = cv.cvtColor(four, CvColour.rgbaToBgr);
+  four.dispose();
+  final finder = SquareFinder(cv);
+  final f = finder.find(photo);
+  final groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, photo, f));
+  _kept = photo;
+  _finder = finder;
+  _keptScale = f.scale;
+  _self.postMessage(jsonEncode({
+    'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
+    'squares': [for (final q in f.squares) q], 'groups': groups, 'tiny': f.tiny, 'totalMs': clock.elapsedMilliseconds,
+  }).toJS);
+}
+
+void _snap(_Ask ask) {
+  final at = ask.snap!.toDart;
+  final q = _finder?.snap(at[0].toDartDouble, at[1].toDartDouble);
+  _self.postMessage(jsonEncode({'id': ask.id, 'square': q}).toJS);
+}
+
+void _cut(OpenCvJs cv, _Ask ask) {
+  final photo = _kept;
+  if (photo == null) throw StateError('no picture kept');
+  final asked = ask.cut!.toDart;
+  final sides = <JSNumber>[], out = <JSArrayBuffer>[];
+  for (var i = 0; i < asked.length; i++) {
+    final q = asked[i].toDart;
+    final corners = Float32List.fromList([for (var k = 0; k < q.length; k++) q[k].toDartDouble]);
+    final side = cropSide(corners, _keptScale);
+    final cell = cv.warpQuad(photo, Float32List.fromList([for (final v in corners) v / _keptScale]), side);
+    final rgba = cv.cvtColor(cell, CvColour.bgrToRgba);
+    sides.add(side.toJS);
+    out.add(Uint8List.fromList(cv.bytes(rgba)).buffer.toJS);
+    rgba.dispose();
+    cell.dispose();
+  }
+  final answer = JSObject()
+    ..['id'] = ask.id.toJS
+    ..['sides'] = sides.toJS
+    ..['rgba'] = out.toJS;
+  _self.postMessage(answer, out.toJS);
 }

@@ -67,9 +67,14 @@ Future<void> _show(BuildContext context, ClothOpen open, StudioController c, Pho
   }
   if (open.kind == ClothOpenKind.add) {
     final box = open.box;
-    return showPhoneSheet<void>(context, title: words.clothTitle, drag: false, locked: held,
+    // Where there is a finder the title follows the step (Add pieces, Are these your pieces?, Your cloths).
+    final title = ValueNotifier(words.clothTitle);
+    // Many pieces in: a toast says how many, and in which box.
+    void manyAdded(int cloths, int pieces, int box) => c.tell(words.clothManyAdded(cloths, pieces,
+        c.isSample(box) ? words.boxesSample : words.boxesName('${c.boxNumbers[box] ?? ''}')));
+    return showPhoneSheet<void>(context, title: words.clothTitle, titleOf: title, drag: false, locked: held,
         builder: (context) => body(add.AddCloth(box: box, shelf: c.shelf, photos: photos, words: words,
-            cropHeld: held, onClose: () => close(context))));
+            cropHeld: held, title: title, onManyAdded: manyAdded, onClose: () => close(context))));
   }
   // The cloth as stored, read first: its name is the sheet's title.
   ClothRow? row;

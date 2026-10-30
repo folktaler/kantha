@@ -11,9 +11,10 @@ import 'phone_theme.dart';
    column, centred, scrolling, 24 px under its last row; a header that stays as the rest scrolls, with `title` and a 48 × 48 Close; `intro` under it. `builder`
    makes the body each frame (sheets that watch the controller wrap it in a ListenableBuilder). `drag: false` keeps a
    downward stroke inside it (a crop square moved) from pulling the sheet down; while `locked` holds true the body does
-   not scroll, so a stroke there goes to what is under the finger. */
+   not scroll, so a stroke there goes to what is under the finger. With `titleOf` the title follows it (Add a piece's
+   steps). */
 Future<T?> showPhoneSheet<T>(BuildContext context, {required String title, String? intro, required WidgetBuilder builder,
-    bool drag = true, ValueListenable<bool>? locked}) {
+    bool drag = true, ValueListenable<bool>? locked, ValueListenable<String>? titleOf}) {
   final height = MediaQuery.sizeOf(context).height;
   return showModalBottomSheet<T>(
     context: context,
@@ -24,13 +25,14 @@ Future<T?> showPhoneSheet<T>(BuildContext context, {required String title, Strin
     enableDrag: drag,
     useSafeArea: true,
     constraints: BoxConstraints(maxWidth: studioColumnWidth, maxHeight: 0.76 * height),
-    builder: (context) => _Sheet(title: title, intro: intro, builder: builder, locked: locked),
+    builder: (context) => _Sheet(title: title, intro: intro, builder: builder, locked: locked, titleOf: titleOf),
   );
 }
 
 class _Sheet extends StatelessWidget {
-  const _Sheet({required this.title, required this.intro, required this.builder, required this.locked});
+  const _Sheet({required this.title, required this.intro, required this.builder, required this.locked, this.titleOf});
   final String title;
+  final ValueListenable<String>? titleOf;
   final String? intro;
   final WidgetBuilder builder;
   final ValueListenable<bool>? locked;
@@ -43,7 +45,10 @@ class _Sheet extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Semantics(header: true, child: Text(title, style: pText(PType.sectionTitle))),
+            child: Semantics(header: true, child: titleOf == null
+                ? Text(title, style: pText(PType.sectionTitle))
+                : ValueListenableBuilder<String>(valueListenable: titleOf!,
+                    builder: (_, t, _) => Text(t, style: pText(PType.sectionTitle)))),
           )),
           const SizedBox(width: 8),
           Pressable(

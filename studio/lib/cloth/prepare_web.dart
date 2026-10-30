@@ -179,3 +179,6 @@ Future<({Uint8List jpeg, Measured measured})> preparePhoto(Uint8List cropped) as
   release(whole);
   return (jpeg: await jpegOf(stored, storedJpegQuality), measured: measured);
 }
+
+/* A piece the finder cut (side × side RGBA pixels, as the cropper's square): preparePhoto. */
+Future<({Uint8List jpeg, Measured measured})> preparePiece(Uint8List rgba) => preparePhoto(rgba);

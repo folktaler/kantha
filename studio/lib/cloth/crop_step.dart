@@ -17,7 +17,7 @@ const _cropperBlue = Color(0xFF3399FF);
 
 class CropStep extends StatelessWidget {
   const CropStep({super.key, required this.photo, required this.controller, required this.coverage, required this.hint,
-      required this.onCropped, required this.onReady, this.onTouched});
+      required this.onCropped, required this.onReady, this.onTouched, this.start});
 
   /* null while the picture is still being read: the stage is shown empty. */
   final PickedPhoto? photo;
@@ -29,6 +29,8 @@ class CropStep extends StatelessWidget {
   final VoidCallback onReady;
   /* She pressed on it, or turned the wheel over it: the square may have moved. */
   final VoidCallback? onTouched;
+  /* Where the square starts, in the picture's own pixels (the one piece the finder found), instead of `coverage`. */
+  final Rect? start;
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
@@ -47,7 +49,9 @@ class CropStep extends StatelessWidget {
               imageCropper: PhotoCropper(photo!.picture),
               controller: controller,
               aspectRatio: 1,
-              initialRectBuilder: InitialRectBuilder.withBuilder((stage, picture) => startingSquare(stage, picture, coverage)),
+              initialRectBuilder: InitialRectBuilder.withBuilder((stage, picture) => start == null
+                  ? startingSquare(stage, picture, coverage)
+                  : placedSquare(picture, start!, photo!.width)),
               onCropped: onCropped,
               onStatusChanged: (s) { if (s == CropStatus.ready) onReady(); },
               baseColor: PhonePalette.canvas,
@@ -70,6 +74,17 @@ Rect startingSquare(Rect stage, Rect picture, double coverage) {
   final side = math.min(math.min(stage.width, stage.height) * coverage, math.min(picture.width, picture.height));
   final x = (stage.center.dx - side / 2).clamp(picture.left, picture.right - side);
   final y = (stage.center.dy - side / 2).clamp(picture.top, picture.bottom - side);
+  return Rect.fromLTWH(x, y, side, side);
+}
+
+/* `start` (the picture's pixels, `width` across) on the picture as the stage shows it, made square on its mean side
+   and kept inside the picture. */
+Rect placedSquare(Rect picture, Rect start, int width) {
+  final k = picture.width / width;
+  final side = math.min((start.width + start.height) / 2 * k, math.min(picture.width, picture.height));
+  final c = picture.topLeft + start.center * k;
+  final x = (c.dx - side / 2).clamp(picture.left, picture.right - side);
+  final y = (c.dy - side / 2).clamp(picture.top, picture.bottom - side);
   return Rect.fromLTWH(x, y, side, side);
 }
 

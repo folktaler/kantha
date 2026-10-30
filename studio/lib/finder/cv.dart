@@ -12,7 +12,7 @@ abstract interface class CvMat {
 }
 
 /// The colour conversions the finder uses.
-enum CvColour { rgbaToBgr, bgrToLab, bgrToGray, bgrToRgb }
+enum CvColour { rgbaToBgr, bgrToLab, bgrToGray, bgrToRgb, bgrToRgba }
 
 /// One findContours result. Points are x, y pairs, in the image the contours were found in.
 abstract interface class CvContours {

@@ -38,6 +38,7 @@ class FoundSquares {
     this.linesMs,
     this.fromPanels,
     this.panelMs,
+    this.tiny,
   );
 
   /// The working picture, and its size over the photo's.
@@ -56,9 +57,35 @@ class FoundSquares {
 
   /// How many squares step 4 added inside sewn panels.
   final int fromPanels, panelMs;
+
+  /// How many outlines had a square's shape but were under the smallest size (0.0015 of the picture), down to
+  /// [tinyArea] of it, counted over every picture step 1 looks at (so one piece is counted many times): many of them
+  /// and no squares found means the pieces are there but too small in the photo.
+  final int tiny;
 }
 
+/// The smallest outline [FoundSquares.tiny] counts, as a share of the picture's area.
+const tinyArea = 0.0002;
+
 FoundSquares findSquares(FinderCv cv, CvMat photo) => _Finder(cv).run(photo);
+
+/// A finder that keeps what it read of the last photo it was given, so a tap on that photo can be snapped to the
+/// square around it afterwards.
+class SquareFinder {
+  SquareFinder(FinderCv cv) : _f = _Finder(cv);
+  final _Finder _f;
+  bool _ready = false;
+
+  FoundSquares find(CvMat photo) {
+    final found = _f.run(photo);
+    _ready = found.side > 0;
+    return found;
+  }
+
+  /// The best-supported square near a tap at [x], [y] (working pixels), as [_Finder._verify] judges one, or null
+  /// when nothing around the tap looks like a square (or the last photo had no common size).
+  Float32List? snap(double x, double y) => _ready ? _f.snap(x, y) : null;
+}
 
 class _Cand {
   _Cand(this.area, this.q, this.strong);
@@ -89,6 +116,7 @@ class _Finder {
 
   FoundSquares run(CvMat photo) {
     final clock = Stopwatch()..start();
+    _tiny = 0;
     final scale = workLongSide / math.max(photo.rows, photo.cols);
     final img = cv.resizeArea(photo, scale);
     h = img.rows;
@@ -290,7 +318,35 @@ class _Finder {
       linesMs,
       squares.length - checked,
       clock.elapsedMilliseconds - outlineMs - linesMs,
+      _tiny,
     );
+  }
+
+  int _tiny = 0;
+
+  /// Tap to add (squares.py's tap section): square centres within 0.3 of a side of the tap, every turn from 0 to 85
+  /// degrees in 5-degree steps, sizes 0.8 to 1.2; the best supported with at least 3 sides on an edge, if it scores
+  /// 0.4 or more.
+  Float32List? snap(double x, double y) {
+    var top = -1.0;
+    late double bx, by, ba, bs;
+    for (var i = 0; i < 7; i++) {
+      for (var j = 0; j < 7; j++) {
+        final cx = x + (-0.3 + 0.1 * i) * side, cy = y + (-0.3 + 0.1 * j) * side;
+        for (var a = 0; a < 90; a += 5) {
+          final ang = a * math.pi / 180;
+          for (final sc in const [0.8, 0.9, 1.0, 1.1, 1.2]) {
+            final (sup, mid, on) = _support(cx, cy, ang, sc);
+            final v = sup - mid;
+            if (v > top && on >= 3) {
+              top = v;
+              (bx, by, ba, bs) = (cx, cy, ang, sc);
+            }
+          }
+        }
+      }
+    }
+    return top >= 0.4 ? _squareAt(bx, by, ba, bs) : null;
   }
 
   /// Step 4: the squares missing inside sewn panels, from the squares already found ([anchors]).
@@ -448,7 +504,7 @@ class _Finder {
 
   /// The candidates among one binary picture's outlines; [ox], [oy] place the picture in the frame.
   void _collect(CvMat binary, int ox, int oy, List<_Cand> into) {
-    final minArea = 0.0015 * h * w, maxArea = 0.2 * h * w;
+    final minArea = 0.0015 * h * w, maxArea = 0.2 * h * w, tinyMin = tinyArea * h * w;
     final contours = cv.findContours(binary);
     for (var i = 0; i < contours.length; i++) {
       // A polygon on a contour's points is no larger than their box: too small a box cannot hold a candidate.
@@ -460,11 +516,11 @@ class _Finder {
         y0 = math.min(y0, p[k + 1]);
         y1 = math.max(y1, p[k + 1]);
       }
-      if ((x1 - x0) * (y1 - y0) < minArea) continue;
+      if ((x1 - x0) * (y1 - y0) < tinyMin) continue;
       final q = contours.approxPolyDP(i, 0.03 * contours.arcLength(i));
       if (q.length != 8) continue;
       final area = cv.contourArea(q);
-      if (area < minArea || area > maxArea || !cv.isContourConvex(q)) continue;
+      if (area < tinyMin || area > maxArea || !cv.isContourConvex(q)) continue;
       for (var k = 0; k < 8; k += 2) {
         q[k] += ox;
         q[k + 1] += oy;
@@ -479,6 +535,10 @@ class _Finder {
       ];
       final ratio = sides.reduce(math.max) / sides.reduce(math.min);
       if (ratio > 1.35) continue;
+      if (area < minArea) {
+        _tiny++;
+        continue;
+      }
       into.add(_Cand(area, q, cosMax < 0.12 && ratio < 1.2));
     }
     contours.dispose();

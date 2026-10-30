@@ -142,6 +142,9 @@ class StudioController extends ChangeNotifier {
   /* The template's own name, which a design has until she gives it one. */
   String _defaultName(LayoutKey l) => words.canvasDefaultName(words.layoutTitle(l));
 
+  /* A note said from outside (Add a piece's many pieces in), as a toast. */
+  void tell(String n) { note = n; warn = false; notifyListeners(); }
+
   /* A note said as a warning. */
   void _warn(String n) { note = n; warn = true; notifyListeners(); }
 
