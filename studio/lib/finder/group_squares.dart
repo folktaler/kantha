@@ -1,14 +1,17 @@
 /* Repeated cloths among the found squares: each square's colours as CIELAB histograms (a*b* 16 x 16 and L* 16,
-   each summing to 1), compared by Bhattacharyya distance (the mean of the two), joined by average linkage and
-   cut at 0.35, as tested in Python on 30 October 2026 (56 of the halloween quilt's 63 squares in the right
-   group). Each square is measured on its middle only, away from seams and the floor. */
+   each summing to 1), compared by Bhattacharyya distance (the mean of the two), joined by average linkage, as
+   tested in Python on 30 October 2026. Each square is measured on its middle only, away from seams and the floor. */
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'cv.dart';
 import 'find_squares.dart';
 
-/// Squares closer than this (mean Bhattacharyya distance, average linkage) are one cloth.
-const groupCut = 0.35;
+/// Squares closer than this (mean Bhattacharyya distance, average linkage) are one cloth. 0.25, the owner's
+/// decision of 30 October 2026: a wrong split is the safer mistake, since two box entries of the same colour still
+/// design right, while a wrong join puts one cloth in the wrong colour. Measured: the halloween quilt 62 of 63
+/// squares in the right group, 30 groups for its 18 cloths, adjusted Rand index 0.63; the stacks photo 4 of 26
+/// squares wrongly joined. At 0.35, the cut tested first: 56 of 63, 19 groups, 0.70; 9 of 26 wrongly joined.
+const groupCut = 0.25;
 
 typedef LabHistograms = ({Float32List ab, Float32List l});
 
