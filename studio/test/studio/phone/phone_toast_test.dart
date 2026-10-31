@@ -1,64 +1,19 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/studio/phone/phone_toast.dart';
 import '../../support/pump.dart';
 
-Future<Toaster> pumpToast(WidgetTester tester, {bool hidden = false}) async {
+Future<Toaster> pumpToast(WidgetTester tester) async {
   tester.view.physicalSize = phone;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final toaster = Toaster();
   addTearDown(toaster.dispose);
-  await tester.pumpWidget(MaterialApp(home: ToastHost(toaster: toaster, bottom: 214, hidden: hidden,
-      child: const SizedBox.expand())));
+  await tester.pumpWidget(MaterialApp(home: ToastHost(toaster: toaster, bottom: 214, child: const SizedBox.expand())));
   return toaster;
 }
 
 void main() {
-  // sayWhole counts a toast as had only when it ran its whole 2.8 s where she could see it.
-  testWidgets('a whole toast in sight is had', (tester) async {
-    final toaster = await pumpToast(tester);
-    bool? had;
-    toaster.sayWhole('a').then((w) => had = w);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 2800));
-    expect(had, isTrue);
-  });
-
-  testWidgets('a toast cleared early (an empty say from Back up) is not had', (tester) async {
-    final toaster = await pumpToast(tester);
-    bool? had;
-    toaster.sayWhole('a').then((w) => had = w);
-    await tester.pump(const Duration(milliseconds: 500));
-    toaster.clear();
-    await tester.pump();
-    expect(had, isFalse);
-  });
-
-  testWidgets('a toast under the open menu is not had', (tester) async {
-    final toaster = await pumpToast(tester, hidden: true);
-    bool? had;
-    toaster.sayWhole('a').then((w) => had = w);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 2800));
-    expect(had, isFalse);
-  });
-
-  testWidgets('a toast a sheet covers for part of its time is not had', (tester) async {
-    final toaster = await pumpToast(tester);
-    bool? had;
-    toaster.sayWhole('a').then((w) => had = w);
-    await tester.pump(const Duration(milliseconds: 500));
-    final nav = tester.state<NavigatorState>(find.byType(Navigator));
-    unawaited(nav.push(MaterialPageRoute<void>(builder: (_) => const SizedBox.expand())));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    nav.pop();
-    await tester.pump(const Duration(milliseconds: 2000));
-    expect(had, isFalse);
-  });
-
   testWidgets('a toast shows, then goes after 2.8 s', (tester) async {
     final toaster = await pumpToast(tester);
     toaster.say('a');

@@ -31,14 +31,16 @@ enum DockTab { cloth, patterns, finish }
    height at normal text size (8 + the 124 px tiles + 4 + the 44 px Show stitches row, owner 21 Oct), on every tab,
    so the board keeps its size from tab to tab. */
 const dockPanelHeight = 180.0, dockTabsHeight = 48.0, toastGap = 14.0;
-/* The least the canvas keeps when the window is short, so the board stays in sight: on A4 its 90 px of padding and the
-   4 cm line, and a row of 24 px squares. */
-const canvasLeast = 120.0;
 /* The panel is taller by Rows and Columns (owner, 31 Oct 2026), on every tab, so both are in sight without scrolling:
-   one line of 52 px where both fit side by side in a column `width` wide at her text size (boardSizeLine), else Rows
-   over Columns, 96 px. */
-double dockPanelFor(BuildContext context, double width) =>
-    dockPanelHeight + (boardSizeLine(context, width).oneLine ? 52 : 96);
+   one line of 52 px where both fit side by side (boardSizeLine), else Rows over Columns, 96 px. */
+double dockPanelFor(BoardSizeLine line) => dockPanelHeight + (line.oneLine ? 52 : 96);
+/* What a short window keeps of each, so the board and the patterns both stay in sight (a phone on its side): the canvas
+   120 px, the panel its pattern tiles (8 + 124 + 4). Short of both, everything under the Safari banner scrolls. */
+const canvasLeast = 120.0, panelLeast = 136.0;
+/* The canvas's padding around the board: 16 px each side; 24 over and under on A4, which has the 4 cm line over the
+   sheet in 32 px, and 8 on any other size, which has none. */
+EdgeInsets canvasPadding(bool onA4) => EdgeInsets.symmetric(horizontal: 16, vertical: onA4 ? 24 : 8);
+const scaleLineRoom = 32.0;
 
 /* A 1 px line along one edge, drawn over the box rather than taking room in it. */
 BoxDecoration _edge({bool top = false}) => BoxDecoration(
@@ -82,8 +84,12 @@ class _PhoneStudioState extends State<PhoneStudio> {
     // Counted now, so the first note after the studio is built is said.
     _notes = c.notes;
     c.addListener(_heard);
+    // A font that comes after the first frame (the web loads Geist then) measures Rows and Columns again.
+    PaintingBinding.instance.systemFonts.addListener(_fontsCame);
     if (widget.safariOnIphone) _askSafariSeen();
   }
+
+  void _fontsCame() => setState(() {});
 
   /* The Safari banner comes up once the shelf says she has not dismissed it here. A setting that cannot be read leaves it
      up: the rule said again is the safe way to be wrong. */
@@ -120,6 +126,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
   @override
   void dispose() {
     c.removeListener(_heard);
+    PaintingBinding.instance.systemFonts.removeListener(_fontsCame);
     HardwareKeyboard.instance.removeHandler(_escape);
     _menuFocus.dispose();
     super.dispose();
@@ -240,28 +247,24 @@ class _PhoneStudioState extends State<PhoneStudio> {
         child: child,
       );
 
-  /* The panel's height in the `room` under the Safari banner: dockPanelFor, unless the window is too short for it over
-     the tabs with canvasLeast left for the board (a phone on its side); then the panel gives way, and scrolls, rather
-     than push the tabs off the screen or the board out of sight. */
-  double _panelFor(BuildContext context, BoxConstraints room) {
-    final inset = MediaQuery.paddingOf(context).bottom;
-    return math.min(dockPanelFor(context, room.maxWidth),
-        math.max(0.0, room.maxHeight - dockTabsHeight - inset - canvasLeast));
-  }
-
-  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. The toasts stand over
-     the dock. */
+  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. The panel is its full
+     height (dockPanelFor) unless the window is too short for it over the tabs with canvasLeast left for the board;
+     then it gives way, to panelLeast, and scrolls. Shorter still, the whole of it scrolls. The toasts stand over the
+     dock. */
   Widget _studio(BuildContext context) {
     final inset = MediaQuery.paddingOf(context).bottom;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (_safari) _safariBanner(context),
           Expanded(child: LayoutBuilder(builder: (context, room) {
-            final panel = _panelFor(context, room);
+            final line = boardSizeLine(context, room.maxWidth), bars = dockTabsHeight + inset;
+            final height = math.max(room.maxHeight, canvasLeast + panelLeast + bars);
+            final panel = math.min(dockPanelFor(line), height - bars - canvasLeast);
             return ToastHost(
               toaster: widget.toaster,
-              hidden: _menu,
-              bottom: panel + dockTabsHeight + inset + toastGap,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // Scrolled as a whole, the dock may be out of sight: the toast stands over the window's foot.
+              bottom: (height > room.maxHeight ? 0 : panel + bars) + toastGap,
+              child: SingleChildScrollView(key: const ValueKey('phone-under-banner'), child: SizedBox(height: height,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(child: FocusTraversalGroup(policy: _canvasOrder, child: _canvas())),
           FocusTraversalGroup(
             policy: _panelOrder,
@@ -271,7 +274,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
               color: PhonePalette.white,
               foregroundDecoration: _edge(top: true),
               child: switch (_tab) {
-                DockTab.patterns => DockPatterns(c: c, toaster: widget.toaster),
+                DockTab.patterns => DockPatterns(c: c, toaster: widget.toaster, line: line),
                 DockTab.cloth => DockCloth(c: c, actions: widget.actions),
                 DockTab.finish => DockFinish(c: c),
               },
@@ -281,7 +284,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
             policy: _tabsOrder,
             child: Container(
               key: const ValueKey('dock-tabs'),
-              height: dockTabsHeight + inset,
+              height: bars,
               padding: EdgeInsets.only(bottom: inset),
               color: PhonePalette.white,
               foregroundDecoration: _edge(top: true),
@@ -290,7 +293,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
               ]),
             ),
           ),
-              ]),
+              ]))),
             );
           })),
         ]);
@@ -405,12 +408,14 @@ class _PhoneStudioState extends State<PhoneStudio> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(
             child: LayoutBuilder(builder: (context, box) {
-              final size = box.biggest;
+              final size = box.biggest, pad = canvasPadding(c.onA4);
+              // The board's own room: the canvas less its padding and the 4 cm line.
+              final room = Size(size.width - pad.horizontal, size.height - pad.vertical - (c.onA4 ? scaleLineRoom : 0));
               // A design opened on another mount (openSaved) changes the mount without fitting to it.
-              if (size != _pane || c.mount != _paneMount) {
-                _pane = size;
+              if (room != _pane || c.mount != _paneMount) {
+                _pane = room;
                 _paneMount = c.mount;
-                WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) c.applyFit(size); });
+                WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) c.applyFit(room); });
               }
               return SingleChildScrollView(
                 child: SingleChildScrollView(
@@ -418,11 +423,10 @@ class _PhoneStudioState extends State<PhoneStudio> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minWidth: size.width, minHeight: size.height),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: c.onA4 ? 24 : 8),
+                      padding: pad,
                       child: Center(
                         child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          // 32 px for the 4 cm line over the sheet, which only A4 has (controller.dart _fitTo).
-                          if (c.onA4) const SizedBox(height: 32),
+                          if (c.onA4) const SizedBox(height: scaleLineRoom),
                           Board(key: const ValueKey('phone-board'), c: c, onEmptyCell: _addCloth),
                         ]),
                       ),

@@ -2,7 +2,6 @@
    19 Oct): the pattern tiles, and under them one row, Show stitches (owner, 20 and 21 Oct): the switch, its words, and
    the thread that clears this design's cloth best, as a dot and its plain colour. The spacing is always Open and is
    not said. Under it Rows and Columns, one line for everyone (owner, 31 Oct 2026). */
-import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
@@ -18,25 +17,14 @@ import 'phone_theme.dart';
 import 'phone_toast.dart';
 import 'strip.dart';
 
+typedef BoardSizeLine = ({bool oneLine, double rows, double columns, double number});
+
 /* Rows and Columns, measured at her text size for a column `width` wide: on one line when both fit beside each other
    (16 px in each side, 8 between), else Rows over Columns, their words a shared width so the numbers line up. The
    panel's height follows (phone_studio.dart dockPanelFor). */
-typedef BoardSizeLine = ({bool oneLine, double rows, double columns, double number});
-/* The last line measured, and what it was measured for: the panel's height and the line itself ask for the same one
-   on each build. A font that arrives later (the web loads Geist after the first frame) measures afresh. */
-(Object, BoardSizeLine)? _lastLine;
-var _fonts = 0;
-final _fontsHeard = () {
-  PaintingBinding.instance.systemFonts.addListener(() => _fonts++);
-  return true;
-}();
-
 BoardSizeLine boardSizeLine(BuildContext context, double width) {
   final words = L.of(context), scaler = MediaQuery.textScalerOf(context), dir = Directionality.of(context);
   final bold = MediaQuery.boldTextOf(context), locale = Localizations.localeOf(context);
-  final key = (width, scaler, bold, locale, dir, words.canvasRows, words.canvasColumns, _fontsHeard ? _fonts : 0);
-  final last = _lastLine;
-  if (last != null && last.$1 == key) return last.$2;
   // As the Text widgets draw them: bold where she asked for bold text, the number in tabular figures.
   double measure(String text, {bool figures = false}) {
     var style = pText(PType.bodySmall, figures: figures);
@@ -51,10 +39,8 @@ BoardSizeLine boardSizeLine(BuildContext context, double width) {
   final number = math.max(28.0, measure('$boardMax', figures: true) + 4);
   // Each: its word, 4, minus, the number, plus.
   double stepper(double word) => word + 4 + 44 + number + 44;
-  final line = (oneLine: 16 + stepper(rows) + 8 + stepper(columns) + 16 <= width, rows: rows, columns: columns,
+  return (oneLine: 16 + stepper(rows) + 8 + stepper(columns) + 16 <= width, rows: rows, columns: columns,
       number: number);
-  _lastLine = (key, line);
-  return line;
 }
 
 final Map<LayoutKey, List<int>> _icons = {for (final k in layoutKeys) k: layoutIconLevels(k)};
@@ -63,9 +49,11 @@ final Map<LayoutKey, List<int>> _icons = {for (final k in layoutKeys) k: layoutI
    cannot fill stays, faded to 35 %, and a tap on it says why and changes nothing (decision 11). The panel scrolls up
    and down, as Preview does, so with the phone's text set larger nothing runs over the tabs. */
 class DockPatterns extends StatelessWidget {
-  const DockPatterns({super.key, required this.c, required this.toaster});
+  const DockPatterns({super.key, required this.c, required this.toaster, required this.line});
   final StudioController c;
   final Toaster toaster;
+  /* Rows and Columns as the panel was sized for them (phone_studio.dart). */
+  final BoardSizeLine line;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -91,8 +79,8 @@ class DockPatterns extends StatelessWidget {
   /* The board's size (owner, 30 and 31 Oct 2026): Rows and Columns, each its word, minus, the number and plus, 16 px
      in, under Show stitches, in the room the taller panel gives them (phone_studio.dart dockPanelFor): side by side
      on one line where both fit side by side (boardSizeLine), else Rows over Columns. */
-  Widget _size(BuildContext context) => LayoutBuilder(builder: (context, box) {
-    final words = L.of(context), g = c.chosen, line = boardSizeLine(context, box.maxWidth);
+  Widget _size(BuildContext context) {
+    final words = L.of(context), g = c.chosen;
     // Stacked, the two words share the wider's width, so the numbers line up.
     final shared = line.oneLine ? null : math.max(line.rows, line.columns);
     final rows = _stepper('rows', words.canvasRows, g.rows, words.canvasRowsFewer, words.canvasRowsMore,
@@ -106,32 +94,6 @@ class DockPatterns extends StatelessWidget {
           ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [rows, const SizedBox(width: 8), columns])
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [rows, columns]),
     );
-  });
-
-  /* A pattern pressed. When it deals an arrangement, the first time on this device: the note that pressing it again
-     makes a new one. It waits for any other toast to go, and counts as shown only once she has had the whole of it. */
-  void _press(LayoutKey k, String again) {
-    c.loadLayout(k);
-    if (c.grid != null || c.solving) unawaited(_noteOnce(again));
-  }
-
-  Future<void> _noteOnce(String again) async {
-    // A solve still running: only once it has dealt an arrangement. A solve that failed leaves the board empty, and
-    // the note is kept for a press that deals one.
-    if (c.solving) {
-      final done = Completer<void>();
-      void heard() { if (!c.solving && !done.isCompleted) done.complete(); }
-      c.addListener(heard);
-      await done.future;
-      c.removeListener(heard);
-    }
-    if (c.grid == null) return;
-    if (!await c.patternAgainDue()) return;
-    for (var i = 0; i < 3; i++) {
-      await toaster.idle();
-      if (await toaster.sayWhole(again)) return c.patternAgainShown();
-    }
-    c.patternAgainMissed();
   }
 
   /* Its word, then minus, the number, plus: each button 44 px square, faded and not pressed at its end. */
@@ -226,13 +188,13 @@ class DockPatterns extends StatelessWidget {
     final why = cannot ? words.canvasLayoutCannot(title, words.notFillable(f.why!)) : null;
     // The chosen tile wears ↻, and says to press it again, while the board holds an arrangement a press would deal
     // afresh.
-    final on = k == c.layout, again = words.canvasPatternAgain(title), anew = on && c.grid != null;
+    final on = k == c.layout, again = words.canvasPatternAgain(title), anew = on && c.grid != null && c.canDeal;
     return Pressable(
       key: ValueKey('tile-${k.name}'),
       label: why ?? (anew ? '$title\n$again' : title),
       excludeChildSemantics: true,
       selected: on,
-      onPressed: () => why != null ? toaster.say(why) : _press(k, again),
+      onPressed: () => why != null ? toaster.say(why) : c.loadLayout(k),
       builder: (context, st) => Opacity(
         opacity: cannot ? 0.35 : 1,
         child: focusRing(st.focused, Container(

@@ -11,7 +11,7 @@ import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart';
 import 'package:kantha_studio/studio/controller.dart';
-import 'package:kantha_studio/studio/phone/phone_studio.dart' show canvasLeast, dockPanelHeight;
+import 'package:kantha_studio/studio/phone/phone_studio.dart' show canvasLeast, dockPanelHeight, panelLeast;
 import '../downloads/photo_png_test.dart' show loadFonts;
 import '../support/db.dart';
 import '../support/fonts.dart' as faces;
@@ -255,27 +255,70 @@ void fitsAtIphone13() {
     expect(seen.width > 0 && seen.height > 0, isTrue, reason: 'part of the board is in sight: $seen');
   });
 
-  // A phone on its side in Safari: the banner, the panel and the tabs in 390 px of window; the panel gives way.
-  testWidgets('on a phone on its side in Safari (844 × 390) the tabs stay on the screen and nothing overflows', (tester) async {
+  // A phone on its side in Safari: under the banner too little room for the board and the pattern tiles both, so all
+  // of it scrolls, and nothing overflows.
+  testWidgets('on a phone on its side in Safari (844 × 390) the tabs are a scroll away and nothing overflows', (tester) async {
     await tester.runAsync(faces.loadFonts);
     await pumpStudio(tester, size: const Size(844, 390), solver: SizedQuickSolver(), safariOnIphone: true);
     expect(tester.takeException(), isNull);
     expect(key('safari-banner'), findsOneWidget);
+    await tester.ensureVisible(key('dock-tabs'));
+    await tester.pumpAndSettle();
     expect(tester.getRect(key('dock-tabs')).bottom, 390);
     expect(tester.getRect(key('dock-panel')).top, greaterThanOrEqualTo(tester.getRect(key('safari-banner')).bottom - 0.5));
   });
 
   testWidgets('where the panel gives way, the toast still stands 14 px over it', (tester) async {
-    final c = await pumpStudio(tester, size: const Size(844, 300), solver: SizedQuickSolver());
+    final c = await pumpStudio(tester, size: const Size(844, 400), solver: SizedQuickSolver());
     c.note = 'The cloth could not be read.';
     // ignore: invalid_use_of_protected_member
     c.notifyListeners();
     await tester.pump();
     final panel = tester.getRect(key('dock-panel'));
-    expect(panel.height, lessThan(232), reason: 'the panel gave way');
+    expect(panel.height, lessThan(dockPanelHeight + 52), reason: 'the panel gave way');
     expect(panel.top - tester.getRect(key('phone-toast')).bottom, 14.0);
     await tester.pump(const Duration(seconds: 3));
   });
+
+  // 190 px under the top bar: the board keeps 120 px and the panel its pattern tiles; the rest is a scroll away, and the
+  // toast stands 14 px over the window's foot.
+  testWidgets('with 190 px under the top bar the board and the pattern tiles both keep their room', (tester) async {
+    final c = await pumpStudio(tester, size: const Size(844, 238), solver: SizedQuickSolver());
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(key('phone-canvas')).height, greaterThanOrEqualTo(canvasLeast));
+    expect(tester.getSize(key('dock-panel')).height, greaterThanOrEqualTo(panelLeast));
+    final seen = tester.getRect(key('phone-board')).intersect(tester.getRect(key('phone-canvas')));
+    expect(seen.height > 0, isTrue, reason: 'the board is in sight');
+    await tester.ensureVisible(key('tile-contrast'));
+    await tester.pumpAndSettle();
+    final tile = tester.getRect(key('tile-contrast'));
+    expect(tile.top >= 48 && tile.bottom <= 238, isTrue, reason: 'the pattern tiles scroll into sight: $tile');
+    c.note = 'The cloth could not be read.';
+    // ignore: invalid_use_of_protected_member
+    c.notifyListeners();
+    await tester.pump();
+    expect(238 - tester.getRect(key('phone-toast')).bottom, 14.0);
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  // A saved design of another size is drawn at that size's fit, both ways (81 squares: the fixture's box fills them).
+  for (final (from, to) in [(level1, (rows: 9, cols: 9)), ((rows: 9, cols: 9), level1), ((rows: 6, cols: 6), (rows: 9, cols: 9))]) {
+    testWidgets('a saved ${to.rows} × ${to.cols} design opened on a ${from.rows} × ${from.cols} board is fitted to its size',
+        (tester) async {
+      final c = await pumpStudio(tester, size: phone, solver: SizedQuickSolver());
+      c.setBoardSize(to);
+      await tester.pumpAndSettle();
+      final fitted = c.ppc;
+      await tester.runAsync(c.save);
+      await letWork(tester, done: () => c.saved.any((d) => d.size == to));
+      c.setBoardSize(from);
+      await tester.pumpAndSettle();
+      expect(c.ppc, isNot(fitted), reason: 'the two sizes fit at different scales');
+      expect(c.openSaved(c.saved.firstWhere((d) => d.size == to)), isTrue);
+      await tester.pumpAndSettle();
+      expect((c.size, c.ppc), (to, fitted));
+    });
+  }
 
   testWidgets('zoom steps from Fit both ways when Fit sits at the 24 px floor', (tester) async {
     final c = await pumpStudio(tester, size: const Size(390, 548), solver: SizedQuickSolver());

@@ -14,7 +14,7 @@ import 'package:kantha_studio/studio/pressable.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../support/fonts.dart';
 import '../../support/pump.dart';
-import '../../support/studio_fixture.dart' show QuickSolver, fixtureJpeg, measuredFor;
+import '../../support/studio_fixture.dart' show QuickSolver, ShelfForTest, fixtureJpeg, measuredFor;
 
 /* The Design tab (redesign handover, "Dock panel — Patterns tab"; decision 11; renamed Design by the owner, 19 Oct). */
 Finder tile(LayoutKey k) => key('tile-${k.name}');
@@ -98,32 +98,41 @@ void main() {
     await press('Chess');
     expect(find.descendant(of: key('phone-toast'), matching: find.text(again)), findsOneWidget);
     expect(c.grid, isNot(grid), reason: 'pressed again, a new arrangement');
-    expect(await said(tester, c), isNull, reason: 'not yet: she has not had the whole of it');
+    expect(await said(tester, c), isNotNull, reason: 'said, so remembered');
     await tester.pump(const Duration(seconds: 3));
-    expect(await said(tester, c), isNotNull, reason: 'shown its whole time, so remembered');
     await press('Gradient');
     expect(find.text('Press Gradient again for a new arrangement.'), findsNothing, reason: 'once on this device');
     await tester.pump(const Duration(seconds: 3));
   });
 
-  testWidgets('another note that takes the toast first does not lose the press-again note: it comes after, then counts',
+  testWidgets('another note that goes out as the press deals is not spent on: the next press that deals says it',
       (tester) async {
     final c = await pumpStudio(tester, size: phone);
-    const again = 'Press Chess again for a new arrangement.', other = 'The cloth could not be read.';
+    const other = 'The cloth could not be read.';
+    // The other note goes out as the new arrangement lands.
+    final was = c.grid;
+    void other0() {
+      if (c.grid == was || c.note == other) return;
+      c.note = other;
+      // ignore: invalid_use_of_protected_member
+      c.notifyListeners();
+    }
+    c.addListener(other0);
     await tester.tap(find.descendant(of: strip, matching: find.text('Chess')));
+    await tester.pump();
+    c.removeListener(other0);
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
     await tester.pump();
-    expect(find.text(again), findsOneWidget);
-    c.note = other;
-    // ignore: invalid_use_of_protected_member
-    c.notifyListeners();
+    expect(find.text(other), findsOneWidget);
+    expect(find.textContaining('again for a new arrangement'), findsNothing);
+    expect(await said(tester, c), isNull, reason: 'kept for the next press');
+    await tester.pump(const Duration(seconds: 3));
+    await tester.tap(find.descendant(of: strip, matching: find.text('Gradient')));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
     await tester.pump();
-    expect((find.text(other).evaluate().length, find.text(again).evaluate().length), (1, 0), reason: 'the other took its place');
-    await tester.pump(const Duration(seconds: 3));
-    expect(find.text(again), findsOneWidget, reason: 'shown again once the other has gone');
-    expect(await said(tester, c), isNull);
-    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('Press Gradient again for a new arrangement.'), findsOneWidget);
     expect(await said(tester, c), isNotNull);
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('on an empty box the chosen tile has the check, not ↻, and a press neither re-arranges nor spends the note',
@@ -152,6 +161,27 @@ void main() {
     expect(c.grid, isNull);
     expect(find.textContaining('again for a new arrangement'), findsNothing);
     expect(await said(tester, c), isNull, reason: 'kept for a press that deals');
+  });
+
+  // A saved design held open while no box can fill and there is no Sample box: a press only chooses the pattern and
+  // empties the board, so the tile does not offer a new arrangement.
+  testWidgets('on a held design with no box that can fill, the chosen tile has the check and does not say to press again',
+      (tester) async {
+    final c = await pumpStudio(tester, size: phone, seeded: false);
+    await tester.runAsync(() async {
+      final box = await c.shelf.makeBox();
+      final ids = [for (var i = 0; i < 5; i++) await c.shelf.addPiecesForTest(box, 7)];
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await c.save();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await c.shelf.editCloth(ids.last, fabric: 'Cotton', pieces: 6);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(c.openSaved(c.saved.single), isTrue);
+    });
+    await tester.pumpAndSettle();
+    expect((c.grid != null, c.canDeal), (true, false));
+    expect(checked(c.layout), isFalse);
+    expect(tester.widget<Pressable>(tile(c.layout)).label, isNot(contains('again for a new arrangement')));
   });
 
   testWidgets('a device that has had the note does not have it again on its next visit', (tester) async {

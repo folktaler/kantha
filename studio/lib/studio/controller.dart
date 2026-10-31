@@ -157,6 +157,9 @@ class StudioController extends ChangeNotifier {
      box of hers holds a panel's 35 pieces the studio is starting — the board is the empty sheet, and nothing
      is arranged — except while a saved design she opened is on the board, or while a Sample box is there. */
   bool get starting => !_canFill && !_holding && sampleBox == null;
+  /* Whether a pattern pressed deals an arrangement: a box of hers or the Sample box can fill, and the box on the board
+     holds cloth. Else a press only chooses the pattern, over the empty sheet (loadLayout). */
+  bool get canDeal => (_canFill || sampleBox != null) && members(box).isNotEmpty;
 
   int? _opening([int? wanted]) =>
       numbers.openingBox(wanted: wanted, own: [for (final b in ownBoxes) (box: b, pieces: piecesIn(b))], need: squares);
@@ -360,6 +363,7 @@ class StudioController extends ChangeNotifier {
     if (r.grid == null) { grid = null; rot = noTurns(squares); solving = false; note = cantSolveWords; warn = true; notifyListeners(); return; }
     grid = r.grid; rot = r.rot ?? noTurns(squares); seed = s; solving = false; warn = false; savedId = null; note = '';
     if (id == _dropFor) drops++;
+    if (id == _pressFor) unawaited(_patternAgain(id));
     firstSolve ??= _now().toUtc().toIso8601String();
     memory = remember(memory, keyOf(box, layout, size), Arrangement(grid: grid!, rot: rot, seed: s, name: name, mount: mount));
     _recommendThread();
@@ -377,7 +381,7 @@ class StudioController extends ChangeNotifier {
     // With no box that can fill and no Sample box (decision 11), a template is only chosen: the board is the
     // empty sheet, and a saved design she held open is left for it. On an empty box the same: the
     // empty sheet stays, and no arrangement remembered from when it held cloth comes back (decision 13).
-    if ((!_canFill && sampleBox == null) || members(box).isEmpty) {
+    if (!canDeal) {
       layout = next;
       name = _defaultName(next);
       _clearBoard();
@@ -414,6 +418,7 @@ class StudioController extends ChangeNotifier {
     notifyListeners();
     _requestSolve();
     _dropFor = changed ? _reqId : null;
+    _pressFor = _reqId;
   }
 
   /* `made`: the number of a box the shelf has just made for her; it is hers, and named, before the feed lists it. */
@@ -513,32 +518,23 @@ class StudioController extends ChangeNotifier {
   /* The setting that says "Press {pattern} again for a new arrangement." has been shown on this device (owner, 31 Oct
      2026): after her first press of a pattern that deals an arrangement, once. */
   static const patternAgainKey = 'patternAgainSaid';
-  bool _patternAgainAsked = false;
+  /* The solve a pattern press asked for, so the note follows that press only. */
+  int? _pressFor;
 
-  /* Whether the note is still to be shown: true for one caller at a time, until patternAgainShown or
-     patternAgainMissed. A setting that cannot be read counts as shown. */
-  Future<bool> patternAgainDue() async {
-    if (_patternAgainAsked) return false;
-    _patternAgainAsked = true;
+  /* After a press whose solve dealt an arrangement: the note, unless this device has had it, or another note has gone
+     out since, or the board has moved on; then it waits for the next press that deals. */
+  Future<void> _patternAgain(int id) async {
+    final before = notes;
     try {
-      if (await shelf.setting(patternAgainKey) == null) return true;
-    } on Object {
-      // Counts as shown.
-    }
-    return false;
-  }
-
-  /* She had the whole note: remembered, so it is not shown again. */
-  Future<void> patternAgainShown() async {
-    try {
+      if (await shelf.setting(patternAgainKey) != null) return;
+      if (id != _reqId || notes != before || grid == null) return;
+      note = words.canvasPatternAgain(words.layoutTitle(layout));
+      notifyListeners();
       await shelf.setSetting(patternAgainKey, _now().toUtc().toIso8601String());
     } on Object {
-      // Not remembered: the next visit shows it again, which is the safe way to be wrong.
+      // Not read: not said. Said but not written: said again on a later press, which is the safe way to be wrong.
     }
   }
-
-  /* It was not shown after all: the next press may show it. */
-  void patternAgainMissed() => _patternAgainAsked = false;
 
   /* A setting that cannot be read counts as seen: nothing is said twice by mistake. */
   Future<bool> _savedBefore() async {
@@ -658,7 +654,8 @@ class StudioController extends ChangeNotifier {
     memory = remember(memory, keyOf(b, p.layout, size),
         Arrangement(grid: gi, rot: p.rot, seed: p.seed, name: p.name, mount: p.mount, savedId: p.id, savedGrid: st));
     _recommendThread();
-    notifyListeners();
+    // Another size is fitted afresh, as _resize does.
+    if (resized) { fit(); } else { notifyListeners(); }
     return true;
   }
 
@@ -849,22 +846,20 @@ class StudioController extends ChangeNotifier {
     return p != null && p.grid.any((c) { final i = _idIndex[c]; return i == null || cloth[i].box == null; });
   }
 
-  /* The scale that fits the pane; the numbers are the room the bars take. */
+  /* The scale that fits the board's room: the canvas less its padding, and on A4 less the 4 cm line over the sheet
+     (phone_studio.dart _canvas). */
   Size _pane = Size.zero;
   /* Tells the screen only when the scale changed, so a LayoutBuilder may call it on every build. */
-  void applyFit(Size pane) {
-    if (_fitTo(pane)) notifyListeners();
+  void applyFit(Size room) {
+    if (_fitTo(room)) notifyListeners();
   }
 
   bool _fitTo(Size pane) {
     _pane = pane;
-    // The canvas (phone_studio.dart _canvas): on A4 24 + 24 padding, the 4 cm line over the sheet and its gap; on any
-    // other size, which has no 4 cm line, 8 + 8. 16 px each side.
-    final chrome = onA4 ? 48.0 + 32 + 10 : 16.0 + 2, gutter = 32.0;
-    final w = pane.width - gutter, h = pane.height - chrome;
-    // No room yet (before the first layout). Any room at all is fitted: a canvas too short for the board at the least
-    // scale scrolls, rather than keep the scale it had.
-    if (w <= 0 || h <= 0) return false;
+    final w = pane.width, h = pane.height;
+    // Less room than one 24 px square is a pane on its way somewhere (a route turning, the keyboard): the scale stays.
+    // Any more is fitted, and a board that needs more room scrolls.
+    if (w < fitLeast * patchCm || h < fitLeast * patchCm) return false;
     final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
     final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
     // On the panel, whose empty squares she taps, never less than fitLeast, so a square is at least 24 px (owner,
