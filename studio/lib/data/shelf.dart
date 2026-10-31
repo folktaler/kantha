@@ -245,6 +245,17 @@ class Shelf {
         _insertCloth(box: box, photo: photo, measured: measured, fabric: fabric, pieces: pieces, name: name));
   }
 
+  /* Many cloths into one box in one write, each stored as addCloth stores it: all go in, or, on any refusal (a box
+     that fills part way), none do. Every count is checked first. */
+  Future<List<ClothRow>> addCloths({required int box,
+      required List<({Uint8List photo, Measured measured, int pieces})> cloth}) async {
+    for (final c in cloth) { _check(c.pieces); }
+    return _write(() async => [
+          for (final c in cloth)
+            await _insertCloth(box: box, photo: c.photo, measured: c.measured, fabric: '', pieces: c.pieces),
+        ]);
+  }
+
   /* A name made from its colour ("C-3 Brown") follows the new measurement; a name it was given ("Madder", a Sample
      cloth's) is kept. */
   Future<ClothRow> recrop(String id, Uint8List photo, Measured measured) => _write(() async {

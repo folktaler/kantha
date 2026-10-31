@@ -17,7 +17,6 @@ import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
-import '../data/database.dart';
 import '../data/numbers.dart' show startCount;
 import '../data/shelf.dart';
 import '../l10n/app_localizations.dart';
@@ -34,7 +33,7 @@ import 'prepare.dart';
 
 class AddCloth extends StatefulWidget {
   const AddCloth({super.key, required this.box, required this.shelf, required this.photos, required this.words,
-      required this.onClose, this.cropHeld, this.read = readPhoto, this.title, this.onManyAdded});
+      required this.onClose, this.cropHeld, this.read = readPhoto, this.title, this.onManyAdded, this.boxName});
   /* The box the pieces go into; null when she has none yet: her first photo makes it (spec 2026-10-07, decision 2). */
   final int? box;
   final Shelf shelf;
@@ -47,8 +46,10 @@ class AddCloth extends StatefulWidget {
   final Future<PickedPhoto> Function(Uint8List) read;
   /* The sheet's title, which follows the step where there is a finder. */
   final ValueNotifier<String>? title;
-  /* Many pieces went in: how many cloths, how many pieces, and the box. */
+  /* Many pieces went in and the sheet closed: how many cloths, how many pieces, and the box. */
   final void Function(int cloths, int pieces, int box)? onManyAdded;
+  /* A box's name as she sees it ("Box 2", "Sample box"), for what went in. */
+  final String Function(int box)? boxName;
 
   @override
   State<AddCloth> createState() => _AddClothState();
@@ -57,7 +58,8 @@ class AddCloth extends StatefulWidget {
 class _AddClothState extends State<AddCloth> {
   L get words => widget.words;
   final _crop = CropController();
-  final _session = <ClothRow>[];
+  /* What went in last, shown above the next photo. */
+  String? _added;
   Uint8List? _picture;
   /* The picture, once it has been read whole: only then is the cropper given it. */
   PickedPhoto? _photo;
@@ -83,9 +85,6 @@ class _AddClothState extends State<AddCloth> {
   List<FoundCloth> _cloths = [];
   /* Counts she set, by cloth, kept while the pieces of that cloth stay as many. */
   final _counts = <Object, (int found, int count)>{};
-  /* Cloths already in the box from this photo (an add that failed part way), and what went in. */
-  final _inBox = <Object>{};
-  int _addedCloths = 0, _addedPieces = 0;
   /* The one piece found, where the crop starts. */
   Rect? _cropStart;
   /* Pieces she added, each its own cloth. */
@@ -109,8 +108,6 @@ class _AddClothState extends State<AddCloth> {
     _pieces = [];
     _undo.clear();
     _counts.clear();
-    _inBox.clear();
-    _addedCloths = _addedPieces = 0;
     _cropStart = null;
     _version++;
     _step = _Step.pick;
@@ -217,12 +214,12 @@ class _AddClothState extends State<AddCloth> {
       reportClothError(e, s, 'while the pieces in a photo were found');
     }
     if (!mounted || !identical(_photo, photo)) return;
-    final route = found == null ? FoundRoute.crop : routeOf(found);
+    final route = found == null ? FoundRoute.crop : routeOf(found, Size(photo.width.toDouble(), photo.height.toDouble()));
     setState(() {
       switch (route) {
         case FoundRoute.crop:
           _step = _Step.crop;
-          final q = found == null || found.squares.isEmpty ? null : found.squares.single;
+          final q = found == null || found.squares.length != 1 ? null : found.squares.single;
           _cropStart = q == null ? null : _boundsOf(q);
         case FoundRoute.tooSmall:
           _step = _Step.tooSmall;
@@ -292,7 +289,7 @@ class _AddClothState extends State<AddCloth> {
     final version = _version;
     final by = <Object, List<Piece>>{};
     for (final p in _pieces) {
-      if (p.removed || _inBox.contains(p.cloth)) continue;
+      if (p.removed) continue;
       (by[p.cloth] ??= []).add(p);
     }
     final groups = by.entries.toList()..sort((a, b) => b.value.length - a.value.length);
@@ -335,34 +332,34 @@ class _AddClothState extends State<AddCloth> {
     }
   }
 
-  /* Every cloth waiting into the box, one by one through the same add as one piece; each that is in is not added
-     again. Then the sheet closes. One that fails keeps the sheet open with the error, the rest still waiting. */
+  /* Every cloth waiting into the box in one write, each prepared as one piece is. Then the sheet is ready for the next
+     photo, saying what went in, or, after a close, closes. One that fails keeps the sheet open with the error, and
+     nothing in: all still waiting. */
   Future<void> _addMany() async {
     if (_busy) return;
     setState(() { _busy = true; _error = ''; });
     try {
       await _matchCloths();
-      while (_cloths.isNotEmpty) {
-        final c = _cloths.first;
-        final out = await preparePiece(c.rgba);
-        await widget.shelf.addCloth(box: _box!, photo: out.jpeg, measured: out.measured, fabric: '', pieces: c.count);
-        _inBox.add(c.key);
-        _addedCloths++;
-        _addedPieces += c.count;
-        if (!mounted) return;
-        setState(() {
-          _cloths.removeAt(0);
-          c.image.dispose();
-        });
-      }
+      final waiting = [..._cloths];
+      // All at once: a browser busy drawing saves each JPEG only once it has waited about a second for a quiet moment
+      // (measured 31 October 2026 at 6 times slower), so one after another that second is waited for each cloth.
+      final prepared = await Future.wait([for (final c in waiting) preparePiece(c.rgba)]);
+      final ready = [
+        for (final (i, out) in prepared.indexed) (photo: out.jpeg, measured: out.measured, pieces: waiting[i].count),
+      ];
+      await widget.shelf.addCloths(box: _box!, cloth: ready);
       if (!mounted) return;
-      widget.onManyAdded?.call(_addedCloths, _addedPieces, _box!);
+      final cloths = ready.length, pieces = ready.fold(0, (n, c) => n + c.pieces), box = _box!;
       setState(() {
+        _added = words.clothManyAddedNext(cloths, pieces, widget.boxName?.call(box) ?? '');
         _picture = null;
         _letGo();
         _ready = false;
       });
-      widget.onClose();
+      if (_closeAfter) {
+        widget.onManyAdded?.call(cloths, pieces, box);
+        widget.onClose();
+      }
     } catch (e, s) {
       reportClothError(e, s, 'while many pieces were added');
       if (mounted) setState(() { _closeAfter = false; _error = clothError(words, e, fileName: _fileName); });
@@ -396,7 +393,7 @@ class _AddClothState extends State<AddCloth> {
       final row = await widget.shelf.addCloth(box: _box!, photo: out.jpeg, measured: out.measured, fabric: '', pieces: _count);
       if (!mounted) return;
       setState(() {
-        _session.add(row);
+        _added = words.clothAddedNext(row.pieces, row.name);
         _count = startCount;
         _picture = null;
         _letGo();
@@ -447,12 +444,12 @@ class _AddClothState extends State<AddCloth> {
   /* What was added last, the photo, How to, the count beside its question, then Done and Add. */
   @override
   Widget build(BuildContext context) {
-    final last = _session.isEmpty ? null : _session.last;
+    final last = _added;
     // The ×, the scrim, back and Escape ask the sheet to close; with a photo waiting they go through Done.
     return PopScope<Object?>(canPop: _picture == null, onPopInvokedWithResult: (didPop, _) { if (!didPop) _done(); },
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, spacing: 16,
             children: _many ? _manySteps(last) : [
-      if (last != null) _added(last),
+      if (last != null) _addedNote(last),
       ..._photoOrCrop(),
       _howToBlock(),
       _countRow(),
@@ -481,13 +478,13 @@ class _AddClothState extends State<AddCloth> {
       ]);
 
   /* Where there is a finder: the step she is on. */
-  List<Widget> _manySteps(ClothRow? last) {
+  List<Widget> _manySteps(String? last) {
     final error = [if (_error.isNotEmpty) cardError(_error)];
     final find = PhoneButton(text: words.clothManyFind, onPressed: null);
     final retake = _quietButton(words.clothRetake, _busy ? null : _reset);
     switch (_step) {
       case _Step.pick when _picture == null:
-        return [if (last != null) _added(last), ..._photoField(), _howToBlock(), ...error, _buttons(find)];
+        return [if (last != null) _addedNote(last), ..._photoField(), _howToBlock(), ...error, _buttons(find)];
       case _Step.pick || _Step.finding:
         // Read, then looked at: the photo, and what is happening.
         return [_photoStage(finding: true), ...error,
@@ -495,7 +492,7 @@ class _AddClothState extends State<AddCloth> {
       case _Step.tooSmall:
         return [_photoStage(), cardError(words.clothManyTooSmall), retake, _buttons(find)];
       case _Step.crop:
-        return [if (last != null) _added(last), ..._photoOrCrop(), _howToBlock(), _countRow(), ...error,
+        return [if (last != null) _addedNote(last), ..._photoOrCrop(), _howToBlock(), _countRow(), ...error,
           _buttons(PhoneButton(text: _submitText, busy: _busy || _reading, onPressed: _submit))];
       case _Step.check:
         final any = _pieces.any((p) => !p.removed);
@@ -544,7 +541,7 @@ class _AddClothState extends State<AddCloth> {
 
   /* At least 48 tall on the note ground, a 3 px ink edge at the left, a 16 px check in ink, and what went in, in the
      body-small role. */
-  Widget _added(ClothRow row) => Semantics(
+  Widget _addedNote(String added) => Semantics(
         key: const ValueKey('cloth-added'),
         liveRegion: true,
         child: Container(
@@ -555,7 +552,7 @@ class _AddClothState extends State<AddCloth> {
           child: Row(children: [
             tablerIcon(const tabler.Check(), size: 16),
             const SizedBox(width: 12),
-            Expanded(child: Text(words.clothAddedNext(row.pieces, row.name), style: pText(PType.bodySmall))),
+            Expanded(child: Text(added, style: pText(PType.bodySmall))),
           ]),
         ),
       );

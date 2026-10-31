@@ -673,6 +673,30 @@ class LEn extends L {
   }
 
   @override
+  String clothManyAddedNext(num cloths, num pieces, String box) {
+    final intl.NumberFormat clothsNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String clothsString = clothsNumberFormat.format(cloths);
+    final intl.NumberFormat piecesNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String piecesString = piecesNumberFormat.format(pieces);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      cloths,
+      locale: localeName,
+      other: '$clothsString cloths',
+      one: '$clothsString cloth',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      pieces,
+      locale: localeName,
+      other: '$piecesString pieces',
+      one: '$piecesString piece',
+    );
+    return '$_temp0, $_temp1, added to $box. Photograph the next one.';
+  }
+
+  @override
   String get boxesAddPieces => 'Add pieces';
 
   @override

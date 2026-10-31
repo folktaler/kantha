@@ -1029,6 +1029,12 @@ abstract class L {
   /// **'{cloths, plural, one{{cloths} cloth} other{{cloths} cloths}}, {pieces, plural, one{{pieces} piece} other{{pieces} pieces}}, added to {box}.'**
   String clothManyAdded(num cloths, num pieces, String box);
 
+  /// No description provided for @clothManyAddedNext.
+  ///
+  /// In en, this message translates to:
+  /// **'{cloths, plural, one{{cloths} cloth} other{{cloths} cloths}}, {pieces, plural, one{{pieces} piece} other{{pieces} pieces}}, added to {box}. Photograph the next one.'**
+  String clothManyAddedNext(num cloths, num pieces, String box);
+
   /// No description provided for @boxesAddPieces.
   ///
   /// In en, this message translates to:

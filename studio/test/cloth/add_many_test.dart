@@ -1,6 +1,7 @@
 /* Add a piece where there is a finder (the web): many pieces in one photo, the check, her cloths, and every close
    adding what is waiting. The finder here is a stand-in that answers at once; the real one runs in a web worker
    (web/finder_worker.dart) and is checked in a browser. */
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,6 +56,28 @@ class FakeFinder implements PieceFinder {
 
 final three = FinderAnswer(squares: [sq(100, 100), sq(250, 100), sq(400, 100), sq(600, 600)], groups: [0, 0, 1, 2], tiny: 0);
 
+/* A cloth printed in squares, as the finder sees it: a cells × cells grid of `side` px squares every `step` px from
+   `from`, turned by `turn` about the photo's centre, less the cells in `skip`; its groups the first `groups` numbers
+   in turn. On the 800 × 800 picture the default grid reaches every edge. */
+FinderAnswer printed({double side = 70, double step = 115, double from = 5, int cells = 7, double turn = 0,
+    Set<(int, int)> skip = const {}, int groups = 1}) {
+  final squares = <Float32List>[];
+  final c = math.cos(turn), s = math.sin(turn);
+  for (var i = 0; i < cells; i++) {
+    for (var j = 0; j < cells; j++) {
+      if (skip.contains((i, j))) continue;
+      final q = sq(from + i * step, from + j * step, side);
+      squares.add(Float32List.fromList([
+        for (var k = 0; k < 8; k += 2) ...[
+          400 + (q[k] - 400) * c - (q[k + 1] - 400) * s,
+          400 + (q[k] - 400) * s + (q[k + 1] - 400) * c,
+        ],
+      ]));
+    }
+  }
+  return FinderAnswer(squares: squares, groups: [for (var i = 0; i < squares.length; i++) i % groups], tiny: 0);
+}
+
 class FailingAdd extends Shelf {
   FailingAdd(super.db, {this.after = 0});
   /* Adds that go through before the rest fail. */
@@ -65,6 +88,13 @@ class FailingAdd extends Shelf {
       required String fabric, required int pieces, String? name}) {
     if (fail && after-- <= 0) return Future.error(const ShelfError('boxFull', {'limit': 200}));
     return super.addCloth(box: box, photo: photo, measured: measured, fabric: fabric, pieces: pieces, name: name);
+  }
+
+  @override
+  Future<List<ClothRow>> addCloths({required int box,
+      required List<({Uint8List photo, Measured measured, int pieces})> cloth}) {
+    if (fail && after-- <= 0) return Future.error(const ShelfError('boxFull', {'limit': 200}));
+    return super.addCloths(box: box, cloth: cloth);
   }
 }
 
@@ -139,7 +169,7 @@ void main() {
   });
 
   testWidgets('pieces found: she removes one, brings it back, adds one, then her cloths go into the box with their '
-      'counts and the sheet closes with a toast', (tester) async {
+      'counts, and the sheet stays open for the next photo, saying what went in', (tester) async {
     final c = await openAdd(tester);
     await pick(tester);
     expect(find.text('Are these your pieces?'), findsOneWidget, reason: 'the title follows the step');
@@ -176,10 +206,27 @@ void main() {
     expect(inSheet(find.text('Add 6 pieces to box')), findsOneWidget);
 
     await tapShown(tester, inSheet(find.text('Add 6 pieces to box')));
-    await letWork(tester, done: () => inBox2(c).length == 4 && sheet.evaluate().isEmpty);
-    expect(sheet, findsNothing, reason: 'the sheet closes once they are in');
+    await letWork(tester, done: () => inBox2(c).length == 4);
     expect([...inBox2(c)]..sort(), [1, 1, 1, 3]);
-    expect(find.text('4 cloths, 6 pieces, added to Box 2.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(sheet, findsOneWidget, reason: 'the sheet stays open, as for one piece');
+    expect(inSheet(find.text('4 cloths, 6 pieces, added to Box 2. Photograph the next one.')), findsOneWidget);
+    expect(inSheet(find.text('Photo of the pieces')), findsOneWidget, reason: 'ready for the next photo');
+    expect(find.text('Add pieces'), findsWidgets);
+    expect(find.text('4 cloths, 6 pieces, added to Box 2.'), findsNothing, reason: 'no toast while the sheet is open');
+
+    // The next photo goes in too, and Done with nothing waiting closes the sheet.
+    finder.answer = three;
+    await pick(tester);
+    await next(tester);
+    await tapShown(tester, inSheet(find.text('Add 4 pieces to box')));
+    await letWork(tester, done: () => inBox2(c).length == 7);
+    await tester.pumpAndSettle();
+    expect(inSheet(find.text('3 cloths, 4 pieces, added to Box 2. Photograph the next one.')), findsOneWidget);
+    await tapShown(tester, inSheet(find.text('Done')));
+    await tester.pumpAndSettle();
+    expect(sheet, findsNothing);
+    expect(inBox2(c), hasLength(7));
   });
 
   testWidgets('on a phone both steps fit the column: the tools wrap under the count, a counter under its cloth',
@@ -307,6 +354,36 @@ void main() {
     expect(inSheet(find.byKey(const ValueKey('cloth-added'))), findsOneWidget, reason: 'one piece goes in as today');
   });
 
+  testWidgets('one printed cloth, its squares a grid to the edges of the photo: the crop, not the pieces', (tester) async {
+    finder.answer = printed();
+    final c = await openAdd(tester);
+    await pick(tester);
+    expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pieces-photo')), findsNothing);
+    await tapShown(tester, inSheet(find.text('Add to box')));
+    await letWork(tester, done: () => inBox2(c).isNotEmpty);
+    expect(inBox2(c).single, 1, reason: 'one cloth, as today');
+  });
+
+  group('a print or pieces', () {
+    const photo = Size(800, 800);
+    test('a grid of one cloth to every edge, at most 1 cell in 10 empty, is a print', () {
+      expect(routeOf(printed(), photo), FoundRoute.crop);
+      expect(routeOf(printed(skip: {(3, 3)}), photo), FoundRoute.crop, reason: '1 of 49 empty');
+      final turned = printed(turn: 0.3);
+      expect(isPrint(turned, photo), isTrue, reason: 'the photo taken at a slant');
+    });
+    test('pieces stay pieces', () {
+      expect(routeOf(printed(groups: 2), photo), FoundRoute.check, reason: 'two cloths');
+      expect(routeOf(printed(side: 60, step: 80, from: 200, cells: 3), photo), FoundRoute.check,
+          reason: 'one cloth in a neat grid on a table, short of the edges');
+      expect(routeOf(printed(skip: {for (var i = 0; i < 6; i++) (i, 0)}), photo), FoundRoute.check, reason: 'a row gone');
+      expect(routeOf(FinderAnswer(squares: [sq(20, 20), sq(330, 60), sq(680, 200), sq(100, 690), sq(500, 680)],
+          groups: [0, 0, 0, 0, 0], tiny: 0), photo), FoundRoute.check, reason: 'one cloth lying apart');
+      expect(routeOf(FinderAnswer(squares: [sq(0, 0, 400), sq(400, 0, 400), sq(0, 400, 400)], groups: [0, 0, 0], tiny: 0),
+          photo), FoundRoute.check, reason: 'fewer than 4');
+    });
+  });
   for (final fails in [false, true]) {
     testWidgets(fails ? 'a finder that did not load: the crop, as before, and the failure reported'
         : 'no piece found: the crop, as before', (tester) async {
@@ -320,8 +397,8 @@ void main() {
     });
   }
 
-  testWidgets('an add that fails part way keeps the sheet open with the error; again adds only the rest', (tester) async {
-    final shelf = FailingAdd(memoryDb(), after: 1);
+  testWidgets('an add that fails keeps the sheet open with the error and nothing in; again adds them all', (tester) async {
+    final shelf = FailingAdd(memoryDb());
     final c = await openAdd(tester, on: shelf);
     await pick(tester);
     await next(tester);
@@ -329,13 +406,28 @@ void main() {
     const full = 'This box holds 200 cloths already. Take some out before adding more.';
     await letWork(tester, done: () => find.text(full).evaluate().isNotEmpty);
     expect(sheet, findsOneWidget);
-    expect(inBox2(c), hasLength(1), reason: 'the first went in');
-    expect(inSheet(find.text('Add 2 pieces to box')), findsOneWidget, reason: 'the rest still wait');
+    expect(inBox2(c), isEmpty, reason: 'all go in, or none');
+    expect(inSheet(find.text('Add 4 pieces to box')), findsOneWidget, reason: 'all still wait');
 
     shelf.fail = false;
-    await tapShown(tester, inSheet(find.text('Add 2 pieces to box')));
-    await letWork(tester, done: () => inBox2(c).length == 3 && sheet.evaluate().isEmpty);
+    await tapShown(tester, inSheet(find.text('Add 4 pieces to box')));
+    await letWork(tester, done: () => inBox2(c).length == 3);
     expect([...inBox2(c)]..sort(), [1, 1, 2]);
-    expect(find.text('3 cloths, 4 pieces, added to Box 2.'), findsOneWidget, reason: 'all that went in from this photo');
+    await tester.pumpAndSettle();
+    expect(inSheet(find.text('3 cloths, 4 pieces, added to Box 2. Photograph the next one.')), findsOneWidget);
+  });
+
+  test('many cloths go in as addCloth stores each, in one write', () async {
+    final measured = Measured(lab: (l: 50, a: 10, b: -5), name: 'brown', spread: 3, width: 40, height: 40);
+    final photo = Uint8List.fromList([1, 2, 3]);
+    final one = Shelf(memoryDb()), many = Shelf(memoryDb());
+    final b1 = (await one.makeNumberedBox()).id, b2 = (await many.makeNumberedBox()).id;
+    final a = [
+      for (final n in [2, 1, 3]) await one.addCloth(box: b1, photo: photo, measured: measured, fabric: '', pieces: n),
+    ];
+    final b = await many.addCloths(box: b2, cloth: [for (final n in [2, 1, 3]) (photo: photo, measured: measured, pieces: n)]);
+    String row(ClothRow r) => [r.id, r.box, r.name, r.fabric, r.pieces, r.l, r.a, r.b, r.spread, r.colour, r.photo,
+        r.photoNumber].join('|');
+    expect([for (final r in b) row(r)], [for (final r in a) row(r)]);
   });
 }

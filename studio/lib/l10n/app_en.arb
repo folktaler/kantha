@@ -395,6 +395,22 @@
       }
     }
   },
+  "clothManyAddedNext": "{cloths, plural, one{{cloths} cloth} other{{cloths} cloths}}, {pieces, plural, one{{pieces} piece} other{{pieces} pieces}}, added to {box}. Photograph the next one.",
+  "@clothManyAddedNext": {
+    "placeholders": {
+      "cloths": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "pieces": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "box": {
+        "type": "String"
+      }
+    }
+  },
   "boxesAddPieces": "Add pieces",
   "boxesUnread": "Your cloth could not be read just now. Nothing is lost — try again in a few minutes.",
   "boxesSample": "Sample",

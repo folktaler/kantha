@@ -196,7 +196,8 @@
       "found": "{n, plural, one {Found once} other {Found # times}}",
       "back": "Back to the pieces",
       "add": "{n, plural, one {Add # piece to box} other {Add # pieces to box}}",
-      "added": "{cloths, plural, one {{cloths} cloth} other {{cloths} cloths}}, {pieces, plural, one {{pieces} piece} other {{pieces} pieces}}, added to {box}."
+      "added": "{cloths, plural, one {{cloths} cloth} other {{cloths} cloths}}, {pieces, plural, one {{pieces} piece} other {{pieces} pieces}}, added to {box}.",
+      "addedNext": "{cloths, plural, one {{cloths} cloth} other {{cloths} cloths}}, {pieces, plural, one {{pieces} piece} other {{pieces} pieces}}, added to {box}. Photograph the next one."
     }
   },
   "boxes": {
