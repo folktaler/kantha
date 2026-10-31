@@ -1,7 +1,7 @@
 #!/bin/sh
 # The web studio, built to be served as files by a web server at /studio. Run in studio/.
 # Nothing it loads at run time comes from another site: CanvasKit is bundled
-# (--no-web-resources-cdn), the fonts are bundled, sqlite3.wasm and the two workers ship
+# (--no-web-resources-cdn), the fonts are bundled, sqlite3.wasm, the workers and OpenCV.js ship
 # with the app. Building needs the network: pub get, and prepare_web.sh downloads
 # sqlite3.wasm and drift_worker.js from the drift release that pubspec.lock names.
 #
@@ -16,7 +16,7 @@
 # a tracked file (pubspec.lock), so the build that follows is the commit it is named for.
 set -eu
 
-# 1. What the build needs: the packages, sqlite3.wasm, drift_worker.js and the solver's worker in web/.
+# 1. What the build needs: the packages, sqlite3.wasm, drift_worker.js and the solver's and finder's workers in web/.
 flutter pub get
 ./tool/prepare_web.sh
 
@@ -42,10 +42,11 @@ echo "build_web.sh: release $release"
 # From an empty folder: a flutter drive leaves its own build here, and an earlier build's r/ or .br
 # copies would otherwise ship beside this one.
 rm -rf build/web
-# flutter build web copies all of web/ (the three files prepare_web.sh made among them).
+# flutter build web copies all of web/ (the four files prepare_web.sh made among them).
 flutter build web --release --base-href /studio/ --no-web-resources-cdn --dart-define=KANTHA_RELEASE="$release"
-# The worker's Dart source and the compiler's notes on it are not part of the site.
+# The workers' Dart source and the compiler's notes on them are not part of the site.
 rm -f build/web/solver_worker.dart build/web/solver_worker.js.deps build/web/solver_worker.js.map
+rm -f build/web/finder_worker.dart build/web/finder_worker.js.deps build/web/finder_worker.js.map
 
 # 4. Every file but index.html moves into r/<release>/. drift_worker.js is copied back beside index.html:
 # drift names its shared worker by the worker's address, so every release must use the same one.

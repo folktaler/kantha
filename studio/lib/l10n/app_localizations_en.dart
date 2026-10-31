@@ -282,6 +282,43 @@ class LEn extends L {
   String get canvasNothingToSave => 'Add 35 pieces to your box before saving.';
 
   @override
+  String canvasNothingToSaveSize(String n) {
+    return 'Add $n pieces to your box before saving.';
+  }
+
+  @override
+  String canvasCantSolveSize(String n) {
+    return 'This box holds fewer than $n pieces — open another box.';
+  }
+
+  @override
+  String get canvasLevelEyebrow => 'I am a…';
+
+  @override
+  String get canvasLevelBeginner => 'Beginner (5 × 7)';
+
+  @override
+  String get canvasLevelPatchworker => 'Patchworker (any size)';
+
+  @override
+  String get canvasRows => 'Rows';
+
+  @override
+  String get canvasColumns => 'Columns';
+
+  @override
+  String get canvasRowsFewer => 'Fewer rows';
+
+  @override
+  String get canvasRowsMore => 'More rows';
+
+  @override
+  String get canvasColumnsFewer => 'Fewer columns';
+
+  @override
+  String get canvasColumnsMore => 'More columns';
+
+  @override
   String canvasAddMore(num n) {
     final intl.NumberFormat nNumberFormat = intl.NumberFormat.decimalPattern(
       localeName,
@@ -521,6 +558,182 @@ class LEn extends L {
   @override
   String clothFixAllUsed(String n) {
     return 'All $n pieces are currently in use. Add more to give the pattern solver more options.';
+  }
+
+  @override
+  String get clothManyTitle => 'Add pieces';
+
+  @override
+  String get clothManyPhoto => 'Photo of the pieces';
+
+  @override
+  String get clothManyPhotoHint =>
+      'One piece or many: lay them out and take one photo.';
+
+  @override
+  String get clothManyHowTo3 =>
+      'Lay them flat, apart or sewn together, and fill the photo with them.';
+
+  @override
+  String get clothManyFind => 'Find the pieces';
+
+  @override
+  String get clothManyFinding => 'Finding the pieces…';
+
+  @override
+  String get clothManyFindingShort => 'Finding…';
+
+  @override
+  String get clothManyTooSmall =>
+      'The pieces are too small in this photo to find. Come closer, so the pieces fill the photo, and take it again.';
+
+  @override
+  String get clothManyCheckTitle => 'Are these your pieces?';
+
+  @override
+  String clothManyCount(num n) {
+    final intl.NumberFormat nNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nString = nNumberFormat.format(n);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nString pieces',
+      one: '$nString piece',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String clothManyCountRemoved(num n, String gone) {
+    final intl.NumberFormat nNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nString = nNumberFormat.format(n);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nString pieces',
+      one: '$nString piece',
+    );
+    return '$_temp0, $gone removed';
+  }
+
+  @override
+  String get clothManyUndo => 'Undo';
+
+  @override
+  String get clothManyZoomOut => 'Zoom out';
+
+  @override
+  String get clothManyZoomIn => 'Zoom in';
+
+  @override
+  String clothManyZoom(String n) {
+    return '$n %';
+  }
+
+  @override
+  String get clothManyCheckHint =>
+      'Tap a box to remove it. Tap a piece we missed to add it. Zoom in to move a box\'s corners.';
+
+  @override
+  String get clothManyNext => 'Next';
+
+  @override
+  String get clothManyOnePiece => 'It\'s one piece';
+
+  @override
+  String get clothManyClothsTitle => 'Your cloths';
+
+  @override
+  String get clothManyClothsHint =>
+      'Pieces of the same cloth are counted together. Change a count if it is wrong.';
+
+  @override
+  String clothManyFound(num n) {
+    final intl.NumberFormat nNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nString = nNumberFormat.format(n);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Found $nString times',
+      one: 'Found once',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get clothManyBack => 'Back to the pieces';
+
+  @override
+  String clothManyAdd(num n) {
+    final intl.NumberFormat nNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nString = nNumberFormat.format(n);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Add $nString pieces to box',
+      one: 'Add $nString piece to box',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String clothManyAdded(num cloths, num pieces, String box) {
+    final intl.NumberFormat clothsNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String clothsString = clothsNumberFormat.format(cloths);
+    final intl.NumberFormat piecesNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String piecesString = piecesNumberFormat.format(pieces);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      cloths,
+      locale: localeName,
+      other: '$clothsString cloths',
+      one: '$clothsString cloth',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      pieces,
+      locale: localeName,
+      other: '$piecesString pieces',
+      one: '$piecesString piece',
+    );
+    return '$_temp0, $_temp1, added to $box.';
+  }
+
+  @override
+  String clothManyAddedNext(num cloths, num pieces, String box) {
+    final intl.NumberFormat clothsNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String clothsString = clothsNumberFormat.format(cloths);
+    final intl.NumberFormat piecesNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String piecesString = piecesNumberFormat.format(pieces);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      cloths,
+      locale: localeName,
+      other: '$clothsString cloths',
+      one: '$clothsString cloth',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      pieces,
+      locale: localeName,
+      other: '$piecesString pieces',
+      one: '$piecesString piece',
+    );
+    return '$_temp0, $_temp1, added to $box. Photograph the next one.';
   }
 
   @override

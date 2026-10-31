@@ -132,3 +132,13 @@ Future<({Uint8List jpeg, Measured measured})> preparePhoto(Uint8List cropped) =>
   upright.exif = img.ExifData();
   return (jpeg: img.encodeJpg(upright, quality: storedJpegQuality), measured: measured);
 }
+
+/* A piece the finder cut (side × side RGBA pixels), measured and stored as preparePhoto does a cropped square. */
+Future<({Uint8List jpeg, Measured measured})> preparePiece(Uint8List rgba) => compute(_preparePiece, rgba);
+
+({Uint8List jpeg, Measured measured}) _preparePiece(Uint8List rgba) {
+  final side = math.sqrt(rgba.length / 4).round();
+  if (side == 0 || side * side * 4 != rgba.length) throw const MeasureError('notAnImage');
+  return _prepare(img.encodeBmp(img.Image.fromBytes(width: side, height: side, bytes: rgba.buffer,
+      bytesOffset: rgba.offsetInBytes, numChannels: 4)));
+}

@@ -28,8 +28,9 @@ import 'package:kantha_studio/downloads/delivery.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 import 'wipe_io.dart' if (dart.library.js_interop) 'wipe_web.dart' as wipe;
 
-/* A 1200 × 900 photo of a printed check, so the square she crops is a part of it. Each picture
-   comes in the next of five colourways, so a box of five is five colours. */
+/* A 1200 × 900 photo of one piece of cloth, 400 px square, on a table: the finder finds the one piece, so the crop
+   starts on it, as it does for one piece. Each picture comes in the next of five colourways, so a box of five is five
+   colours. (A photo of many pieces is the widget tests' and the browser check's: test/cloth/add_many_test.dart.) */
 class FixturePhotos implements PhotoSource {
   static const _ways = [
     ((178, 34, 52), (240, 228, 200)), // madder on cream
@@ -45,13 +46,7 @@ class FixturePhotos implements PhotoSource {
     final ((r1, g1, b1), (r2, g2, b2)) = _ways[picked++ % _ways.length];
     final a = img.ColorRgb8(r1, g1, b1), b = img.ColorRgb8(r2, g2, b2);
     final photo = img.Image(width: 1200, height: 900)..clear(b);
-    // Bands 60 px wide every 150 px, both ways: where they cross, the check is solid.
-    for (var x = 0; x < 1200; x += 150) {
-      img.fillRect(photo, x1: x, y1: 0, x2: x + 59, y2: 899, color: a);
-    }
-    for (var y = 0; y < 900; y += 150) {
-      img.fillRect(photo, x1: 0, y1: y, x2: 1199, y2: y + 59, color: a);
-    }
+    img.fillRect(photo, x1: 400, y1: 250, x2: 799, y2: 649, color: a);
     return img.encodePng(photo);
   }
 }
@@ -322,7 +317,7 @@ Future<void> photographFive(WidgetTester t, {required int box}) async {
   // The Sample box's cloths are already there: only what this sheet adds is new.
   final seen = {for (final c in await db.select(db.cloths).get()) c.id}, colours = <String>[];
   for (var n = 0; n < 5; n++) {
-    await tapIt(t, inSheet(find.text('Photo of the piece'))); await settle(t);
+    await tapIt(t, inSheet(find.text('Photo of the pieces'))); await settle(t);
     // The cropper has the picture once the whole of it has been read.
     await waitFor(t, find.byKey(const ValueKey('crop-square')));
     await waitFor(t, inSheet(find.text('Add to box')));

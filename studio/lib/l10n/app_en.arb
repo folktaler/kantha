@@ -169,6 +169,31 @@
   "canvasPrivacy": "Privacy policy",
   "canvasSavedFirst": "Saved on this device. Back up from the menu to keep a copy.",
   "canvasNothingToSave": "Add 35 pieces to your box before saving.",
+  "canvasNothingToSaveSize": "Add {n} pieces to your box before saving.",
+  "@canvasNothingToSaveSize": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasCantSolveSize": "This box holds fewer than {n} pieces — open another box.",
+  "@canvasCantSolveSize": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasLevelEyebrow": "I am a…",
+  "canvasLevelBeginner": "Beginner (5 × 7)",
+  "canvasLevelPatchworker": "Patchworker (any size)",
+  "canvasRows": "Rows",
+  "canvasColumns": "Columns",
+  "canvasRowsFewer": "Fewer rows",
+  "canvasRowsMore": "More rows",
+  "canvasColumnsFewer": "Fewer columns",
+  "canvasColumnsMore": "More columns",
   "canvasAddMore": "{n, plural, one{Add {n} more piece to complete the grid.} other{Add {n} more pieces to complete the grid.}}",
   "@canvasAddMore": {
     "placeholders": {
@@ -311,6 +336,103 @@
   "@clothFixAllUsed": {
     "placeholders": {
       "n": {
+        "type": "String"
+      }
+    }
+  },
+  "clothManyTitle": "Add pieces",
+  "clothManyPhoto": "Photo of the pieces",
+  "clothManyPhotoHint": "One piece or many: lay them out and take one photo.",
+  "clothManyHowTo3": "Lay them flat, apart or sewn together, and fill the photo with them.",
+  "clothManyFind": "Find the pieces",
+  "clothManyFinding": "Finding the pieces…",
+  "clothManyFindingShort": "Finding…",
+  "clothManyTooSmall": "The pieces are too small in this photo to find. Come closer, so the pieces fill the photo, and take it again.",
+  "clothManyCheckTitle": "Are these your pieces?",
+  "clothManyCount": "{n, plural, one{{n} piece} other{{n} pieces}}",
+  "@clothManyCount": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "clothManyCountRemoved": "{n, plural, one{{n} piece} other{{n} pieces}}, {gone} removed",
+  "@clothManyCountRemoved": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "gone": {
+        "type": "String"
+      }
+    }
+  },
+  "clothManyUndo": "Undo",
+  "clothManyZoomOut": "Zoom out",
+  "clothManyZoomIn": "Zoom in",
+  "clothManyZoom": "{n} %",
+  "@clothManyZoom": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "clothManyCheckHint": "Tap a box to remove it. Tap a piece we missed to add it. Zoom in to move a box's corners.",
+  "clothManyNext": "Next",
+  "clothManyOnePiece": "It's one piece",
+  "clothManyClothsTitle": "Your cloths",
+  "clothManyClothsHint": "Pieces of the same cloth are counted together. Change a count if it is wrong.",
+  "clothManyFound": "{n, plural, one{Found once} other{Found {n} times}}",
+  "@clothManyFound": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "clothManyBack": "Back to the pieces",
+  "clothManyAdd": "{n, plural, one{Add {n} piece to box} other{Add {n} pieces to box}}",
+  "@clothManyAdd": {
+    "placeholders": {
+      "n": {
+        "type": "num",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "clothManyAdded": "{cloths, plural, one{{cloths} cloth} other{{cloths} cloths}}, {pieces, plural, one{{pieces} piece} other{{pieces} pieces}}, added to {box}.",
+  "@clothManyAdded": {
+    "placeholders": {
+      "cloths": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "pieces": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "box": {
+        "type": "String"
+      }
+    }
+  },
+  "clothManyAddedNext": "{cloths, plural, one{{cloths} cloth} other{{cloths} cloths}}, {pieces, plural, one{{pieces} piece} other{{pieces} pieces}}, added to {box}. Photograph the next one.",
+  "@clothManyAddedNext": {
+    "placeholders": {
+      "cloths": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "pieces": {
+        "type": "num",
+        "format": "decimalPattern"
+      },
+      "box": {
         "type": "String"
       }
     }

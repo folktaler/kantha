@@ -11,4 +11,10 @@ abstract interface class SolverRunner {
   void dispose();
 }
 
+/* A runner that also solves boards of other sizes (Level 2). Its own interface, so a runner made for
+   Level 1 alone still is one. */
+abstract interface class SizedSolverRunner implements SolverRunner {
+  Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed);
+}
+
 SolverRunner createSolverRunner() => impl.create();

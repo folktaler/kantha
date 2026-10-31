@@ -51,6 +51,10 @@ class Designs extends Table {
   TextColumn get firstSolve => text().nullable()();
   TextColumn get grid => text()();
   DateTimeColumn get saved => dateTime()();
+  /* The board's columns; its rows are the grid's squares over them. 5 is Level 1's A4 board, every design saved before
+     Level 2 (added at schema 5, with that default: no row is written again). Nullable, so a row read without it (a
+     tab whose query was made before the column was added) reads as 5. */
+  IntColumn get cols => integer().nullable().withDefault(const Constant(5))();
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -136,7 +140,7 @@ class KanthaDatabase extends _$KanthaDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -165,6 +169,7 @@ class KanthaDatabase extends _$KanthaDatabase {
           if (from < 3) await _addMissing(m, [(cloths, cloths.photoNumber)]);
           // A new table (CREATE TABLE IF NOT EXISTS): nothing already stored is touched.
           if (from < 4) await m.createTable(pictures);
+          if (from < 5) await _addMissing(m, [(designs, designs.cols)]);
         },
         beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
       );
@@ -178,7 +183,7 @@ class KanthaDatabase extends _$KanthaDatabase {
      runs, finds the column there and skips it. Not boxes.number or boxes.name: the schema-2 step also numbers her boxes
      and sets the boxNumber counter, and a box dealt a number before that would share it with one numbered then. */
   Future<void> addMissingColumns() async {
-    final columns = <_Column>[(cloths, cloths.photoNumber)];
+    final columns = <_Column>[(cloths, cloths.photoNumber), (designs, designs.cols)];
     final noPictures = (await _missing([(pictures, pictures.id)])).isNotEmpty;
     if ((await _missing(columns)).isEmpty && !noPictures) return;
     await transaction(() async {

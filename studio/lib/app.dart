@@ -141,6 +141,8 @@ class _KanthaAppState extends State<KanthaApp> with WidgetsBindingObserver {
     } catch (e, st) {
       reportError(e, st, 'while the Sample box was given its real cloth');
     }
+    // Beginner or Patchworker, and her board's size, before the first solve (it never throws).
+    await c.loadBoard();
     if (!mounted) return; // dispose ran during the await: subscribing now would leak
     _feed = shelfFeed(widget.shelf).listen((s) {
       c.restock(s);
@@ -221,7 +223,7 @@ class _KanthaAppState extends State<KanthaApp> with WidgetsBindingObserver {
   }
 
   /* Add a piece or Fix this cloth. */
-  void _openCloth(ClothOpen open) => _over((context) => showClothSheet(context, open: open, c: c, photos: _photos));
+  void _openCloth(ClothOpen open) => _over((context) => showClothSheet(context, open: open, c: c, photos: _photos, toaster: _toaster));
 
   /* Your boxes. */
   void _openBoxes() => _over((context) => showBoxesSheet(context, c: c, toaster: _toaster));

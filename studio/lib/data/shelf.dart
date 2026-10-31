@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:drift/drift.dart';
 import '../measure/measure.dart';
-import '../solver/geometry.dart' show cells;
+import '../solver/geometry.dart' show boardSizeAllowed;
 import 'box_view.dart' show sampleBoxName;
 import 'database.dart';
 
@@ -26,9 +26,11 @@ class GridCell {
 
 class DesignInput {
   const DesignInput({required this.name, required this.layout, required this.mount, required this.box, required this.seed,
-      required this.started, required this.firstSolve, required this.grid});
+      required this.started, required this.firstSolve, required this.grid, this.cols = 5});
   final String name, layout, mount;
   final int? box, seed;
+  /* The board's columns: 5 on Level 1's A4 board. */
+  final int cols;
   final String? started, firstSolve;
   final List<GridCell> grid;
 }
@@ -245,6 +247,17 @@ class Shelf {
         _insertCloth(box: box, photo: photo, measured: measured, fabric: fabric, pieces: pieces, name: name));
   }
 
+  /* Many cloths into one box in one write, each stored as addCloth stores it: all go in, or, on any refusal (a box
+     that fills part way), none do. Every count is checked first. */
+  Future<List<ClothRow>> addCloths({required int box,
+      required List<({Uint8List photo, Measured measured, int pieces})> cloth}) async {
+    for (final c in cloth) { _check(c.pieces); }
+    return _write(() async => [
+          for (final c in cloth)
+            await _insertCloth(box: box, photo: c.photo, measured: c.measured, fabric: '', pieces: c.pieces),
+        ]);
+  }
+
   /* A name made from its colour ("C-3 Brown") follows the new measurement; a name it was given ("Madder", a Sample
      cloth's) is kept. */
   Future<ClothRow> recrop(String id, Uint8List photo, Measured measured) => _write(() async {
@@ -277,7 +290,9 @@ class Shelf {
       });
 
   void _checkDesign(DesignInput d) {
-    if (d.grid.length != cells || d.grid.any((c) => !_idPattern.hasMatch(c.id) || c.rot < 0 || c.rot > 3)) {
+    final rows = d.cols > 0 && d.grid.length % d.cols == 0 ? d.grid.length ~/ d.cols : 0;
+    if (!boardSizeAllowed((rows: rows, cols: d.cols)) ||
+        d.grid.any((c) => !_idPattern.hasMatch(c.id) || c.rot < 0 || c.rot > 3)) {
       throw const ShelfError('badDesign');
     }
   }
@@ -285,7 +300,7 @@ class Shelf {
   DesignsCompanion _row(String id, DesignInput d) => DesignsCompanion.insert(
         id: id, name: d.name, layout: d.layout, mount: d.mount, box: Value(d.box), seed: Value(d.seed),
         started: Value(d.started), firstSolve: Value(d.firstSolve),
-        grid: jsonEncode([for (final c in d.grid) c.toJson()]), saved: _stamp(),
+        grid: jsonEncode([for (final c in d.grid) c.toJson()]), saved: _stamp(), cols: Value(d.cols),
       );
 
   /* Saving again changes the design she saved; if she has deleted it, this is saved as a new one. */

@@ -154,7 +154,7 @@ void main() {
     final zip = ZipDecoder().decodeBytes(await exportBackup(a.db, side));
     expect(zip.files.map((f) => f.name).toSet(), {'manifest.json', 'kantha.sqlite'});
     final manifest = jsonDecode(utf8.decode(zip.findFile('manifest.json')!.readBytes()!));
-    expect((manifest['app'], manifest['kind'], manifest['format'], manifest['schema']), ('kantha', 'backup', 1, 4));
+    expect((manifest['app'], manifest['kind'], manifest['format'], manifest['schema']), ('kantha', 'backup', 1, 5));
   });
 
   test('importing replaces, and leaves what is not in the file gone', () async {
@@ -233,7 +233,7 @@ void main() {
   });
 
   /* kantha-backup-v2.kantha was made by the studio at cbe4a13 (schema 2): one box, C-1, and C-2 re-cropped once. */
-  test("a schema-2 database on this device comes up to schema 4 without its rows written again, and every cloth's "
+  test("a schema-2 database on this device comes up to schema 5 without its rows written again, and every cloth's "
       'photo still shows', () async {
     final zip = ZipDecoder().decodeBytes(File('test/fixtures/backup/kantha-backup-v2.kantha').readAsBytesSync());
     final dir = Directory.systemTemp.createTempSync('kantha-upgrade-3');
@@ -256,7 +256,7 @@ void main() {
     }
     await shelf.db.close();
     final after = sqlite3.open(file.path);
-    expect(after.select('PRAGMA user_version').single.values.single, 4);
+    expect(after.select('PRAGMA user_version').single.values.single, 5);
     expect(after.select('PRAGMA page_count').single.values.single, (pages as int) + 1,
         reason: 'one column added and one empty table made (its one page), no row written again');
     after.close();
@@ -304,7 +304,7 @@ void main() {
     final next = KanthaDatabase(NativeDatabase(file));
     addTearDown(next.close);
     expect((await clothRows(Shelf(next))).map((r) => r.photoNumber), [0, 0], reason: 'the upgrade skips the column now there');
-    expect((await next.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+    expect((await next.customSelect('PRAGMA user_version').getSingle()).data.values.single, 5);
   });
 
   test('a schema-1 upgrade cut off after boxes.number was added finishes on the next open', () async {
@@ -318,7 +318,7 @@ void main() {
     final db = KanthaDatabase(NativeDatabase(file));
     addTearDown(db.close);
     expect({for (final r in await db.select(db.boxes).get()) r.id: (r.number, r.name)}, {1: (1, null), 2: (2, null)});
-    expect((await db.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+    expect((await db.customSelect('PRAGMA user_version').getSingle()).data.values.single, 5);
     expect(await (db.select(db.counters)..where((c) => c.name.equals('boxNumber'))).map((c) => c.next).getSingle(), 3);
   });
 
@@ -346,7 +346,7 @@ void main() {
     addTearDown(next.close);
     final numbers = [for (final r in await (next.select(next.boxes)..orderBy([(b) => OrderingTerm.asc(b.id)])).get()) r.number];
     expect(numbers, [1, 2, 3]);
-    expect((await next.customSelect('PRAGMA user_version').getSingle()).data.values.single, 4);
+    expect((await next.customSelect('PRAGMA user_version').getSingle()).data.values.single, 5);
     final made = await Shelf(next).makeBox();
     expect((await (next.select(next.boxes)..where((b) => b.id.equals(made))).getSingle()).number, 4,
         reason: 'the next box is dealt a number no box has');
@@ -364,7 +364,7 @@ void main() {
 
   /* kantha-backup-v3.kantha was made by the studio at 9f04768 (schema 3), the last before pictures: Box 1 with C-1
      (35 pieces) and C-2, and P-1, "Zinnia", made from C-1. */
-  test('a schema-3 database on this device comes up to schema 4 without its rows written again: one empty table more, '
+  test('a schema-3 database on this device comes up to schema 5 without its rows written again: one empty table more, '
       'every cloth and design as it was, and no picture made', () async {
     final zip = ZipDecoder().decodeBytes(File('test/fixtures/backup/kantha-backup-v3.kantha').readAsBytesSync());
     final dir = Directory.systemTemp.createTempSync('kantha-upgrade-4');
@@ -384,10 +384,11 @@ void main() {
     await shelf.db.close();
     final after = sqlite3.open(file.path);
     addTearDown(after.close);
-    expect(after.select('PRAGMA user_version').single.values.single, 4);
+    expect(after.select('PRAGMA user_version').single.values.single, 5);
     expect(after.select('PRAGMA page_count').single.values.single, pages + 1, reason: 'the pictures table, empty');
     expect(after.select('SELECT * FROM cloths ORDER BY id').map((r) => r.values).toList(), cloth);
-    expect(after.select('SELECT * FROM designs ORDER BY id').map((r) => r.values).toList(), designs);
+    // Schema 5's cols column, its default read for every row and none written again.
+    expect(after.select('SELECT * FROM designs ORDER BY id').map((r) => r.values).toList(), [for (final d in designs) [...d, 5]]);
   });
 
   test('a schema-3 database already open in an older tab: the startup check makes the pictures table, once, and '
@@ -485,7 +486,7 @@ void main() {
     addTearDown(() { if (other.existsSync()) other.deleteSync(); });
     sqlite3.open(other.path)..execute('CREATE TABLE notes (text TEXT)')..close();
     await refused(zipOf({'manifest.json': utf8.encode(jsonEncode(manifest)), 'kantha.sqlite': other.readAsBytesSync()}), 'notBackup');
-    await refused(withVersion(5), 'tooNew');
+    await refused(withVersion(6), 'tooNew');
     await refused(zipOf({'manifest.json': utf8.encode('{"app":"kantha","kind":"backup","format":"1","schema":1}'), 'kantha.sqlite': db}),
         'notBackup');
   });

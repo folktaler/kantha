@@ -125,7 +125,8 @@ final _nothing = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC
 /* One saved design, as My designs lists it and the board opens it. */
 class DesignView {
   const DesignView({required this.id, required this.name, required this.layout, required this.mount, required this.box,
-      required this.seed, required this.started, required this.firstSolve, required this.grid, required this.rot, required this.saved});
+      required this.seed, required this.started, required this.firstSolve, required this.grid, required this.rot, required this.saved,
+      this.cols = 5});
   final String id, name;
   final LayoutKey layout;
   final Mount mount;
@@ -134,17 +135,22 @@ class DesignView {
   final List<String> grid;
   final List<int> rot;
   final DateTime saved;
+  /* The board's columns (5 on Level 1); its rows are the squares over them. */
+  final int cols;
+  BoardSize get size => (rows: cols > 0 ? grid.length ~/ cols : 0, cols: cols);
+  /* Level 1's A4 board: the print sheet, the frame and the tote are for it alone. */
+  bool get onA4 => size == level1;
   DesignView copyWithGrid(List<String> g) => DesignView(id: id, name: name, layout: layout, mount: mount, box: box, seed: seed,
-      started: started, firstSolve: firstSolve, grid: g, rot: rot, saved: saved);
+      started: started, firstSolve: firstSolve, grid: g, rot: rot, saved: saved, cols: cols);
   /* The same design: what a file is made from, and when it was saved. */
   bool sameAs(DesignView o) => o.id == id && o.name == name && o.layout == layout && o.mount == mount && o.box == box &&
-      o.saved == saved && listEquals(o.grid, grid) && listEquals(o.rot, rot);
+      o.saved == saved && o.cols == cols && listEquals(o.grid, grid) && listEquals(o.rot, rot);
   /* A test's convenience: the same design with other turns. */
   DesignView copyWithRot(List<int> r) => DesignView(id: id, name: name, layout: layout, mount: mount, box: box, seed: seed,
-      started: started, firstSolve: firstSolve, grid: grid, rot: r, saved: saved);
+      started: started, firstSolve: firstSolve, grid: grid, rot: r, saved: saved, cols: cols);
   /* A test's convenience: the same design on another mount, named as the shelf stores it. */
   DesignView withMount(String m) => DesignView(id: id, name: name, layout: layout, mount: Mount.values.byName(m), box: box,
-      seed: seed, started: started, firstSolve: firstSolve, grid: grid, rot: rot, saved: saved);
+      seed: seed, started: started, firstSolve: firstSolve, grid: grid, rot: rot, saved: saved, cols: cols);
 
   static DesignView of(DesignRow r) {
     final cells = (jsonDecode(r.grid) as List).cast<Map<String, dynamic>>();
@@ -154,6 +160,7 @@ class DesignView {
       mount: Mount.values.asNameMap()[r.mount] ?? Mount.none, // a mount that no longer exists opens as Plain
       box: r.box, seed: r.seed, started: r.started, firstSolve: r.firstSolve,
       grid: [for (final c in cells) c['id'] as String], rot: [for (final c in cells) c['rot'] as int], saved: r.saved,
+      cols: r.cols ?? 5,
     );
   }
 }

@@ -35,9 +35,9 @@ final Map<LayoutKey, LayoutSpec> layouts = {
   LayoutKey.medallionPrint: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(edge: (t: Ramps.printMedallion, weight: wFit))}, within: const SeamNone(), perimeter: false, balance: false),
   LayoutKey.heart: LayoutSpec(
     zones: _heartZones,
-    rules: {0: ZoneRules(l: LFromT((_, _) => 1, wFit)), 1: const ZoneRules(colour: (hue: heartHue, weight: Tuned.colourWeight))},
+    rules: {0: ZoneRules(l: LFromT((_, _, _) => 1, wFit)), 1: const ZoneRules(colour: (hue: heartHue, weight: Tuned.colourWeight))},
     within: const SeamNone(), boundary: SeamCustom(lTarget: baseWeightsWith(Tuned.lightness).lTarget, weight: Tuned.boundaryWeight),
-    perimeter: false, balance: false,
+    perimeter: false, balance: false, ground: 0,
   ),
 };
 
