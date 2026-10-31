@@ -65,6 +65,12 @@ class FakeFinder implements PieceFinder {
   void forget() => forgot++;
 }
 
+/* A square of `side` with its top left at x, y, turned by `turn` radians about that corner. */
+Float32List _turned(double x, double y, double side, double turn) {
+  final c = math.cos(turn) * side, s = math.sin(turn) * side;
+  return Float32List.fromList([x, y, x + c, y + s, x + c - s, y + s + c, x - s, y + c]);
+}
+
 /* Made new each time: a corner she moves moves the answer's own numbers. */
 FinderAnswer get three =>
     FinderAnswer(squares: [sq(100, 100), sq(250, 100), sq(400, 100), sq(600, 600)], groups: [0, 0, 1, 2], tiny: 0);
@@ -471,14 +477,14 @@ void main() {
       });
     }
 
-    testWidgets('a finder that never answers: after finderWait, the crop, and Done adds the photo as one piece',
+    testWidgets('a finder that gives up (its own wait, piece_finder_web_test): the crop, and Done adds the photo as one piece',
         (tester) async {
       finder.findHeld = Completer();
       final c = await openAdd(tester);
       await tester.tap(find.text('Photo of the pieces'));
       await untilFinding(tester);
-      await tester.pump(finderWait);
-      for (var i = 0; i < 60; i++) {
+      finder.findHeld!.completeError(TimeoutException('the finder did not answer', finderWait));
+      for (var i = 0; i < 20; i++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
         await tester.pump(const Duration(milliseconds: 1));
       }
@@ -515,6 +521,19 @@ void main() {
     test('pieces of many colours sewn together: the pieces', () {
       expect(routeOf(looking((boxSpread: 28.6, ringSpread: 17.2, ringVsBox: 12.8, ringVsOutside: 20.8)), photo),
           FoundRoute.check);
+    });
+    // 5 pieces of one cloth dropped on a cutting mat on a wooden floor (mat-scatter-bigmat-green-red), and 9 laid in a
+    // tidy 3 x 3 grid on it (mat-grid-green-red), as measured 31 October 2026.
+    const onMat = (boxSpread: 1.3, ringSpread: 1.5, ringVsBox: 88.4, ringVsOutside: 49.0);
+    test('pieces of one cloth scattered on a mat: the pieces, as they sit on no grid', () {
+      final scattered = FinderAnswer(squares: [
+        for (final (x, y, turn) in const [(120.0, 140.0, 0.1), (420.0, 110.0, 0.5), (260.0, 330.0, 0.3), (540.0, 400.0, 0.7), (180.0, 560.0, 0.2)])
+          _turned(x, y, 90, turn),
+      ], groups: const [0, 0, 0, 0, 0], tiny: 0, look: onMat);
+      expect(routeOf(scattered, photo), FoundRoute.check);
+    });
+    test('pieces of one cloth in a tidy grid on a mat: the crop, as for a print', () {
+      expect(routeOf(looking(onMat, groups: 1), photo), FoundRoute.crop);
     });
     test('squares filling the photo, nothing beyond them to compare: by the grid only', () {
       expect(looksPrinted(looking((boxSpread: 0, ringSpread: 0, ringVsBox: 70, ringVsOutside: null))), isFalse);
@@ -604,6 +623,24 @@ void main() {
     expect(tester.widget<CheckPieces>(find.byType(CheckPieces)).canUndo, isTrue);
   });
 
+  for (final (how, at) in [('inside it (a dent)', const Offset(140, 140)), ('across a side (a bow-tie)', const Offset(150, 50))]) {
+    testWidgets('a corner moved $how does not move: the box stays convex', (tester) async {
+      await openAdd(tester);
+      await pick(tester);
+      await tapAndSettle(tester, inSheet(find.bySemanticsLabel('Zoom in')));
+      // Corner 2 (bottom right, 200, 200) of the box from 100, 100, in one move.
+      final drag = await tester.startGesture(onPhoto(tester, const Offset(200, 200)));
+      await tester.pump();
+      await drag.moveTo(onPhoto(tester, at));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+      final pieces = tester.widget<CheckPieces>(find.byType(CheckPieces));
+      expect(pieces.pieces.first.corner(2), const Offset(200, 200));
+      expect(pieces.canUndo, isFalse, reason: 'nothing changed');
+    });
+  }
+
   testWidgets('many pieces in say so in a toast; a warning the board shows stays its note', (tester) async {
     final c = await openAdd(tester);
     c
@@ -633,7 +670,9 @@ void main() {
       expect(button, findsOneWidget);
       final target = tester.getSize(find.ancestor(of: button, matching: find.byType(PhoneButton)).first);
       expect(target.height, greaterThanOrEqualTo(44));
+      final forgot = finder.forgot;
       await tapShown(tester, button);
+      expect(finder.forgot, forgot + 1, reason: "the pieces and the worker's copy of the photo let go");
       await letWork(tester, done: () => inSheet(find.text('Add to box')).evaluate().isNotEmpty);
       expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
       expect(find.byKey(const ValueKey('pieces-photo')), findsNothing);

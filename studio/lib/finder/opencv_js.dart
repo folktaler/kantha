@@ -44,10 +44,13 @@ extension type _OpenCv._(JSObject _) implements JSObject {
   external void approxPolyDP(_Mat curve, _Mat out, double epsilon, bool closed);
   external double contourArea(_Mat contour);
   external bool isContourConvex(_Mat contour);
+  external void convexHull(_Mat points, _Mat hull);
   external void fillPoly(_Mat img, _MatVector pts, JSArray<JSNumber> color, int lineType, int shift, _Point offset);
   external int countNonZero(_Mat src);
   @JS('bitwise_and')
   external void bitwiseAnd(_Mat a, _Mat b, _Mat dst);
+  @JS('bitwise_not')
+  external void bitwiseNot(_Mat src, _Mat dst);
   external void calcHist(
     _MatVector images,
     JSArray<JSNumber> channels,
@@ -225,8 +228,9 @@ class OpenCvJs implements FinderCv {
   @override
   CvMat canny(CvMat m, double low, double high) => _out((d) => _cvm.canny(_m(m), d, low, high));
   @override
-  CvMat dilate(CvMat m) => _out((d) {
-    final k = _new(); // empty: the default 3 x 3
+  CvMat dilate(CvMat m, [int size = 3]) => _out((d) {
+    final k = size == 3 ? _new() : _sized(size, size, _cv8U); // empty: the default 3 x 3
+    if (size != 3) k.data.toDart.fillRange(0, size * size, 1);
     _cvm.dilate(_m(m), d, k);
     k.delete();
   });
@@ -275,6 +279,16 @@ class OpenCvJs implements FinderCv {
   }
 
   @override
+  Int32List convexHull(Int32List points) {
+    final m = _points(points), hull = _new();
+    _cvm.convexHull(m, hull);
+    final out = Int32List.fromList(hull.data32S.toDart);
+    hull.delete();
+    m.delete();
+    return out;
+  }
+
+  @override
   Float32List lineSegments(CvMat gray) {
     final lsd = _Algorithm._(_cvm._lsd.callAsConstructor()), lines = _new();
     lsd.detect(_m(gray), lines);
@@ -308,6 +322,8 @@ class OpenCvJs implements FinderCv {
   int countNonZero(CvMat m) => _cvm.countNonZero(_m(m));
   @override
   CvMat bitwiseAnd(CvMat a, CvMat b) => _out((d) => _cvm.bitwiseAnd(_m(a), _m(b), d));
+  @override
+  CvMat bitwiseNot(CvMat m) => _out((d) => _cvm.bitwiseNot(_m(m), d));
 
   @override
   Float32List calcHist(CvMat m, List<int> channels, CvMat? mask, int bins) {

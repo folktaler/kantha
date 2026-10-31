@@ -49,8 +49,8 @@ abstract interface class FinderCv {
   CvMat toFloat(CvMat m);
   CvMat canny(CvMat m, double low, double high);
 
-  /// dilate with the default 3 x 3 kernel.
-  CvMat dilate(CvMat m);
+  /// dilate with a [size] x [size] kernel of ones (3 x 3, OpenCV's default, when not given).
+  CvMat dilate(CvMat m, [int size = 3]);
   CvMat threshold(CvMat m, double t);
 
   /// ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, C 0.
@@ -69,6 +69,9 @@ abstract interface class FinderCv {
   double contourArea(Int32List points);
   bool isContourConvex(Int32List points);
 
+  /// convexHull of [points] (x, y pairs), as points.
+  Int32List convexHull(Int32List points);
+
   /// Line segments (x1, y1, x2, y2 each) from createLineSegmentDetector with its defaults.
   Float32List lineSegments(CvMat gray);
 
@@ -79,6 +82,7 @@ abstract interface class FinderCv {
   void fillPoly(CvMat m, Int32List points, int value, {int dx = 0, int dy = 0});
   int countNonZero(CvMat m);
   CvMat bitwiseAnd(CvMat a, CvMat b);
+  CvMat bitwiseNot(CvMat m);
 
   /// calcHist of [channels] of [m] under [mask] (all of [m] when null), [bins] bins each over 0 to 256, flattened.
   Float32List calcHist(CvMat m, List<int> channels, CvMat? mask, int bins);

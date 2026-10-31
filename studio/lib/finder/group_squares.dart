@@ -33,18 +33,16 @@ double histDistance(FinderCv cv, LabHistograms a, LabHistograms b) =>
 
 /// The histograms of each found square's middle: the square straightened to 80 x 80 in the working picture,
 /// 12 % taken off each side (as the Python did).
-List<LabHistograms> squareHistograms(FinderCv cv, CvMat photo, FoundSquares found) {
+List<LabHistograms> squareHistograms(FinderCv cv, FoundSquares found) {
   const size = 80, margin = 9; // int(80 * 0.12)
-  final work = cv.resizeArea(photo, found.scale);
   final out = <LabHistograms>[];
   for (final q in found.squares) {
-    final cell = cv.warpQuad(work, q, size);
+    final cell = cv.warpQuad(found.work, q, size);
     final middle = cv.roi(cell, margin, margin, size - 2 * margin, size - 2 * margin);
     out.add(labHistograms(cv, middle));
     middle.dispose();
     cell.dispose();
   }
-  work.dispose();
   return out;
 }
 
@@ -110,77 +108,103 @@ int cropSide(Float32List q, double scale) {
 
 /// How the found squares sit in their photo, to tell one printed cloth (a check or a gingham: the squares are its
 /// pattern, and between them is the cloth's own band) from separate pieces (between them is the table). Colours are
-/// CIELAB; each is the median, channel by channel, of points sampled every eighth of a side.
+/// the finder's blurred CIELAB ([FoundSquares.lab]); each region's colour is its median, channel by channel.
 /// - [boxSpread]: how far each square's middle (its inner 60 %) is from the squares' common colour, the median;
-/// - [ringSpread]: the same for the ring round each square (out to 1.3 times it, other squares left out);
+/// - [ringSpread]: the same for the ring round each square (out to 1.3 times it, every square left out);
 /// - [ringVsBox]: how far the rings' common colour is from the squares';
 /// - [ringVsOutside]: how far the rings' common colour is from everything more than a side beyond the squares'
-///   outline, or null when that is under 2 % of the photo (the squares fill it).
-/// Null when no square is big enough to sample.
+///   convex hull, or null when that is under 2 % of the photo (the squares fill it).
+/// Null when no square is big enough to measure.
 typedef PrintLook = ({double boxSpread, double ringSpread, double ringVsBox, double? ringVsOutside});
 
-PrintLook? printLook(FinderCv cv, CvMat photo, FoundSquares found) {
-  final work = cv.resizeArea(photo, found.scale);
-  final lab = cv.cvtColor(work, CvColour.bgrToLab);
-  work.dispose();
-  final w = lab.cols, h = lab.rows, px = cv.bytes(lab);
-  lab.dispose();
+PrintLook? printLook(FinderCv cv, FoundSquares found) {
   final quads = found.squares;
   if (quads.isEmpty) return null;
+  final lab = found.lab, w = lab.cols, h = lab.rows;
   final sides = [for (final q in quads) _sideOf(q)]..sort();
   final side = sides[sides.length ~/ 2];
-  final step = math.max(1.0, side / 8);
-  final centres = [for (final q in quads) ((q[0] + q[2] + q[4] + q[6]) / 4, (q[1] + q[3] + q[5] + q[7]) / 4)];
-  Float32List grown(int i, double by) {
-    final (cx, cy) = centres[i];
-    return Float32List.fromList([for (var k = 0; k < 8; k++) k.isEven ? cx + (quads[i][k] - cx) * by : cy + (quads[i][k] - cy) * by]);
+  // The least a region is measured on: 4 points an eighth of a side apart, as the colours were first sampled.
+  final least = 4 * math.pow(math.max(1.0, side / 8), 2);
+  Int32List grown(Float32List q, double by) {
+    final cx = (q[0] + q[2] + q[4] + q[6]) / 4, cy = (q[1] + q[3] + q[5] + q[7]) / 4;
+    return Int32List.fromList([for (var k = 0; k < 8; k++) (k.isEven ? cx + (q[k] - cx) * by : cy + (q[k] - cy) * by).round()]);
   }
 
-  final inner = [for (var i = 0; i < quads.length; i++) grown(i, 0.6)];
-  final outer = [for (var i = 0; i < quads.length; i++) grown(i, 1.3)];
-  final hull = _hull([for (final q in quads) for (var k = 0; k < 8; k += 2) (q[k].toDouble(), q[k + 1].toDouble())]);
-  final boxes = [for (final _ in quads) <List<double>>[]], rings = [for (final _ in quads) <List<double>>[]];
-  final outside = <List<double>>[];
-  var all = 0;
-  for (var y = step / 2; y < h; y += step) {
-    for (var x = step / 2; x < w; x += step) {
-      all++;
-      final o = (y.toInt() * w + x.toInt()) * 3;
-      final c = [px[o] * 100 / 255, px[o + 1] - 128.0, px[o + 2] - 128.0];
-      var inBox = -1, inRing = -1;
-      for (var i = 0; i < quads.length; i++) {
-        final (cx, cy) = centres[i];
-        if ((x - cx).abs() > side || (y - cy).abs() > side) continue;
-        if (_holds(quads[i], x, y)) {
-          inBox = i;
-          if (_holds(inner[i], x, y)) boxes[i].add(c);
-          break;
-        }
-        if (inRing < 0 && _holds(outer[i], x, y)) inRing = i;
-      }
-      if (inBox >= 0) continue;
-      if (inRing >= 0) {
-        rings[inRing].add(c);
-      } else if (_beyond(hull, x, y, side)) {
-        outside.add(c);
-      }
-    }
+  // Everything but the squares, once.
+  final open = cv.zeros(w, h);
+  cv.fillPoly(open, Int32List.fromList([0, 0, w, 0, w, h, 0, h]), 255);
+  for (final q in quads) {
+    cv.fillPoly(open, grown(q, 1), 0);
   }
   final boxMid = <List<double>>[], ringMid = <List<double>>[];
-  for (var i = 0; i < quads.length; i++) {
-    if (boxes[i].length < 4 || rings[i].length < 4) continue;
-    boxMid.add(_median(boxes[i]));
-    ringMid.add(_median(rings[i]));
+  for (final q in quads) {
+    final outer = grown(q, 1.3);
+    var x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (var k = 0; k < 8; k += 2) {
+      x0 = math.min(x0, outer[k]);
+      x1 = math.max(x1, outer[k] + 1);
+      y0 = math.min(y0, outer[k + 1]);
+      y1 = math.max(y1, outer[k + 1] + 1);
+    }
+    x0 = math.max(x0, 0);
+    y0 = math.max(y0, 0);
+    x1 = math.min(x1, w);
+    y1 = math.min(y1, h);
+    if (x1 <= x0 || y1 <= y0) continue;
+    final rw = x1 - x0, rh = y1 - y0;
+    final colours = cv.roi(lab, x0, y0, rw, rh), around = cv.roi(open, x0, y0, rw, rh);
+    final box = cv.zeros(rw, rh), ringAll = cv.zeros(rw, rh);
+    cv.fillPoly(box, grown(q, 0.6), 255, dx: x0, dy: y0);
+    cv.fillPoly(ringAll, outer, 255, dx: x0, dy: y0);
+    final ring = cv.bitwiseAnd(ringAll, around);
+    if (cv.countNonZero(box) >= least && cv.countNonZero(ring) >= least) {
+      boxMid.add(_medianUnder(cv, colours, box));
+      ringMid.add(_medianUnder(cv, colours, ring));
+    }
+    for (final m in [colours, around, box, ringAll, ring]) {
+      m.dispose();
+    }
   }
+  open.dispose();
   if (boxMid.isEmpty) return null;
+
+  // Beyond the squares: the outside of their convex hull grown by a side, read at an eighth of a side to the pixel
+  // (a full-size dilate by a side took 400 ms of a slowed phone's time on a photo of large squares).
+  final f = 1 / math.max(1.0, side / 8);
+  final small = f < 1 ? cv.resizeArea(lab, f) : lab;
+  final hull = cv.convexHull(Int32List.fromList([for (final q in quads) for (final v in q) (v * f).round()]));
+  final within = cv.zeros(small.cols, small.rows);
+  cv.fillPoly(within, hull, 255);
+  final near = cv.dilate(within, 2 * (side * f).round() + 1), outside = cv.bitwiseNot(near);
+  within.dispose();
+  near.dispose();
+  final outsideColour =
+      cv.countNonZero(outside) < 0.02 * small.cols * small.rows ? null : _medianUnder(cv, small, outside);
+  outside.dispose();
+  if (f < 1) small.dispose();
+
   final b = _median(boxMid), r = _median(ringMid);
   double spread(List<List<double>> cs, List<double> m) => _median([for (final c in cs) [_distance(c, m)]]).single;
   return (
     boxSpread: spread(boxMid, b),
     ringSpread: spread(ringMid, r),
     ringVsBox: _distance(r, b),
-    ringVsOutside: outside.length < 0.02 * all ? null : _distance(r, _median(outside)),
+    ringVsOutside: outsideColour == null ? null : _distance(r, outsideColour),
   );
+}
+
+/// The median colour of [lab] under [mask], channel by channel (the upper one of an even count), as L* 0 to 100 and
+/// a*, b* about 0.
+List<double> _medianUnder(FinderCv cv, CvMat lab, CvMat mask) {
+  final out = <double>[];
+  for (var c = 0; c < 3; c++) {
+    final hist = cv.calcHist(lab, [c], mask, 256);
+    final half = hist.fold(0.0, (a, b) => a + b) ~/ 2;
+    var v = 0;
+    for (var seen = hist[0]; seen <= half; seen += hist[++v]) {}
+    out.add(c == 0 ? v * 100 / 255 : v - 128.0);
+  }
+  return out;
 }
 
 double _sideOf(Float32List q) {
@@ -198,52 +222,3 @@ double _distance(List<double> a, List<double> b) =>
 List<double> _median(List<List<double>> cs) => [
       for (var k = 0; k < cs.first.length; k++) ([for (final c in cs) c[k]]..sort())[cs.length ~/ 2],
     ];
-
-/// Inside the convex quad [q], either way round.
-bool _holds(Float32List q, double x, double y) {
-  var sign = 0;
-  for (var k = 0; k < 4; k++) {
-    final ax = q[2 * k], ay = q[2 * k + 1], bx = q[2 * ((k + 1) % 4)], by = q[2 * ((k + 1) % 4) + 1];
-    final s = ((bx - ax) * (y - ay) - (by - ay) * (x - ax)).sign.toInt();
-    if (s == 0) continue;
-    if (sign == 0) sign = s;
-    if (s != sign) return false;
-  }
-  return true;
-}
-
-/// The convex hull, anticlockwise in image axes (Andrew's monotone chain).
-List<(double, double)> _hull(List<(double, double)> points) {
-  final p = [...points]..sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
-  double cross((double, double) o, (double, double) a, (double, double) b) =>
-      (a.$1 - o.$1) * (b.$2 - o.$2) - (a.$2 - o.$2) * (b.$1 - o.$1);
-  final lower = <(double, double)>[], upper = <(double, double)>[];
-  for (final q in p) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2], lower.last, q) <= 0) {
-      lower.removeLast();
-    }
-    lower.add(q);
-  }
-  for (final q in p.reversed) {
-    while (upper.length >= 2 && cross(upper[upper.length - 2], upper.last, q) <= 0) {
-      upper.removeLast();
-    }
-    upper.add(q);
-  }
-  return [...lower..removeLast(), ...upper..removeLast()];
-}
-
-/// More than [by] outside the convex [hull].
-bool _beyond(List<(double, double)> hull, double x, double y, double by) {
-  var inside = true;
-  var nearest = double.infinity;
-  for (var k = 0; k < hull.length; k++) {
-    final (ax, ay) = hull[k];
-    final (bx, by2) = hull[(k + 1) % hull.length];
-    if ((bx - ax) * (y - ay) - (by2 - ay) * (x - ax) < 0) inside = false;
-    final dx = bx - ax, dy = by2 - ay, len = dx * dx + dy * dy;
-    final t = len == 0 ? 0.0 : (((x - ax) * dx + (y - ay) * dy) / len).clamp(0.0, 1.0);
-    nearest = math.min(nearest, math.sqrt(math.pow(x - ax - t * dx, 2) + math.pow(y - ay - t * dy, 2)));
-  }
-  return !inside && nearest > by;
-}

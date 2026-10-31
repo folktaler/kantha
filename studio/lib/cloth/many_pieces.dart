@@ -168,6 +168,7 @@ class _CheckPiecesState extends State<CheckPieces> {
     for (var j = 0; j < 4; j++) {
       if (j != k && (p.corner(j) - to).distance < smallestSide) return;
     }
+    if (!_convex([for (var j = 0; j < 4; j++) j == k ? to : p.corner(j)])) return; // no dent, no bow-tie
     void place() {
       p.q[2 * k] = to.dx;
       p.q[2 * k + 1] = to.dy;
@@ -176,6 +177,18 @@ class _CheckPiecesState extends State<CheckPieces> {
     if (_moved) return setState(place);
     _moved = true;
     widget.edit(place);
+  }
+
+  /* Every turn of the box the same way round: a corner pushed inside it, or across a side, is not. */
+  static bool _convex(List<Offset> c) {
+    var sign = 0;
+    for (var i = 0; i < 4; i++) {
+      final a = c[(i + 1) % 4] - c[i], b = c[(i + 2) % 4] - c[(i + 1) % 4];
+      final turn = (a.dx * b.dy - a.dy * b.dx).sign.toInt();
+      if (turn == 0 || (sign != 0 && turn != sign)) return false;
+      sign = turn;
+    }
+    return true;
   }
 
   void _up(PointerEvent _) {

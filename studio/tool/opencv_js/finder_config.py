@@ -3,7 +3,7 @@
 # MatVector come from OpenCV's own core_bindings.cpp and need no entry here.
 
 core = {
-    '': ['split', 'countNonZero', 'bitwise_and', 'magnitude', 'addWeighted'],
+    '': ['split', 'countNonZero', 'bitwise_and', 'bitwise_not', 'magnitude', 'addWeighted'],
     # The base of LineSegmentDetector and GraphSegmentation: they cannot be made without it.
     'Algorithm': [],
 }
@@ -12,7 +12,7 @@ imgproc = {
     '': [
         'resize', 'cvtColor', 'GaussianBlur', 'Canny', 'dilate', 'threshold', 'adaptiveThreshold',
         'morphologyEx', 'Sobel', 'findContours', 'arcLength', 'approxPolyDP', 'contourArea',
-        'isContourConvex', 'fillPoly', 'calcHist', 'compareHist', 'createLineSegmentDetector',
+        'isContourConvex', 'convexHull', 'fillPoly', 'calcHist', 'compareHist', 'createLineSegmentDetector',
         'getPerspectiveTransform', 'warpPerspective',
     ],
     'LineSegmentDetector': ['detect'],

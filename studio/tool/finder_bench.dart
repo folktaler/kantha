@@ -80,7 +80,7 @@ Future<void> main(List<String> args) async {
           if (jsonEncode(row['squares']) != jsonEncode(m['squares'])) throw StateError('$name: squares differ between runs');
           ((row['ms $where ${rate}x'] ??= <int>[]) as List<int>).add(m['totalMs'] as int);
           row['parts $where ${rate}x'] =
-              'decode ${m['decodeMs']}, outlines ${m['outlineMs']}, lines+checks ${m['linesMs']}, panels ${m['panelMs']}, groups ${m['groupMs']}';
+              'decode ${m['decodeMs']}, outlines ${m['outlineMs']}, lines+checks ${m['linesMs']}, panels ${m['panelMs']}, groups ${m['groupMs']}, look ${m['lookMs']}';
           row['fromLines'] = m['fromLines'];
           row['fromPanels'] = m['fromPanels'];
           row['tiny'] = m['tiny'];

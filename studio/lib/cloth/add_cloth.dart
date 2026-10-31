@@ -65,7 +65,20 @@ class _AddClothState extends State<AddCloth> {
   PickedPhoto? _photo;
   /* _reading: the picture is being read (on a slow phone's browser that can hold the page still, so it is shown). */
   bool _ready = false, _reading = false, _busy = false, _howTo = false;
-  String _error = '';
+  String _shown = '';
+  /* The error shown, '' for none. Any other error, or none, ends a "wait for it" (_toldToWait). */
+  String get _error => _shown;
+  set _error(String e) {
+    _shown = e;
+    _toldToWait = false;
+  }
+
+  /* The error shown says the photo is still being read (Done or Add pressed too soon): it goes once that is over. */
+  bool _toldToWait = false;
+  void _tellToWait() {
+    _error = words.clothErrorsNotReady;
+    _toldToWait = true;
+  }
   int _count = startCount;
   late int? _box = widget.box;
   /* Her first box while it is being made: a second photo in that moment waits for the same box. */
@@ -209,7 +222,7 @@ class _AddClothState extends State<AddCloth> {
     setState(() => _step = _Step.finding);
     FinderAnswer? found;
     try {
-      found = await _finder!.find(photo).timeout(finderWait);
+      found = await _finder!.find(photo); // the finder gives up itself after finderWait
     } catch (e, s) {
       reportClothError(e, s, 'while the pieces in a photo were found');
     }
@@ -217,7 +230,7 @@ class _AddClothState extends State<AddCloth> {
     final route = found == null ? FoundRoute.crop : routeOf(found, Size(photo.width.toDouble(), photo.height.toDouble()));
     setState(() {
       // Done pressed while the photo was read said to wait: the finder has looked now.
-      if (_error == words.clothErrorsNotReady) _error = '';
+      if (_toldToWait) _error = '';
       switch (route) {
         case FoundRoute.crop:
           _step = _Step.crop;
@@ -260,6 +273,7 @@ class _AddClothState extends State<AddCloth> {
 
   /* It's one piece: the photo goes to the crop, as a photo of one piece does, framed from the cropper's own start. */
   void _onePiece() => setState(() {
+        _forgetPieces(); // the photo stays: the crop is cut from it
         _step = _Step.crop;
         _cropStart = null;
         _error = '';
@@ -390,7 +404,7 @@ class _AddClothState extends State<AddCloth> {
 
   Future<void> _submit() async {
     if (_picture == null) return setState(() { _closeAfter = false; _error = words.clothErrorsNoPhoto; });
-    if (!_ready) return setState(() { _closeAfter = false; _error = words.clothErrorsNotReady; });
+    if (!_ready) return setState(() { _closeAfter = false; _tellToWait(); });
     setState(() { _busy = true; _error = ''; });
     // Drawn as busy first: the crop and the measure can hold the page still.
     await paintedFirst();
@@ -403,7 +417,7 @@ class _AddClothState extends State<AddCloth> {
         _store(croppedImage);
       case CropFailure(:final cause, :final stackTrace):
         reportClothError(cause, stackTrace, 'while the photo was cropped');
-        if (mounted) setState(() { _busy = false; _closeAfter = false; _error = words.clothErrorsNotReady; });
+        if (mounted) setState(() { _busy = false; _closeAfter = false; _tellToWait(); });
     }
   }
 
@@ -438,7 +452,7 @@ class _AddClothState extends State<AddCloth> {
               _ready = true;
               _reading = false;
               // A close or an add pressed while the photo was read said to wait: it is ready now.
-              if (_error == words.clothErrorsNotReady) _error = '';
+              if (_toldToWait) _error = '';
             });
             // A close asked for while the finder looked: the piece goes in as framed.
             if (_many && _closeAfter && !_busy) _submit();

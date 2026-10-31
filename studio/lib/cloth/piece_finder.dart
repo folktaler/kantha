@@ -78,14 +78,16 @@ double _side(Float32List q) {
    printed (looksPrinted). */
 bool isPrint(FinderAnswer a, Size picture) => onGridToEdges(a, picture) || looksPrinted(a);
 
-/* The boxes look like the squares of one print lying on something else: 4 or more, all one colour (boxSpread 5 or
-   under), all with the same colour round them (ringSpread 5 or under), that colour unlike theirs (ringVsBox 15 or
-   more) and unlike what lies beyond them (ringVsOutside 20 or more). Between separate pieces is the table, the same
-   as beyond them. Measured 31 October 2026: see the commit that brought it. */
+/* The boxes look like the squares of one print lying on something else: 4 or more, on one even grid (gridStep), all
+   one colour (boxSpread 5 or under), all with the same colour round them (ringSpread 5 or under), that colour unlike
+   theirs (ringVsBox 15 or more) and unlike what lies beyond them (ringVsOutside 20 or more). Between separate pieces is
+   the table, the same as beyond them; pieces of one cloth scattered on a mat have the mat round them, but do not sit
+   on a grid. Measured 31 October 2026: see the commit that brought it. */
 bool looksPrinted(FinderAnswer a) {
   final l = a.look;
   return a.squares.length >= 4 &&
       l != null &&
+      gridStep(a) != null &&
       l.boxSpread <= 5 &&
       l.ringSpread <= 5 &&
       l.ringVsBox >= 15 &&
@@ -99,14 +101,28 @@ bool looksPrinted(FinderAnswer a) {
    the squares do not touch) and same-cloth pieces lying apart: only the check prints are a print. Nine pieces of one
    cloth laid on a table in a neat 3 × 3 grid stay pieces, because the grid stops short of two edges. */
 bool onGridToEdges(FinderAnswer a, Size picture) {
+  if (a.groups.toSet().length != 1) return false;
+  final step = gridStep(a);
+  if (step == null) return false;
+  final xs = [for (final q in a.squares) for (var k = 0; k < 8; k += 2) q[k]];
+  final ys = [for (final q in a.squares) for (var k = 1; k < 8; k += 2) q[k]];
+  return xs.reduce(math.min) < step &&
+      picture.width - xs.reduce(math.max) < step &&
+      ys.reduce(math.min) < step &&
+      picture.height - ys.reduce(math.max) < step;
+}
+
+/* The grid's spacing when the boxes, 4 or more, all turned the same way (within 10 degrees), have their centres on one
+   even grid (each within 0.2 of a spacing of its cell, one box to a cell) with at most 1 cell in 10 empty; else null. */
+double? gridStep(FinderAnswer a) {
   final n = a.squares.length;
-  if (n < 4 || a.groups.toSet().length != 1) return false;
+  if (n < 4) return null;
   final centres = [for (final q in a.squares) Offset((q[0] + q[2] + q[4] + q[6]) / 4, (q[1] + q[3] + q[5] + q[7]) / 4)];
   // The common turn, each square's top edge folded into a quarter turn and averaged on the circle at 4 times its angle.
   final turns = [for (final q in a.squares) math.atan2(q[3] - q[1], q[2] - q[0]) % (math.pi / 2)];
   final turn = math.atan2(turns.fold(0.0, (t, x) => t + math.sin(4 * x)), turns.fold(0.0, (t, x) => t + math.cos(4 * x))) / 4;
   for (final x in turns) {
-    if (((x - turn + math.pi / 4) % (math.pi / 2) - math.pi / 4).abs() > 10 * math.pi / 180) return false;
+    if (((x - turn + math.pi / 4) % (math.pi / 2) - math.pi / 4).abs() > 10 * math.pi / 180) return null;
   }
   // The grid's spacing: the middle of each centre's distance to its nearest other.
   final nearest = [
@@ -120,15 +136,9 @@ bool onGridToEdges(FinderAnswer a, Size picture) {
     final d = c - centres.first;
     final a = (d.dx * u.dx + d.dy * u.dy) / step, b = (d.dx * v.dx + d.dy * v.dy) / step;
     final cell = (a.round(), b.round());
-    if (Offset(a - cell.$1, b - cell.$2).distance > 0.2 || !cells.add(cell)) return false;
+    if (Offset(a - cell.$1, b - cell.$2).distance > 0.2 || !cells.add(cell)) return null;
   }
   final columns = cells.map((c) => c.$1), rows = cells.map((c) => c.$2);
   final grid = (columns.reduce(math.max) - columns.reduce(math.min) + 1) * (rows.reduce(math.max) - rows.reduce(math.min) + 1);
-  if (cells.length < 0.9 * grid) return false;
-  final xs = [for (final q in a.squares) for (var k = 0; k < 8; k += 2) q[k]];
-  final ys = [for (final q in a.squares) for (var k = 1; k < 8; k += 2) q[k]];
-  return xs.reduce(math.min) < step &&
-      picture.width - xs.reduce(math.max) < step &&
-      ys.reduce(math.min) < step &&
-      picture.height - ys.reduce(math.max) < step;
+  return cells.length < 0.9 * grid ? null : step;
 }

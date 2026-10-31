@@ -101,16 +101,18 @@ Future<void> _find(OpenCvJs cv, _Ask ask) async {
   final decodeMs = clock.elapsedMilliseconds;
   final f = findSquares(cv, photo);
   final findMs = clock.elapsedMilliseconds;
-  final groups = groupsOf(cv, squareHistograms(cv, photo, f));
-  final look = _look(cv, photo, f);
+  final groups = groupsOf(cv, squareHistograms(cv, f));
   final groupMs = clock.elapsedMilliseconds - findMs;
+  final look = _look(cv, f);
+  final lookMs = clock.elapsedMilliseconds - findMs - groupMs;
+  f.dispose();
   final crops = ask.crops == true ? _crops(cv, photo, f) : null;
   photo.dispose();
   _self.postMessage(jsonEncode({
     'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
     'squares': [for (final q in f.squares) q], 'groups': groups, 'fromLines': f.fromLines,
     'outlineDropped': f.outlineDropped, 'ringDropped': f.ringDropped, 'decodeMs': decodeMs, 'outlineMs': f.outlineMs,
-    'linesMs': f.linesMs, 'fromPanels': f.fromPanels, 'tiny': f.tiny, 'panelMs': f.panelMs, 'groupMs': groupMs, 'totalMs': findMs + groupMs, 'crops': ?crops, 'look': ?look,
+    'linesMs': f.linesMs, 'fromPanels': f.fromPanels, 'tiny': f.tiny, 'panelMs': f.panelMs, 'groupMs': groupMs, 'lookMs': lookMs, 'totalMs': findMs + groupMs + lookMs, 'crops': ?crops, 'look': ?look,
   }).toJS);
 }
 
@@ -153,8 +155,8 @@ Future<void> _group(OpenCvJs cv, _Ask ask) async {
 }
 
 /// printLook as JSON, for 4 squares or more (fewer are never one print).
-Map<String, Object?>? _look(OpenCvJs cv, CvMat photo, FoundSquares f) {
-  final l = f.squares.length < 4 ? null : printLook(cv, photo, f);
+Map<String, Object?>? _look(OpenCvJs cv, FoundSquares f) {
+  final l = f.squares.length < 4 ? null : printLook(cv, f);
   return l == null ? null : {
     'boxSpread': l.boxSpread, 'ringSpread': l.ringSpread, 'ringVsBox': l.ringVsBox, 'ringVsOutside': l.ringVsOutside,
   };
@@ -175,14 +177,17 @@ void _findPixels(OpenCvJs cv, _Ask ask) {
   four.dispose();
   final finder = SquareFinder(cv);
   final f = finder.find(photo);
-  final groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, photo, f));
-  final look = _look(cv, photo, f);
+  final groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f));
+  final groupMs = clock.elapsedMilliseconds;
+  final look = _look(cv, f);
+  final lookMs = clock.elapsedMilliseconds - groupMs;
+  f.dispose();
   _kept = photo;
   _finder = finder;
   _keptScale = f.scale;
   _self.postMessage(jsonEncode({
     'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
-    'squares': [for (final q in f.squares) q], 'groups': groups, 'tiny': f.tiny, 'look': ?look, 'totalMs': clock.elapsedMilliseconds,
+    'squares': [for (final q in f.squares) q], 'groups': groups, 'tiny': f.tiny, 'look': ?look, 'lookMs': lookMs, 'totalMs': clock.elapsedMilliseconds,
   }).toJS);
 }
 

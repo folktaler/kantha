@@ -39,6 +39,8 @@ class FoundSquares {
     this.fromPanels,
     this.panelMs,
     this.tiny,
+    this.work,
+    this.lab,
   );
 
   /// The working picture, and its size over the photo's.
@@ -62,6 +64,15 @@ class FoundSquares {
   /// [tinyArea] of it, counted over every picture step 1 looks at (so one piece is counted many times): many of them
   /// and no squares found means the pieces are there but too small in the photo.
   final int tiny;
+
+  /// The working picture (BGR) and its blurred CIELAB, as the finder read them, for what is measured on the squares
+  /// after (squareHistograms, printLook). OpenCV's memory, held until [dispose].
+  final CvMat work, lab;
+
+  void dispose() {
+    work.dispose();
+    lab.dispose();
+  }
 }
 
 /// The smallest outline [FoundSquares.tiny] counts, as a share of the picture's area.
@@ -302,9 +313,7 @@ class _Finder {
     final linesMs = clock.elapsedMilliseconds - outlineMs;
     final checked = squares.length;
     if (side > 0) squares.addAll(_panels(squares));
-    for (final m in [img, blur, lab]) {
-      m.dispose();
-    }
+    blur.dispose();
     return FoundSquares(
       w,
       h,
@@ -319,6 +328,8 @@ class _Finder {
       squares.length - checked,
       clock.elapsedMilliseconds - outlineMs - linesMs,
       _tiny,
+      img,
+      lab,
     );
   }
 
