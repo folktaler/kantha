@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -41,7 +42,7 @@ class Feasible {
 }
 
 const double zoomMin = 4, zoomMax = 34;
-List<int> noTurns() => List<int>.filled(cells, 0);
+List<int> noTurns([int? n]) => List<int>.filled(n ?? cells, 0);
 
 /* The studio's state and behaviour, without a screen: the studio's screens only
    render this and call its methods. */
@@ -125,10 +126,25 @@ class StudioController extends ChangeNotifier {
   int drops = 0;
   int? _dropFor;
 
+  /* "I am a…" (owner, 30 Oct 2026): a Beginner's board is Level 1's, 7 rows of 5 on A4, exactly as before Level 2; a
+     Patchworker's is the size she chose, rows and columns each boardMin to boardMax. Both are remembered on
+     the device (loadBoard). */
+  bool patchworker = false;
+  BoardSize chosen = level1;
+  BoardSize get size => patchworker ? chosen : level1;
+  /* The squares the board has, and so the pieces a box needs to fill it. */
+  int get squares => size.rows * size.cols;
+  SheetGrid get sheet => sheetFor(size);
+  /* Level 1's A4 board: only it is offered the print sheet, the frame and the tote. */
+  bool get onA4 => size == level1;
+  static const levelKey = 'boardLevel', sizeKey = 'boardSize';
+  /* What a board that could not be arranged says: 35 pieces on Level 1, the board's own number on another size. */
+  String get cantSolveWords => onA4 ? words.canvasCantSolve : words.canvasCantSolveSize('$squares');
+
   int piecesIn(int b) => cloth.fold(0, (n, c) => n + (c.box == b ? c.stock : 0));
   bool get mayEdit => box != null && ownBoxes.contains(box);
-  /* Whether a box of hers holds a panel's 35 pieces. */
-  bool get _canFill => ownBoxes.any((b) => piecesIn(b) >= cells);
+  /* Whether a box of hers holds the board's pieces (35 on Level 1). */
+  bool get _canFill => ownBoxes.any((b) => piecesIn(b) >= squares);
   /* A saved design she opened while no box can fill a panel: it holds the board until she leaves it. */
   bool _holding = false;
   /* Spec 2026-10-07, decisions 2 and 4, narrowed by decision 11 of the 2026-10-07 sample-box spec: until a
@@ -137,7 +153,7 @@ class StudioController extends ChangeNotifier {
   bool get starting => !_canFill && !_holding && sampleBox == null;
 
   int? _opening([int? wanted]) =>
-      numbers.openingBox(wanted: wanted, own: [for (final b in ownBoxes) (box: b, pieces: piecesIn(b))]);
+      numbers.openingBox(wanted: wanted, own: [for (final b in ownBoxes) (box: b, pieces: piecesIn(b))], need: squares);
 
   /* The template's own name, which a design has until she gives it one. */
   String _defaultName(LayoutKey l) => words.canvasDefaultName(words.layoutTitle(l));
@@ -152,7 +168,7 @@ class StudioController extends ChangeNotifier {
      What newDesign leaves behind goes too — the saved design and its name, the note. */
   void _clearBoard() {
     _reqId++; // a solve still out is dropped when it lands
-    grid = null; rot = noTurns(); solving = false; savedId = null; savedGrid = null; note = ''; warn = false; _holding = false;
+    grid = null; rot = noTurns(squares); solving = false; savedId = null; savedGrid = null; note = ''; warn = false; _holding = false;
     name = _defaultName(layout);
   }
   int get percent => (ppc / fitPpc * 100).round();
@@ -166,7 +182,7 @@ class StudioController extends ChangeNotifier {
     final wasFull = _canFill;
     // Whether the box on the board could fill before this change: beside a box that already could (the Sample
     // box), `filled` never fires when hers comes to hold 35, so that box's own turn is read here.
-    final b0 = box, boxWasFull = b0 != null && piecesIn(b0) >= cells, boxHeld = b0 != null && members(b0).isNotEmpty;
+    final b0 = box, boxWasFull = b0 != null && piecesIn(b0) >= squares, boxHeld = b0 != null && members(b0).isNotEmpty;
     final next = stableCloth(cloth, s.cloth);
     final listed = [for (final b in s.boxes) b.id];
     _made = {for (final e in _made.entries) if (!listed.contains(e.key)) e.key: e.value};
@@ -188,9 +204,9 @@ class StudioController extends ChangeNotifier {
       // as much as hers. Only `starting` waits on there being no Sample box (decision 11).
       final filled = !wasFull && _canFill, dropped = wasFull && !_canFill;
       final b = box;
-      final turn = b == null || !ownBoxes.contains(b) || (filled && piecesIn(b) < cells);
+      final turn = b == null || !ownBoxes.contains(b) || (filled && piecesIn(b) < squares);
       if (turn) box = _opening();
-      final came = b != null && b == b0 && !boxWasFull && piecesIn(b) >= cells;
+      final came = b != null && b == b0 && !boxWasFull && piecesIn(b) >= squares;
       // The box on the board has just been emptied: the empty sheet, nothing to save (decision 13, "or emptied").
       final emptied = b != null && b == box && boxHeld && members(b).isEmpty;
       if (dropped || emptied) {
@@ -300,7 +316,11 @@ class StudioController extends ChangeNotifier {
     // (decision 13: the empty sheet, and nothing to save).
     if (starting || members(box).isEmpty) { _clearBoard(); notifyListeners(); return; }
     final id = ++_reqId, s = _seeds();
-    solver.solve(layout, members(box), mount, s)
+    final runner = solver, g = size;
+    final asked = g == level1 ? runner.solve(layout, members(box), mount, s)
+        : runner is SizedSolverRunner ? runner.solveOn(g, layout, members(box), mount, s)
+        : Future.value(const LayoutSolve(false, null, null));
+    asked
         .catchError((Object e, StackTrace st) {
           reportError(e, st, 'while the solver arranged the cloth');
           return const LayoutSolve(false, null, null);
@@ -321,7 +341,8 @@ class StudioController extends ChangeNotifier {
     }
     feasible = {
       for (final k in layoutKeys)
-        k: Feasible(modelFor(k, ObjectiveInput(pool: _pool.pool, edge: _pool.edge, members: mem, mount: mount, stock: _pool.stock)).why),
+        k: Feasible(modelFor(k, ObjectiveInput(pool: _pool.pool, edge: _pool.edge, members: mem, mount: mount, stock: _pool.stock,
+            size: onA4 ? null : size)).why),
     };
     final now = feasible[layout];
     if (now != null && !now.fills && !starting) {
@@ -333,11 +354,11 @@ class StudioController extends ChangeNotifier {
   void _solved(int id, LayoutSolve r, int s) {
     if (id != _reqId) return;
     // No arrangement: the board is empty under the note, never the last box's cloth (decision 14).
-    if (r.grid == null) { grid = null; rot = noTurns(); solving = false; note = words.canvasCantSolve; warn = true; notifyListeners(); return; }
-    grid = r.grid; rot = r.rot ?? noTurns(); seed = s; solving = false; warn = false; savedId = null; note = '';
+    if (r.grid == null) { grid = null; rot = noTurns(squares); solving = false; note = cantSolveWords; warn = true; notifyListeners(); return; }
+    grid = r.grid; rot = r.rot ?? noTurns(squares); seed = s; solving = false; warn = false; savedId = null; note = '';
     if (id == _dropFor) drops++;
     firstSolve ??= _now().toUtc().toIso8601String();
-    memory = remember(memory, keyOf(box, layout), Arrangement(grid: grid!, rot: rot, seed: s, name: name, mount: mount));
+    memory = remember(memory, keyOf(box, layout, size), Arrangement(grid: grid!, rot: rot, seed: s, name: name, mount: mount));
     _recommendThread();
     notifyListeners();
   }
@@ -361,12 +382,12 @@ class StudioController extends ChangeNotifier {
       return;
     }
     final fresh = _defaultName(next);
-    final left = keyOf(box, layout);
+    final left = keyOf(box, layout, size);
     final was = recall(memory, left);
     final mem = was != null ? remember(memory, left, was.copyWith(name: name, mount: mount)) : memory;
     // While no box can fill (a Sample box trimmed under 35), an arrangement remembered from when it could holds cloth
     // since removed: the tap arranges what is there now.
-    final kept = next == layout || !_canFill ? null : recall(mem, keyOf(box, next));
+    final kept = next == layout || !_canFill ? null : recall(mem, keyOf(box, next, size));
     final changed = next != layout;
     memory = mem;
     layout = next;
@@ -406,7 +427,77 @@ class StudioController extends ChangeNotifier {
     _requestSolve();
   }
 
-  void setMount(Mount m) { mount = m; fit(); }
+  void setMount(Mount m) { mount = onA4 ? m : Mount.none; fit(); }
+
+  /* The board's size as she last left it on this device; one that cannot be read is a Beginner's. Read before start. */
+  Future<void> loadBoard() async {
+    try {
+      final level = await shelf.setting(levelKey), saved = await shelf.setting(sizeKey);
+      final parts = saved?.split('x');
+      final g = parts?.length == 2 ? (rows: int.tryParse(parts![0]) ?? 0, cols: int.tryParse(parts[1]) ?? 0) : null;
+      if (g != null && boardSizeAllowed(g)) chosen = g;
+      patchworker = level == 'patchworker';
+    } on Object {
+      // A Beginner's board, as before Level 2.
+    }
+  }
+
+  Future<void> _keepBoard() async {
+    try {
+      await shelf.setSetting(levelKey, patchworker ? 'patchworker' : 'beginner');
+      await shelf.setSetting(sizeKey, '${chosen.rows}x${chosen.cols}');
+    } on Object {
+      // Not remembered: the next visit opens on the board it last remembered.
+    }
+  }
+
+  /* Beginner or Patchworker, from the Menu. */
+  void setPatchworker(bool on) {
+    if (on == patchworker) return;
+    _resize(() => patchworker = on);
+  }
+
+  /* Rows and Columns, a Patchworker's minus and plus: each kept to boardMin..boardMax. */
+  void setBoardSize(BoardSize g) {
+    final next = (rows: g.rows.clamp(boardMin, boardMax), cols: g.cols.clamp(boardMin, boardMax));
+    if (!patchworker || next == chosen) return;
+    _resize(() => chosen = next);
+  }
+
+  /* The board as a saved design's size: a Patchworker's for any size but Level 1's, as she chose it for the design. */
+  void _takeSize(BoardSize g) {
+    if (g != level1) patchworker = true;
+    if (patchworker) chosen = g;
+    if (!onA4) mount = Mount.none;
+    unawaited(_keepBoard());
+  }
+
+  /* The board takes its new size: the arrangement she last saw on it, on this box and template, comes back (as a
+     template's does in loadLayout); else a fresh one. Off A4 the mount is Plain. */
+  void _resize(void Function() change) {
+    final was = size;
+    final left = keyOf(box, layout, was), kept0 = recall(memory, left);
+    if (kept0 != null) memory = remember(memory, left, kept0.copyWith(name: name, mount: mount));
+    change();
+    unawaited(_keepBoard());
+    if (size == was) { notifyListeners(); return; }
+    if (!onA4) mount = Mount.none;
+    _checkFeasible(box);
+    final kept = _canFill && members(box).isNotEmpty ? recall(memory, keyOf(box, layout, size)) : null;
+    if (kept != null) {
+      _reqId++;
+      name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
+      savedId = kept.savedId; savedGrid = kept.savedGrid; note = ''; warn = false;
+      _recommendThread();
+      fit();
+      return;
+    }
+    grid = null; rot = noTurns(squares); name = _defaultName(layout); savedId = null; savedGrid = null;
+    solving = true; note = ''; warn = false;
+    fit();
+    if (!_started) return;
+    _requestSolve();
+  }
   void setName(String v) { name = v; notifyListeners(); }
   void setStitch(bool on) { stitch = on; notifyListeners(); }
 
@@ -417,7 +508,7 @@ class StudioController extends ChangeNotifier {
 
   DesignInput _input(String n, LayoutKey l, Mount m, int? b, int? s, String? st, String? fs, List<String> ids, List<int> r) =>
       DesignInput(name: n, layout: l.name, mount: m.name, box: b, seed: s, started: st, firstSolve: fs,
-          grid: [for (var i = 0; i < ids.length; i++) GridCell(ids[i], r[i])]);
+          grid: [for (var i = 0; i < ids.length; i++) GridCell(ids[i], r[i])], cols: size.cols);
 
   /* The setting that says a save has been made on this device, so the first save's note is said once. */
   static const savedOnceKey = 'savedOnce';
@@ -450,7 +541,7 @@ class StudioController extends ChangeNotifier {
       // it saved, claiming that one as saved would let the next Save overwrite this design.
       if (identical(grid, g) && layout == l && box == b) {
         savedId = out.design.id; savedGrid = st;
-        memory = remember(memory, keyOf(b, l), Arrangement(grid: g, rot: r, seed: s, name: out.design.name, mount: m,
+        memory = remember(memory, keyOf(b, l, size), Arrangement(grid: g, rot: r, seed: s, name: out.design.name, mount: m,
             savedId: out.design.id, savedGrid: st));
       }
       note = !first ? words.canvasSaved : storageKept ? words.canvasSavedFirst : words.deviceNotKept;
@@ -489,7 +580,7 @@ class StudioController extends ChangeNotifier {
       // The design on the board: the rename was its save, unless the board had changed since.
       if (savedGrid != stamp(grid, rot, mount, p.name)) { name = panel.name; notifyListeners(); return true; }
       final sg = stamp(grid, rot, mount, panel.name);
-      final key = keyOf(box, layout), kept = recall(memory, key);
+      final key = keyOf(box, layout, size), kept = recall(memory, key);
       if (kept?.savedId == panel.id) memory = remember(memory, key, kept!.copyWith(name: panel.name, savedGrid: sg));
       name = panel.name; savedGrid = sg;
       notifyListeners();
@@ -528,13 +619,16 @@ class StudioController extends ChangeNotifier {
     final gi = g.cast<int>();
     _reqId++;
     final b = p.box != null && ownBoxes.contains(p.box) ? p.box : box;
-    if (b != box) _checkFeasible(b);
+    // The board takes the design's size: one of another size than Level 1's makes her a Patchworker on that size.
+    final resized = p.size != size;
+    if (resized) _takeSize(p.size);
+    if (b != box || resized) _checkFeasible(b);
     final st = stamp(gi, p.rot, p.mount, p.name);
     grid = gi; rot = p.rot; layout = p.layout; name = p.name; mount = p.mount; box = b; solving = false;
     note = ''; warn = false; savedId = p.id; savedGrid = st;
     // Opened while no box can fill a panel, it takes the board while it is open (decision 4).
     _holding = !_canFill;
-    memory = remember(memory, keyOf(b, p.layout),
+    memory = remember(memory, keyOf(b, p.layout, size),
         Arrangement(grid: gi, rot: p.rot, seed: p.seed, name: p.name, mount: p.mount, savedId: p.id, savedGrid: st));
     _recommendThread();
     notifyListeners();
@@ -741,8 +835,8 @@ class StudioController extends ChangeNotifier {
     const chrome = 48.0 + 32 + 10, gutter = 32.0;
     final w = pane.width - gutter, h = pane.height - chrome;
     if (w < 160 || h < 120) return false;
-    final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheetW;
-    final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheetH;
+    final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
+    final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
     // A phone's canvas is narrower than a frame or a tote at 9 px a cm, so it may go as small as 4.
     final next = math.min(w / vw, h / vh).floorToDouble().clamp(zoomMin, zoomMax);
     final changed = next != fitPpc || (!zoomed && ppc != next);

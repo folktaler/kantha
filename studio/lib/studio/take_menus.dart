@@ -272,15 +272,27 @@ class _ExportBodyState extends State<_ExportBody> with _Delivers<_ExportBody> {
                 if (png == null) throw StateError('the photo could not be made');
                 await t.delivery.savePhoto(png, fileName(d.name, 'png'));
               }),
-          _fileRow('pdf', name: words.canvasPrintPattern, note: words.canvasPrintPatternNote, icon: const tabler.Printer(),
-              failedText: words.canvasDownloadFailed,
-              make: d == null ? null : (origin) async =>
-                  t.delivery.sharePdf(await t.sheet(c, d), fileName(d.name, 'pdf'), origin: origin)),
-          SheetRow(name: words.canvasStitchingGuide, note: words.canvasStitchingGuideNote, icon: const tabler.Book(),
-              onPressed: () {
-                _close();
-                widget.openLink(helpUri('lay'));
-              }),
+          // A design of another size than Level 1's is a picture only (owner, 30 Oct 2026): it is shared as a photo, and
+          // the A4 sheet and the guide to stitching it are not offered.
+          if (d != null && !d.onA4)
+            _fileRow('share', name: words.canvasShareTo, icon: const tabler.Share(),
+                failedText: words.canvasDownloadFailed,
+                make: (origin) async {
+                  final png = t.photoMade(c, d) ?? await t.photoNow(c, d);
+                  if (png == null) throw StateError('the photo could not be made');
+                  await t.delivery.sharePhoto(png, fileName(d.name, 'png'), origin: origin);
+                })
+          else ...[
+            _fileRow('pdf', name: words.canvasPrintPattern, note: words.canvasPrintPatternNote, icon: const tabler.Printer(),
+                failedText: words.canvasDownloadFailed,
+                make: d == null ? null : (origin) async =>
+                    t.delivery.sharePdf(await t.sheet(c, d), fileName(d.name, 'pdf'), origin: origin)),
+            SheetRow(name: words.canvasStitchingGuide, note: words.canvasStitchingGuideNote, icon: const tabler.Book(),
+                onPressed: () {
+                  _close();
+                  widget.openLink(helpUri('lay'));
+                }),
+          ],
         ]);
       },
     );

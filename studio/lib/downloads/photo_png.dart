@@ -92,7 +92,7 @@ void paintPhoto(Canvas canvas, DesignView d, Map<String, ui.Image?> photos, List
   final foot = switch (d.mount) {
     Mount.frame => (frame.outer.$1, frame.outer.$2),
     Mount.tote => (tote.w, tote.h),
-    Mount.none => (a4.bw, a4.bh),
+    Mount.none => (sheetFor(d.size).bw, sheetFor(d.size).bh),
   };
   final u = math.min(room.width / foot.$1, room.height / foot.$2);
   final at = Offset(room.center.dx - foot.$1 * u / 2, room.center.dy - foot.$2 * u / 2);
@@ -178,13 +178,13 @@ void _dashed(Canvas canvas, Offset from, Offset to, Color colour) {
   }
 }
 
-/* The 5 × 7 grid: each square the cloth's photo covering it, turned as she turned
+/* The board's grid (5 × 7 on Level 1): each square the cloth's photo covering it, turned as she turned
    it, then the seams over them — 0.2 mm lines on every square's edges. */
 void _patchwork(Canvas canvas, Offset at, double u, DesignView d, Map<String, ui.Image?> photos) {
-  final s = patchCm * u;
+  final s = patchCm * u, g = d.size;
   final paint = Paint()..filterQuality = FilterQuality.medium;
-  for (var i = 0; i < d.grid.length && i < cells; i++) {
-    final cell = Rect.fromLTWH(at.dx + (i % a4.cols) * s, at.dy + (i ~/ a4.cols) * s, s, s);
+  for (var i = 0; i < d.grid.length && i < g.rows * g.cols; i++) {
+    final cell = Rect.fromLTWH(at.dx + (i % g.cols) * s, at.dy + (i ~/ g.cols) * s, s, s);
     canvas.drawRect(cell, Paint()..color = _base);
     final photo = photos[d.grid[i]];
     if (photo == null) continue;
@@ -198,10 +198,10 @@ void _patchwork(Canvas canvas, Offset at, double u, DesignView d, Map<String, ui
     canvas.restore();
   }
   final seam = _stroke(0.02 * u, _seam);
-  for (var c = 0; c <= a4.cols; c++) {
-    canvas.drawLine(at + Offset(c * s, 0), at + Offset(c * s, a4.rows * s), seam);
+  for (var c = 0; c <= g.cols; c++) {
+    canvas.drawLine(at + Offset(c * s, 0), at + Offset(c * s, g.rows * s), seam);
   }
-  for (var r = 0; r <= a4.rows; r++) {
-    canvas.drawLine(at + Offset(0, r * s), at + Offset(a4.cols * s, r * s), seam);
+  for (var r = 0; r <= g.rows; r++) {
+    canvas.drawLine(at + Offset(0, r * s), at + Offset(g.cols * s, r * s), seam);
   }
 }

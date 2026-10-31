@@ -26,7 +26,8 @@ class DockFinish extends StatelessWidget {
   Widget build(BuildContext context) {
     final words = L.of(context);
     final rows = [
-      _row(words.canvasMountEyebrow, _segments([
+      // The frame and the tote are for Level 1's A4 board alone.
+      if (c.onA4) _row(words.canvasMountEyebrow, _segments([
         for (final m in mounts)
           _segment(key: 'mount-${m.name}', text: words.mountName(m), icon: _mountIcon[m], on: c.mount == m,
               onPressed: () => c.setMount(m)),

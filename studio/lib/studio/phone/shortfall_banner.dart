@@ -1,8 +1,7 @@
 /* The shortfall banner (redesign handover, Canvas, "Shortfall banner"): over the foot of the phone's canvas while a box of
-   hers holds some cloth but not yet a panel's 35 pieces, it says how many more, and the whole of it opens Add a piece. */
+   hers holds some cloth but not yet the board's pieces (35 on Level 1), it says how many more, and the whole of it opens Add a piece. */
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
-import '../../solver/geometry.dart' show cells;
 import '../controller.dart';
 import '../pressable.dart';
 import 'phone_theme.dart';
@@ -17,7 +16,7 @@ class ShortfallBanner extends StatelessWidget {
     final box = c.box;
     if (box == null || !c.mayEdit) return false;
     final n = c.piecesIn(box);
-    return n > 0 && n < cells;
+    return n > 0 && n < c.squares;
   }
 
   /* Min 48 tall on the red tint, a 3 px red left edge, padding 8 12 8 14 and the shadow; the sentence at 13 on the left,
@@ -25,7 +24,7 @@ class ShortfallBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final words = L.of(context);
-    final sentence = words.canvasAddMore(cells - c.piecesIn(c.box!));
+    final sentence = words.canvasAddMore(c.squares - c.piecesIn(c.box!));
     return Pressable(
       key: const ValueKey('shortfall-banner'),
       label: sentence,

@@ -169,6 +169,31 @@
   "canvasPrivacy": "Privacy policy",
   "canvasSavedFirst": "Saved on this device. Back up from the menu to keep a copy.",
   "canvasNothingToSave": "Add 35 pieces to your box before saving.",
+  "canvasNothingToSaveSize": "Add {n} pieces to your box before saving.",
+  "@canvasNothingToSaveSize": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasCantSolveSize": "This box holds fewer than {n} pieces — open another box.",
+  "@canvasCantSolveSize": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasLevelEyebrow": "I am a…",
+  "canvasLevelBeginner": "Beginner (5 × 7)",
+  "canvasLevelPatchworker": "Patchworker (any size)",
+  "canvasRows": "Rows",
+  "canvasColumns": "Columns",
+  "canvasRowsFewer": "Fewer rows",
+  "canvasRowsMore": "More rows",
+  "canvasColumnsFewer": "Fewer columns",
+  "canvasColumnsMore": "More columns",
   "canvasAddMore": "{n, plural, one{Add {n} more piece to complete the grid.} other{Add {n} more pieces to complete the grid.}}",
   "@canvasAddMore": {
     "placeholders": {

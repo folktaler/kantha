@@ -31,22 +31,24 @@ Paint _stroke(Color c, double w) => Paint()
   ..strokeCap = StrokeCap.round;
 
 /* The printed grid: dotted lines on every 4 cm, ticks in the
-   bleed and a dot at every crossing. Drawn over (a4.bw + 2·bleed) × (a4.bh + 2·bleed) cm. */
+   bleed and a dot at every crossing. Drawn over (bw + 2·bleed) × (bh + 2·bleed) cm of its sheet. */
 class PaperGridPainter extends CustomPainter {
-  const PaperGridPainter();
-  static final double gw = a4.bw + bleedCm * 2, gh = a4.bh + bleedCm * 2;
+  const PaperGridPainter([this.sheet]);
+  /* The board's sheet; null is Level 1's A4. */
+  final SheetGrid? sheet;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final g = sheet ?? a4, gw = g.bw + bleedCm * 2, gh = g.bh + bleedCm * 2;
     canvas.save();
     canvas.scale(size.width / gw, size.height / gh);
     final lines = <Offset>[], ticks = <Offset>[];
-    for (var c = 0; c <= a4.cols; c++) {
+    for (var c = 0; c <= g.cols; c++) {
       final x = bleedCm + c * patchCm;
       _dash(lines, Offset(x, 0), Offset(x, gh), 0.07, 0.21);
       ticks..add(Offset(x, 0))..add(Offset(x, bleedCm))..add(Offset(x, gh - bleedCm))..add(Offset(x, gh));
     }
-    for (var r = 0; r <= a4.rows; r++) {
+    for (var r = 0; r <= g.rows; r++) {
       final y = bleedCm + r * patchCm;
       _dash(lines, Offset(0, y), Offset(gw, y), 0.07, 0.21);
       ticks..add(Offset(0, y))..add(Offset(bleedCm, y))..add(Offset(gw - bleedCm, y))..add(Offset(gw, y));
@@ -54,8 +56,8 @@ class PaperGridPainter extends CustomPainter {
     canvas.drawPoints(ui.PointMode.lines, lines, _stroke(const Color(0xFFDBD5C4), 0.05));
     canvas.drawPoints(ui.PointMode.lines, ticks, _stroke(const Color(0xFFA9A18B), 0.11));
     final dot = Paint()..color = const Color(0xFFB3AC99);
-    for (var c = 0; c <= a4.cols; c++) {
-      for (var r = 0; r <= a4.rows; r++) {
+    for (var c = 0; c <= g.cols; c++) {
+      for (var r = 0; r <= g.rows; r++) {
         canvas.drawCircle(Offset(bleedCm + c * patchCm, bleedCm + r * patchCm), 0.075, dot);
       }
     }
@@ -63,24 +65,27 @@ class PaperGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(PaperGridPainter old) => false;
+  bool shouldRepaint(PaperGridPainter old) => old.sheet != sheet;
 }
 
 /* The grid laid over the cloth: a pale dotted line with a dark
-   one just under it, and a pale dot at every crossing. Drawn over a4.bw × a4.bh cm. */
+   one just under it, and a pale dot at every crossing. Drawn over its sheet's bw × bh cm. */
 class GhostGridPainter extends CustomPainter {
-  const GhostGridPainter();
+  const GhostGridPainter([this.sheet]);
+  /* The board's sheet; null is Level 1's A4. */
+  final SheetGrid? sheet;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final g = sheet ?? a4;
     canvas.save();
-    canvas.scale(size.width / a4.bw, size.height / a4.bh);
+    canvas.scale(size.width / g.bw, size.height / g.bh);
     final d = <Offset>[];
-    for (var c = 1; c < a4.cols; c++) {
-      _dash(d, Offset(c * patchCm, 0), Offset(c * patchCm, a4.bh), 0.06, 0.28);
+    for (var c = 1; c < g.cols; c++) {
+      _dash(d, Offset(c * patchCm, 0), Offset(c * patchCm, g.bh), 0.06, 0.28);
     }
-    for (var r = 1; r < a4.rows; r++) {
-      _dash(d, Offset(0, r * patchCm), Offset(a4.bw, r * patchCm), 0.06, 0.28);
+    for (var r = 1; r < g.rows; r++) {
+      _dash(d, Offset(0, r * patchCm), Offset(g.bw, r * patchCm), 0.06, 0.28);
     }
     canvas.save();
     canvas.translate(0.035, 0.035);
@@ -88,8 +93,8 @@ class GhostGridPainter extends CustomPainter {
     canvas.restore();
     canvas.drawPoints(ui.PointMode.lines, d, _stroke(const Color(0xFFFBF9F2).withValues(alpha: 0.5), 0.05));
     final dot = Paint()..color = const Color(0xFFFBF9F2).withValues(alpha: 0.75);
-    for (var c = 0; c <= a4.cols; c++) {
-      for (var r = 0; r <= a4.rows; r++) {
+    for (var c = 0; c <= g.cols; c++) {
+      for (var r = 0; r <= g.rows; r++) {
         canvas.drawCircle(Offset(c * patchCm, r * patchCm), 0.06, dot);
       }
     }
@@ -97,25 +102,29 @@ class GhostGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(GhostGridPainter old) => false;
+  bool shouldRepaint(GhostGridPainter old) => old.sheet != sheet;
 }
 
 /* The stitches: rows of running stitch across the squares, each row drifting a
    little and each stitch wobbling, from the same seed every time so they fall where they
-   fell on the web. Drawn over a4.bw × a4.bh cm. */
+   fell on the web. Drawn over its sheet's bw × bh cm. */
 class StitchPainter extends CustomPainter {
-  StitchPainter({required this.density, required this.thread});
+  StitchPainter({required this.density, required this.thread, this.sheet});
   final Density density;
   final Thread thread;
+  /* The board's sheet; null is Level 1's A4. */
+  final SheetGrid? sheet;
 
   static final _paths = <String, Path>{};
-  static Path pathFor(Density d) => _paths.putIfAbsent(d.key, () {
+  static Path pathFor(Density d, [SheetGrid? sheet]) {
+    final g = sheet ?? a4;
+    return _paths.putIfAbsent('${d.key} ${g.cols}x${g.rows}', () {
         final row = patchCm / d.rows, period = patchCm / d.per, stitch = period * stitchShare;
         final r = rng(20260910), p = Path();
-        for (var y = row / 2; y < a4.bh; y += row) {
+        for (var y = row / 2; y < g.bh; y += row) {
           final drift = (r() - 0.5) * 0.04;
-          for (var x = -period * r(); x < a4.bw; x += period) {
-            final x0 = math.max(0.0, x), x1 = math.min(a4.bw, x + stitch);
+          for (var x = -period * r(); x < g.bw; x += period) {
+            final x0 = math.max(0.0, x), x1 = math.min(g.bw, x + stitch);
             if (x1 - x0 > 0.06) {
               final wob = drift + (r() - 0.5) * 0.025;
               p..moveTo(x0, y + wob)..lineTo(x1, y + wob + (r() - 0.5) * 0.018);
@@ -124,12 +133,13 @@ class StitchPainter extends CustomPainter {
         }
         return p;
       });
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = pathFor(density);
+    final g = sheet ?? a4, path = pathFor(density, sheet);
     canvas.save();
-    canvas.scale(size.width / a4.bw, size.height / a4.bh);
+    canvas.scale(size.width / g.bw, size.height / g.bh);
     canvas.save();
     canvas.translate(0.022, 0.022);
     canvas.drawPath(path, _stroke(thread.light ? hexColor('#1E2027', 0.26) : hexColor('#FBF8EE', 0.5), 0.1));
@@ -139,7 +149,7 @@ class StitchPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(StitchPainter old) => old.density.key != density.key || old.thread.key != thread.key;
+  bool shouldRepaint(StitchPainter old) => old.density.key != density.key || old.thread.key != thread.key || old.sheet != sheet;
 }
 
 /* A template's icon: 5 × 7 grey squares on a card, 26 × 36 units, the card blue-grey when it is the one showing. */

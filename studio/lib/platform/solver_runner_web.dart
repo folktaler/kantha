@@ -23,7 +23,7 @@ extension type _Message._(JSObject _) implements JSObject {
   external JSAny? get data;
 }
 
-class _WorkerRunner implements SolverRunner {
+class _WorkerRunner implements SizedSolverRunner {
   _WorkerRunner() {
     _worker.onmessage = ((_Message e) {
       _heard = true;
@@ -52,12 +52,19 @@ class _WorkerRunner implements SolverRunner {
   void setPool(Base base) => _worker.postMessage('{"type":"pool","base":${baseToJson(base)}}'.toJS);
 
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) {
+  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) =>
+      _send(layout, members, mount, seed, null);
+
+  @override
+  Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed) =>
+      _send(layout, members, mount, seed, size);
+
+  Future<LayoutSolve> _send(LayoutKey layout, List<int> members, Mount mount, int seed, BoardSize? size) {
     if (_dead) return Future.value(const LayoutSolve(false, null, null));
     final id = ++_next, done = Completer<LayoutSolve>();
     _waiting[id] = done;
     _worker.postMessage(jsonEncode({'type': 'solve', 'id': id, 'layout': layout.name, 'members': members,
-        'mount': mount.name, 'seed': seed}).toJS);
+        'mount': mount.name, 'seed': seed, if (size != null) 'rows': size.rows, if (size != null) 'cols': size.cols}).toJS);
     return done.future;
   }
 
