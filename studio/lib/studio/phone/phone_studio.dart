@@ -31,6 +31,9 @@ enum DockTab { cloth, patterns, finish }
    height at normal text size (8 + the 124 px tiles + 4 + the 44 px Show stitches row, owner 21 Oct), on every tab,
    so the board keeps its size from tab to tab. */
 const dockPanelHeight = 180.0, dockTabsHeight = 48.0, toastGap = 14.0;
+/* The least the canvas keeps when the window is short, so the board stays in sight: on A4 its 90 px of padding and the
+   4 cm line, and a row of 24 px squares. */
+const canvasLeast = 120.0;
 /* The panel is taller by Rows and Columns (owner, 31 Oct 2026), on every tab, so both are in sight without scrolling:
    one line of 52 px where both fit side by side in a column `width` wide at her text size (boardSizeLine), else Rows
    over Columns, 96 px. */
@@ -202,7 +205,6 @@ class _PhoneStudioState extends State<PhoneStudio> {
      hear them. */
   @override
   Widget build(BuildContext context) {
-    final inset = MediaQuery.paddingOf(context).bottom;
     return ListenableBuilder(
       listenable: c,
       // Tab goes through each part before the next, top to bottom: a square scrolled up under the top bar is still
@@ -215,23 +217,16 @@ class _PhoneStudioState extends State<PhoneStudio> {
               curve: Curves.fastOutSlowIn,
               color: _menu ? PhonePalette.canvas : PhonePalette.white,
               child: SafeArea(bottom: false, child: _topBar(context))),
-          Expanded(child: LayoutBuilder(builder: (context, room) {
-            final panel = _panelFor(context, room);
-            return Stack(fit: StackFit.expand, children: [
+          Expanded(child: Stack(fit: StackFit.expand, children: [
             // While the menu is open nothing under it is reached by a tap, Tab or a screen reader: focus stays in the
             // top bar and the menu.
             IgnorePointer(ignoring: _menu, child: ExcludeFocus(excluding: _menu,
-                child: ExcludeSemantics(excluding: _menu, child: ToastHost(
-                  toaster: widget.toaster,
-                  bottom: panel + dockTabsHeight + inset + toastGap,
-                  child: _studio(context, panel),
-                )))),
+                child: ExcludeSemantics(excluding: _menu, child: _studio(context)))),
             if (_menu)
               FocusTraversalOrder(order: const NumericFocusOrder(2),
                   child: FocusTraversalGroup(child: MenuPanel(actions: widget.actions, onClose: _closeMenu,
                       space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace))),
-          ]);
-          })),
+          ])),
         ]),
       )),
     );
@@ -245,20 +240,28 @@ class _PhoneStudioState extends State<PhoneStudio> {
         child: child,
       );
 
-  /* The panel's height in the `room` under the top bar: dockPanelFor, unless the window is too short for it beside the
-     tabs and the Safari banner (a phone on its side); then the panel gives way, and scrolls, rather than push the tabs
-     off the screen. */
+  /* The panel's height in the `room` under the Safari banner: dockPanelFor, unless the window is too short for it over
+     the tabs with canvasLeast left for the board (a phone on its side); then the panel gives way, and scrolls, rather
+     than push the tabs off the screen or the board out of sight. */
   double _panelFor(BuildContext context, BoxConstraints room) {
     final inset = MediaQuery.paddingOf(context).bottom;
-    final banner = _safari ? _safariBannerHeight(context, room.maxWidth) : 0.0;
-    return math.min(dockPanelFor(context, room.maxWidth), math.max(0.0, room.maxHeight - dockTabsHeight - inset - banner));
+    return math.min(dockPanelFor(context, room.maxWidth),
+        math.max(0.0, room.maxHeight - dockTabsHeight - inset - canvasLeast));
   }
 
-  /* Under the top bar: the Safari banner, the canvas, and the dock — its `panel` over its tabs. */
-  Widget _studio(BuildContext context, double panel) {
+  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. The toasts stand over
+     the dock. */
+  Widget _studio(BuildContext context) {
     final inset = MediaQuery.paddingOf(context).bottom;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (_safari) _safariBanner(context),
+          Expanded(child: LayoutBuilder(builder: (context, room) {
+            final panel = _panelFor(context, room);
+            return ToastHost(
+              toaster: widget.toaster,
+              hidden: _menu,
+              bottom: panel + dockTabsHeight + inset + toastGap,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(child: FocusTraversalGroup(policy: _canvasOrder, child: _canvas())),
           FocusTraversalGroup(
             policy: _panelOrder,
@@ -287,6 +290,9 @@ class _PhoneStudioState extends State<PhoneStudio> {
               ]),
             ),
           ),
+              ]),
+            );
+          })),
         ]);
   }
 
@@ -351,17 +357,6 @@ class _PhoneStudioState extends State<PhoneStudio> {
           ]))),
       ]),
     );
-  }
-
-  /* The banner's height in a column `width` wide, as _safariBanner lays it out: its sentence beside the 48 px ✕, 12 px
-     over and under. */
-  double _safariBannerHeight(BuildContext context, double width) {
-    final t = TextPainter(text: TextSpan(text: L.of(context).deviceSafariBanner, style: pText(PType.metadata)),
-        textDirection: Directionality.of(context), textScaler: MediaQuery.textScalerOf(context))
-      ..layout(maxWidth: math.max(0.0, width - 32 - 48));
-    final h = math.max(t.height, 48.0).ceilToDouble() + 24;
-    t.dispose();
-    return h;
   }
 
   /* Safari's 7-day rule across the whole width, on the blue tint with a 1 px line under it: the sentence at 13 on the

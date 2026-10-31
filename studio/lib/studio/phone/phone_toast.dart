@@ -9,8 +9,10 @@ class Toaster extends ChangeNotifier {
   String? _text;
   Timer? _timer;
   bool _disposed = false;
-  /* sayWhole's toast, until it goes: true if it went by its time or was cleared, false if another replaced it. */
+  /* sayWhole's toast, until it goes: true only if it ran its whole time in sight; false if it was cleared, replaced,
+     or covered for any of that time. */
   Completer<bool>? _whole;
+  bool _covered = false, _missed = false;
   final _idle = <Completer<void>>[];
 
   String? get text => _text;
@@ -20,11 +22,25 @@ class Toaster extends ChangeNotifier {
     _ended(false);
     _timer?.cancel();
     _text = text;
-    _timer = Timer(showFor, clear);
+    _missed = _covered;
+    _timer = Timer(showFor, _expire);
     notifyListeners();
   }
 
-  /* `say`, and whether she had the whole of it: false if another toast took its place first. */
+  /* Whether the toast can be seen, as its host is drawn (ToastHost): not under the open menu or a sheet. */
+  void seen(bool visible) {
+    _covered = !visible;
+    if (_covered && _text != null) _missed = true;
+  }
+
+  /* The toast's time is up: whole, unless it was covered at any point. */
+  void _expire() {
+    final whole = !_missed;
+    _ended(whole);
+    clear();
+  }
+
+  /* `say`, and whether she had the whole of it: false if it was cleared, replaced or covered first. */
   Future<bool> sayWhole(String text) {
     if (_disposed) return Future.value(false);
     say(text);
@@ -51,7 +67,7 @@ class Toaster extends ChangeNotifier {
     _timer = null;
     if (_text == null) return;
     _text = null;
-    _ended(true);
+    _ended(false);
     for (final c in _idle) { c.complete(); }
     _idle.clear();
     notifyListeners();
@@ -71,16 +87,22 @@ class Toaster extends ChangeNotifier {
 /* Draws the toaster's text 16 px from each side and `bottom` px from the foot (14 px over the dock on the studio):
    dark ground, white 14/18, padding 12 16, the floating shadow. A screen reader hears it as it appears. */
 class ToastHost extends StatelessWidget {
-  const ToastHost({super.key, required this.toaster, required this.bottom, required this.child});
+  const ToastHost({super.key, required this.toaster, required this.bottom, required this.child, this.hidden = false});
   final Toaster toaster;
   final double bottom;
   final Widget child;
 
+  /* True while something covers the toast's screen, here the open menu (PhoneStudio); a sheet over the screen is seen
+     through its route. */
+  final bool hidden;
+
   @override
   Widget build(BuildContext context) {
+    final visible = !hidden && (ModalRoute.of(context)?.isCurrent ?? true);
     return ListenableBuilder(
       listenable: toaster,
       builder: (context, child) {
+        toaster.seen(visible);
         final text = toaster.text;
         return Stack(children: [
           child!,

@@ -5,14 +5,16 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/l10n/words.dart';
 import 'package:kantha_studio/solver/compile.dart' show Unfillable;
+import 'package:kantha_studio/solver/geometry.dart' show Mount;
 import 'package:kantha_studio/solver/layouts.dart';
+import 'package:kantha_studio/solver/solve_layout.dart' show LayoutSolve;
 import 'package:kantha_studio/studio/painters.dart' show StitchPainter, hexColor;
 import 'package:kantha_studio/studio/controller.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../support/fonts.dart';
 import '../../support/pump.dart';
-import '../../support/studio_fixture.dart' show fixtureJpeg, measuredFor;
+import '../../support/studio_fixture.dart' show QuickSolver, fixtureJpeg, measuredFor;
 
 /* The Design tab (redesign handover, "Dock panel — Patterns tab"; decision 11; renamed Design by the owner, 19 Oct). */
 Finder tile(LayoutKey k) => key('tile-${k.name}');
@@ -32,6 +34,13 @@ Future<String?> said(WidgetTester tester, StudioController c) async {
 double opacityOf(WidgetTester tester, LayoutKey k) =>
     tester.widget<Opacity>(find.descendant(of: tile(k), matching: find.byType(Opacity)).first).opacity;
 
+
+/* A solver that finds no arrangement, as the real one answers for cloth it cannot place. */
+class _NoArrangement extends QuickSolver {
+  @override
+  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) async =>
+      const LayoutSolve(false, null, null);
+}
 
 void main() {
   testWidgets('on a phone the Design tab holds the eleven tiles in order, 80 × 124, the first selected; no line over the board',
@@ -128,6 +137,19 @@ void main() {
     await tester.tap(tile(LayoutKey.gradient));
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
     await tester.pump(const Duration(seconds: 3));
+    expect(find.textContaining('again for a new arrangement'), findsNothing);
+    expect(await said(tester, c), isNull, reason: 'kept for a press that deals');
+  });
+
+  testWidgets('a press whose solve fails leaves the board empty, says no press-again note and keeps it', (tester) async {
+    final c = await pumpStudio(tester, size: phone, solver: _NoArrangement());
+    expect(c.grid, isNull);
+    await tester.tap(find.descendant(of: strip, matching: find.text('Gradient')));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 3));
+    expect(c.grid, isNull);
     expect(find.textContaining('again for a new arrangement'), findsNothing);
     expect(await said(tester, c), isNull, reason: 'kept for a press that deals');
   });
@@ -317,6 +339,38 @@ void main() {
         final row = tester.getRect(stitches);
         expect(row.bottom, lessThanOrEqualTo(panel.bottom + 0.5), reason: '$scale: scrolled into the panel');
         expect(row.bottom, lessThanOrEqualTo(tester.getRect(key('dock-tabs')).top + 0.5));
+      }
+    });
+
+    // Bold Text (iOS and Android) widens the words and the numbers: Rows and Columns go over each other as soon as
+    // they would not fit, at every width across the change and at 130 %, with 12 rows and 12 columns.
+    testWidgets('with Bold Text on, Rows and Columns are whole and nothing overflows at any phone width', (tester) async {
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.runAsync(loadFonts);
+      final overflows = <String>[];
+      final was = FlutterError.onError;
+      FlutterError.onError = (d) {
+        final all = d.toString();
+        if (all.contains('overflowed') && !all.contains('phone_studio.dart')) overflows.add(all);
+      };
+      addTearDown(() => FlutterError.onError = was);
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(boldText: true);
+      for (final scale in [1.0, 1.3]) {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        final c = await pumpStudio(tester, size: phone);
+        c.setBoardSize((rows: 12, cols: 12));
+        await tester.pumpAndSettle();
+        for (var w = 320.0; w <= 480; w += 2) {
+          tester.view.physicalSize = Size(w, phone.height);
+          await tester.pumpAndSettle();
+          expect(overflows, isEmpty, reason: '$scale at $w: no overflow');
+          for (final f in [find.text('Rows'), find.text('Columns'), key('rows-count'), key('columns-count')]) {
+            final p = tester.renderObject<RenderParagraph>(find.descendant(of: key('board-size'), matching: f));
+            expect(p.didExceedMaxLines, isFalse, reason: '$scale at $w: $f whole');
+          }
+          expect(tester.getRect(key('columns-more')).right, lessThanOrEqualTo(w - 16 + 0.5), reason: '$scale at $w');
+        }
       }
     });
 

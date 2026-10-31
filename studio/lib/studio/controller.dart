@@ -862,7 +862,9 @@ class StudioController extends ChangeNotifier {
     // other size, which has no 4 cm line, 8 + 8. 16 px each side.
     final chrome = onA4 ? 48.0 + 32 + 10 : 16.0 + 2, gutter = 32.0;
     final w = pane.width - gutter, h = pane.height - chrome;
-    if (w < 160 || h < 120) return false;
+    // No room yet (before the first layout). Any room at all is fitted: a canvas too short for the board at the least
+    // scale scrolls, rather than keep the scale it had.
+    if (w <= 0 || h <= 0) return false;
     final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
     final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
     // On the panel, whose empty squares she taps, never less than fitLeast, so a square is at least 24 px (owner,

@@ -11,6 +11,7 @@ import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart';
 import 'package:kantha_studio/studio/controller.dart';
+import 'package:kantha_studio/studio/phone/phone_studio.dart' show canvasLeast, dockPanelHeight;
 import '../downloads/photo_png_test.dart' show loadFonts;
 import '../support/db.dart';
 import '../support/fonts.dart' as faces;
@@ -226,6 +227,33 @@ void fitsAtIphone13() {
     }
   }
 
+
+  // Short phones, where the taller panel leaves the canvas under 120 px of room for the sheet: the board is still
+  // fitted, at 24 px squares, and the canvas scrolls to the rest (second review, 31 Oct 2026).
+  for (final (what, size, safari) in [('an old Android phone in Chrome', const Size(360, 560), false),
+      ('an iPhone SE in Safari', const Size(375, 553), true), ('a narrow phone', const Size(320, 568), false)]) {
+    testWidgets('on $what at ${size.width.toInt()} × ${size.height.toInt()} the board fits at 24 px squares and the canvas scrolls',
+        (tester) async {
+      await tester.runAsync(faces.loadFonts);
+      final c = await pumpStudio(tester, size: size, solver: SizedQuickSolver(), safariOnIphone: safari);
+      expect(tester.takeException(), isNull);
+      expect(c.ppc, fitLeast, reason: 'fitted, not left at its first scale');
+      final scroll = find.descendant(of: key('phone-canvas'), matching: find.byType(Scrollable)).first;
+      expect(tester.state<ScrollableState>(scroll).position.maxScrollExtent, greaterThan(0));
+      if (size.width == 320) {
+        expect(tester.getSize(key('dock-panel')).height, dockPanelHeight + 96, reason: 'Rows over Columns');
+      }
+    });
+  }
+
+  testWidgets('on a phone on its side in Safari (844 × 390) the board keeps its room and is on the screen', (tester) async {
+    await tester.runAsync(faces.loadFonts);
+    await pumpStudio(tester, size: const Size(844, 390), solver: SizedQuickSolver(), safariOnIphone: true);
+    final canvas = tester.getRect(key('phone-canvas'));
+    expect(canvas.height, greaterThanOrEqualTo(canvasLeast));
+    final seen = tester.getRect(key('phone-board')).intersect(canvas);
+    expect(seen.width > 0 && seen.height > 0, isTrue, reason: 'part of the board is in sight: $seen');
+  });
 
   // A phone on its side in Safari: the banner, the panel and the tabs in 390 px of window; the panel gives way.
   testWidgets('on a phone on its side in Safari (844 × 390) the tabs stay on the screen and nothing overflows', (tester) async {
