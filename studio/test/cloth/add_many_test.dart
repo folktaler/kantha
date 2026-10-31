@@ -13,6 +13,7 @@ import 'package:kantha_studio/cloth/piece_finder.dart';
 import 'package:kantha_studio/cloth/prepare.dart' show PickedPhoto, readPhoto;
 import 'package:kantha_studio/finder/group_squares.dart' show PrintLook;
 import 'package:kantha_studio/l10n/app_localizations.dart';
+import 'package:kantha_studio/studio/phone/phone_sheet.dart' show PhoneButton;
 import 'package:kantha_studio/data/database.dart' show ClothRow;
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/measure/measure.dart' show Measured;
@@ -618,4 +619,30 @@ void main() {
     expect(c.note, 'This board needs more pieces.');
     expect(c.warn, isTrue);
   });
+
+  // It's one piece (owner, 31 October 2026): the finder was wrong about the photo; it goes to the crop.
+  for (final (from, answer) in [
+    ('Are these your pieces?', () => three),
+    ('the pieces too small to find', () => FinderAnswer(squares: const [], groups: const [], tiny: 2255)),
+  ]) {
+    testWidgets("It's one piece on $from: the crop for that photo, and Add stores 1 cloth of 1 piece", (tester) async {
+      finder.answer = answer();
+      final c = await openAdd(tester);
+      await pick(tester);
+      final button = inSheet(find.text("It's one piece"));
+      expect(button, findsOneWidget);
+      final target = tester.getSize(find.ancestor(of: button, matching: find.byType(PhoneButton)).first);
+      expect(target.height, greaterThanOrEqualTo(44));
+      await tapShown(tester, button);
+      await letWork(tester, done: () => inSheet(find.text('Add to box')).evaluate().isNotEmpty);
+      expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pieces-photo')), findsNothing);
+      expect(find.textContaining('too small'), findsNothing);
+      expect(inSheet(find.text('1 piece')), findsOneWidget, reason: 'the count starts at 1');
+      await tapShown(tester, inSheet(find.text('Add to box')));
+      await letWork(tester, done: () => inBox2(c).isNotEmpty);
+      expect(inBox2(c), [1]);
+      expect(inSheet(find.byKey(const ValueKey('cloth-added'))), findsOneWidget);
+    });
+  }
 }

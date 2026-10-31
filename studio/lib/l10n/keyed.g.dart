@@ -137,6 +137,7 @@ String? plainByKey(L l, String key) => switch (key) {
       'cloth.many.zoomIn' => l.clothManyZoomIn,
       'cloth.many.checkHint' => l.clothManyCheckHint,
       'cloth.many.next' => l.clothManyNext,
+      'cloth.many.onePiece' => l.clothManyOnePiece,
       'cloth.many.clothsTitle' => l.clothManyClothsTitle,
       'cloth.many.clothsHint' => l.clothManyClothsHint,
       'cloth.many.back' => l.clothManyBack,

@@ -644,6 +644,9 @@ class LEn extends L {
   String get clothManyNext => 'Next';
 
   @override
+  String get clothManyOnePiece => 'It\'s one piece';
+
+  @override
   String get clothManyClothsTitle => 'Your cloths';
 
   @override

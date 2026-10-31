@@ -383,6 +383,7 @@
   },
   "clothManyCheckHint": "Tap a box to remove it. Tap a piece we missed to add it. Zoom in to move a box's corners.",
   "clothManyNext": "Next",
+  "clothManyOnePiece": "It's one piece",
   "clothManyClothsTitle": "Your cloths",
   "clothManyClothsHint": "Pieces of the same cloth are counted together. Change a count if it is wrong.",
   "clothManyFound": "{n, plural, one{Found once} other{Found {n} times}}",

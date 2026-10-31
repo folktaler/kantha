@@ -202,6 +202,7 @@
       "zoom": "{n} %",
       "checkHint": "Tap a box to remove it. Tap a piece we missed to add it. Zoom in to move a box's corners.",
       "next": "Next",
+      "onePiece": "It's one piece",
       "clothsTitle": "Your cloths",
       "clothsHint": "Pieces of the same cloth are counted together. Change a count if it is wrong.",
       "found": "{n, plural, one {Found once} other {Found # times}}",

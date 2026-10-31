@@ -258,6 +258,15 @@ class _AddClothState extends State<AddCloth> {
     }
   }
 
+  /* It's one piece: the photo goes to the crop, as a photo of one piece does, framed from the cropper's own start. */
+  void _onePiece() => setState(() {
+        _step = _Step.crop;
+        _cropStart = null;
+        _error = '';
+        _reading = true; // until the cropper is ready
+        _ready = false;
+      });
+
   /* A change to the pieces, kept for Undo. */
   void _edit(VoidCallback change) => setState(() {
         _undo.add([for (final p in _pieces) p.copy()]);
@@ -493,6 +502,8 @@ class _AddClothState extends State<AddCloth> {
     final error = [if (_error.isNotEmpty) cardError(_error)];
     final find = PhoneButton(text: words.clothManyFind, onPressed: null);
     final retake = _quietButton(words.clothRetake, _busy ? null : _reset);
+    // The finder was wrong about this photo (a check or a gingham is one cloth): the crop, as for one piece.
+    final onePiece = _quietButton(words.clothManyOnePiece, _busy ? null : _onePiece);
     switch (_step) {
       case _Step.pick when _picture == null:
         return [if (last != null) _addedNote(last), ..._photoField(), _howToBlock(), ...error, _buttons(find)];
@@ -501,7 +512,7 @@ class _AddClothState extends State<AddCloth> {
         return [_photoStage(finding: true), ...error,
           _buttons(PhoneButton(text: words.clothManyFindingShort, busy: true, onPressed: null))];
       case _Step.tooSmall:
-        return [_photoStage(), cardError(words.clothManyTooSmall), retake, _buttons(find)];
+        return [_photoStage(), cardError(words.clothManyTooSmall), onePiece, retake, _buttons(find)];
       case _Step.crop:
         return [if (last != null) _addedNote(last), ..._photoOrCrop(), _howToBlock(), _countRow(), ...error,
           _buttons(PhoneButton(text: _submitText, busy: _busy || _reading, onPressed: _submit))];
@@ -510,7 +521,7 @@ class _AddClothState extends State<AddCloth> {
         return [
           CheckPieces(photo: _photo!, pieces: _pieces, words: words, edit: _edit, onUndo: _undoOne, canUndo: _undo.isNotEmpty,
               add: (at) => unawaited(_addAt(at)), held: widget.cropHeld, enabled: !_busy),
-          retake, ...error,
+          onePiece, retake, ...error,
           _buttons(PhoneButton(text: words.clothManyNext, busy: _busy, onPressed: any ? _next : null)),
         ];
       case _Step.cloths:

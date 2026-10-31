@@ -1059,6 +1059,12 @@ abstract class L {
   /// **'Next'**
   String get clothManyNext;
 
+  /// No description provided for @clothManyOnePiece.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s one piece'**
+  String get clothManyOnePiece;
+
   /// No description provided for @clothManyClothsTitle.
   ///
   /// In en, this message translates to:
