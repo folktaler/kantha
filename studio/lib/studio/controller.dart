@@ -42,8 +42,9 @@ class Feasible {
 }
 
 const double zoomMin = 4, zoomMax = 34;
-/* The least fitted scale: a 4 cm square at 24 px, the owner's floor for board squares (31 Oct 2026; WCAG 2.2 AA's
-   target size minimum). Zoom out may still go to zoomMin. */
+/* The least fitted scale on the panel: a 4 cm square at 24 px, the owner's floor for the squares she taps (31 Oct 2026;
+   WCAG 2.2 AA's target size minimum). A frame or a tote, where nothing is tapped, fits to zoomMin. Zoom out may
+   still go to zoomMin. */
 const double fitLeast = 24 / patchCm;
 List<int> noTurns([int? n]) => List<int>.filled(n ?? cells, 0);
 
@@ -864,9 +865,11 @@ class StudioController extends ChangeNotifier {
     if (w < 160 || h < 120) return false;
     final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
     final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
-    // Never less than fitLeast, so a square is at least 24 px (owner, 31 Oct 2026); a board that would need less
-    // scrolls.
-    final next = math.min(w / vw, h / vh).floorToDouble().clamp(fitLeast, zoomMax);
+    // On the panel, whose empty squares she taps, never less than fitLeast, so a square is at least 24 px (owner,
+    // 31 Oct 2026). In a frame or on a tote, where nothing is tapped, as small as zoomMin (a phone's canvas is narrower
+    // than a frame or a tote at 9 px a cm). A board that would need less scrolls.
+    final least = mount == Mount.none ? fitLeast : zoomMin;
+    final next = math.min(w / vw, h / vh).floorToDouble().clamp(least, zoomMax);
     final changed = next != fitPpc || (!zoomed && ppc != next);
     fitPpc = next;
     if (!zoomed) ppc = next;

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -259,4 +261,26 @@ void fitsAtIphone13() {
     c.zoomTo(100);
     expect(c.ppc, fitLeast);
   });
+
+  // A frame or a tote is not tapped, so it fits below the 24 px floor (owner, 31 Oct 2026); zoom still steps from there.
+  for (final m in [Mount.frame, Mount.tote]) {
+    for (final size in [const Size(390, 600), const Size(1272, 588)]) {
+      testWidgets('in a ${m.name} at ${size.width.toInt()} × ${size.height.toInt()}, Fit goes below the floor and zoom steps from it', (tester) async {
+        final c = await pumpStudio(tester, size: size, solver: SizedQuickSolver());
+        c.setMount(m);
+        await tester.pumpAndSettle();
+        final fit = c.ppc;
+        expect(c.percent, 100);
+        expect(fit, lessThan(fitLeast));
+        expect(fit, greaterThanOrEqualTo(zoomMin));
+        c.zoomTo(120);
+        expect(c.percent, 120, reason: 'one step, not a jump to the most');
+        expect(c.ppc, closeTo(fit * 1.2, 1e-9));
+        c.zoomTo(100);
+        expect(c.ppc, fit);
+        c.zoomTo(80);
+        expect(c.ppc, closeTo(math.max(zoomMin, fit * 0.8), 1e-9), reason: 'never under zoomMin');
+      });
+    }
+  }
 }

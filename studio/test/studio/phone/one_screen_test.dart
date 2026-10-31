@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kantha_studio/studio/controller.dart' show fitLeast;
 import 'package:kantha_studio/solver/geometry.dart' show Mount;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/studio/board.dart';
@@ -123,23 +122,9 @@ void main() {
     });
   }
 
-  // Nothing over the board but the 4 cm line (owner, 19 Oct: no pattern description), on each mount. Where the frame or
-  // the tote would need squares under 24 px (the owner's floor, 31 Oct 2026), it stays at 24 px and the canvas scrolls.
-  const atFloor = {('laptop', Mount.frame), ('laptop', Mount.tote), ('short phone', Mount.frame), ('short phone', Mount.tote)};
+  // Nothing over the board but the 4 cm line (owner, 19 Oct: no pattern description), on each mount.
   for (final (what, size) in [('desk', desk), ('laptop', laptop), ('tablet', tablet), ('phone', phone), ('short phone', const Size(390, 600))]) {
     for (final m in Mount.values) {
-      if (atFloor.contains((what, m))) {
-        testWidgets('on a $what shown ${m.name}, the board stays at 24 px squares and the canvas scrolls to it', (tester) async {
-          await tester.runAsync(loadFonts);
-          final c = await pumpStudio(tester, size: size);
-          c.setMount(m);
-          await tester.pumpAndSettle();
-          expect((c.mount, c.ppc, c.percent), (m, fitLeast, 100));
-          final scroll = tester.state<ScrollableState>(find.descendant(of: key('phone-canvas'), matching: find.byType(Scrollable)).first);
-          expect(scroll.position.maxScrollExtent, greaterThan(0));
-        });
-        continue;
-      }
       testWidgets('on a $what shown ${m.name}, the board fits inside the canvas at 100 % with nothing to scroll', (tester) async {
         await tester.runAsync(loadFonts);
         final c = await pumpStudio(tester, size: size);
