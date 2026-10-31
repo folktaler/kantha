@@ -175,7 +175,7 @@ PrintLook? printLook(FinderCv cv, FoundSquares found) {
   final hull = cv.convexHull(Int32List.fromList([for (final q in quads) for (final v in q) (v * f).round()]));
   final within = cv.zeros(small.cols, small.rows);
   cv.fillPoly(within, hull, 255);
-  final near = cv.dilate(within, 2 * (side * f).round() + 1), outside = cv.bitwiseNot(near);
+  final near = cv.dilateEllipse(within, 2 * (side * f).round() + 1), outside = cv.bitwiseNot(near);
   within.dispose();
   near.dispose();
   final outsideColour =

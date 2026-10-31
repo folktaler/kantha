@@ -49,8 +49,11 @@ abstract interface class FinderCv {
   CvMat toFloat(CvMat m);
   CvMat canny(CvMat m, double low, double high);
 
-  /// dilate with a [size] x [size] kernel of ones (3 x 3, OpenCV's default, when not given).
-  CvMat dilate(CvMat m, [int size = 3]);
+  /// dilate with the default 3 x 3 kernel.
+  CvMat dilate(CvMat m);
+
+  /// dilate with getStructuringElement(MORPH_ELLIPSE, [size] x [size]): a band [size] ~/ 2 wide all round.
+  CvMat dilateEllipse(CvMat m, int size);
   CvMat threshold(CvMat m, double t);
 
   /// ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, C 0.

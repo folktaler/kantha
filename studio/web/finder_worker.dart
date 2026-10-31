@@ -99,15 +99,27 @@ Future<void> _find(OpenCvJs cv, _Ask ask) async {
   final clock = Stopwatch()..start();
   final photo = await _decode(cv, ask.photo!);
   final decodeMs = clock.elapsedMilliseconds;
-  final f = findSquares(cv, photo);
-  final findMs = clock.elapsedMilliseconds;
-  final groups = groupsOf(cv, squareHistograms(cv, f));
-  final groupMs = clock.elapsedMilliseconds - findMs;
-  final look = _look(cv, f);
-  final lookMs = clock.elapsedMilliseconds - findMs - groupMs;
-  f.dispose();
-  final crops = ask.crops == true ? _crops(cv, photo, f) : null;
-  photo.dispose();
+  // OpenCV's memory goes back whatever happens: the worker lives on for the next photo.
+  final FoundSquares f;
+  final List<int> groups;
+  final Map<String, Object?>? look;
+  final List<Map<String, Object>>? crops;
+  final int findMs, groupMs, lookMs;
+  try {
+    f = findSquares(cv, photo);
+    findMs = clock.elapsedMilliseconds;
+    try {
+      groups = groupsOf(cv, squareHistograms(cv, f));
+      groupMs = clock.elapsedMilliseconds - findMs;
+      look = _look(cv, f);
+      lookMs = clock.elapsedMilliseconds - findMs - groupMs;
+    } finally {
+      f.dispose();
+    }
+    crops = ask.crops == true ? _crops(cv, photo, f) : null;
+  } finally {
+    photo.dispose();
+  }
   _self.postMessage(jsonEncode({
     'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
     'squares': [for (final q in f.squares) q], 'groups': groups, 'fromLines': f.fromLines,
@@ -176,12 +188,25 @@ void _findPixels(OpenCvJs cv, _Ask ask) {
   final photo = cv.cvtColor(four, CvColour.rgbaToBgr);
   four.dispose();
   final finder = SquareFinder(cv);
-  final f = finder.find(photo);
-  final groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f));
-  final groupMs = clock.elapsedMilliseconds;
-  final look = _look(cv, f);
-  final lookMs = clock.elapsedMilliseconds - groupMs;
-  f.dispose();
+  // OpenCV's memory goes back whatever happens; the photo is kept only once all of it worked.
+  final FoundSquares f;
+  final List<int> groups;
+  final Map<String, Object?>? look;
+  final int groupMs, lookMs;
+  try {
+    f = finder.find(photo);
+    try {
+      groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f));
+      groupMs = clock.elapsedMilliseconds;
+      look = _look(cv, f);
+      lookMs = clock.elapsedMilliseconds - groupMs;
+    } finally {
+      f.dispose();
+    }
+  } catch (_) {
+    photo.dispose();
+    rethrow;
+  }
   _kept = photo;
   _finder = finder;
   _keptScale = f.scale;

@@ -9,7 +9,7 @@ import 'cv.dart';
 
 // OpenCV's constants, as numbered in its headers.
 const _cv8U = 0, _cv8UC4 = 24, _cv32F = 5, _cv32FC2 = 13, _cv32SC2 = 12;
-const _interArea = 3, _threshBinary = 0, _adaptiveMeanC = 0, _morphOpen = 2;
+const _interArea = 3, _threshBinary = 0, _adaptiveMeanC = 0, _morphOpen = 2, _morphEllipse = 2;
 const _retrList = 1, _chainApproxSimple = 2, _histcmpBhattacharyya = 3;
 
 extension type _OpenCv._(JSObject _) implements JSObject {
@@ -32,6 +32,7 @@ extension type _OpenCv._(JSObject _) implements JSObject {
   @JS('Canny')
   external void canny(_Mat src, _Mat dst, double low, double high);
   external void dilate(_Mat src, _Mat dst, _Mat kernel);
+  external _Mat getStructuringElement(int shape, _Size ksize);
   external double threshold(_Mat src, _Mat dst, double thresh, double maxval, int type);
   external void adaptiveThreshold(_Mat src, _Mat dst, double maxValue, int method, int type, int blockSize, double c);
   external void morphologyEx(_Mat src, _Mat dst, int op, _Mat kernel);
@@ -228,9 +229,14 @@ class OpenCvJs implements FinderCv {
   @override
   CvMat canny(CvMat m, double low, double high) => _out((d) => _cvm.canny(_m(m), d, low, high));
   @override
-  CvMat dilate(CvMat m, [int size = 3]) => _out((d) {
-    final k = size == 3 ? _new() : _sized(size, size, _cv8U); // empty: the default 3 x 3
-    if (size != 3) k.data.toDart.fillRange(0, size * size, 1);
+  CvMat dilate(CvMat m) => _out((d) {
+    final k = _new(); // empty: the default 3 x 3
+    _cvm.dilate(_m(m), d, k);
+    k.delete();
+  });
+  @override
+  CvMat dilateEllipse(CvMat m, int size) => _out((d) {
+    final k = _cvm.getStructuringElement(_morphEllipse, _Size(width: size, height: size));
     _cvm.dilate(_m(m), d, k);
     k.delete();
   });

@@ -24,7 +24,6 @@ PieceFinder finderAt(String url, {Duration wait = finderWait}) => _WorkerFinder(
 extension type _Worker._(JSObject _) implements JSObject {
   external _Worker(JSString url);
   external void postMessage(JSAny? message, [JSArray<JSAny>? transfer]);
-  external void terminate();
   external set onmessage(JSFunction f);
   external set onerror(JSFunction f);
 }
@@ -34,21 +33,7 @@ extension type _Message._(JSObject _) implements JSObject {
 }
 
 class _WorkerFinder implements PieceFinder {
-  _WorkerFinder(this._url, {this.wait = finderWait}) {
-    _start();
-  }
-
-  final String _url;
-  final Duration wait;
-  late _Worker _worker;
-  final _waiting = <int, Completer<Object?>>{};
-  var _next = 0;
-  var _dead = false;
-  /* The working picture's size over the picture's, of the photo the worker keeps. */
-  double _scale = 1;
-
-  void _start() {
-    _worker = _Worker(_url.toJS);
+  _WorkerFinder(String url, {this.wait = finderWait}) : _worker = _Worker(url.toJS) {
     _worker.onmessage = ((_Message e) {
       final data = e.data;
       if (data.isA<JSString>()) {
@@ -77,18 +62,13 @@ class _WorkerFinder implements PieceFinder {
     }).toJS;
   }
 
-  /* A worker that did not answer in time is stuck on that job, and every later ask would wait behind it: it is
-     stopped, what else it held fails (its photo goes with it), and a fresh one takes the next ask. */
-  void _restart() {
-    _worker.terminate();
-    final out = _waiting.values.toList();
-    _waiting.clear();
-    for (final w in out) {
-      w.completeError(StateError('finder worker restarted'));
-    }
-    _scale = 1;
-    _start();
-  }
+  final _Worker _worker;
+  final Duration wait;
+  final _waiting = <int, Completer<Object?>>{};
+  var _next = 0;
+  var _dead = false;
+  /* The working picture's size over the picture's, of the photo the worker keeps. */
+  double _scale = 1;
 
   Future<Object?> _ask(JSObject message, [List<JSArrayBuffer> transfer = const []]) {
     if (_dead) return Future.error(StateError('finder worker failed'));
@@ -96,10 +76,10 @@ class _WorkerFinder implements PieceFinder {
     _waiting[id] = done;
     message['id'] = id.toJS;
     _worker.postMessage(message, transfer.toJS);
-    // A worker that never answers (OpenCV.js still loading on a slow line, or stuck) does not hold the sheet.
+    // A worker that never answers (OpenCV.js still loading on a slow line, or stuck) does not hold the sheet. The
+    // worker carries on: what it is loading or keeps (OpenCV.js, the photo) serves the asks after.
     return done.future.timeout(wait, onTimeout: () {
       _waiting.remove(id);
-      _restart();
       throw TimeoutException('the finder did not answer', wait);
     });
   }

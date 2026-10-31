@@ -65,20 +65,11 @@ class _AddClothState extends State<AddCloth> {
   PickedPhoto? _photo;
   /* _reading: the picture is being read (on a slow phone's browser that can hold the page still, so it is shown). */
   bool _ready = false, _reading = false, _busy = false, _howTo = false;
-  String _shown = '';
-  /* The error shown, '' for none. Any other error, or none, ends a "wait for it" (_toldToWait). */
-  String get _error => _shown;
-  set _error(String e) {
-    _shown = e;
-    _toldToWait = false;
-  }
+  String _error = '';
 
-  /* The error shown says the photo is still being read (Done or Add pressed too soon): it goes once that is over. */
+  /* The error shown says the photo is still being read (Done or Add pressed too soon): it goes once that is over.
+     Set with that error only; every other change to _error clears it. */
   bool _toldToWait = false;
-  void _tellToWait() {
-    _error = words.clothErrorsNotReady;
-    _toldToWait = true;
-  }
   int _count = startCount;
   late int? _box = widget.box;
   /* Her first box while it is being made: a second photo in that moment waits for the same box. */
@@ -111,8 +102,8 @@ class _AddClothState extends State<AddCloth> {
     _forgetPieces();
   }
 
-  /* The pieces and cloths of the photo let go, and the finder's copy of it. */
-  void _forgetPieces() {
+  /* The pieces and cloths of the photo let go, and the finder's copy of it; the step goes to `step`. */
+  void _forgetPieces({_Step step = _Step.pick}) {
     _finder?.forget();
     for (final c in _cloths) {
       c.image.dispose();
@@ -123,7 +114,7 @@ class _AddClothState extends State<AddCloth> {
     _counts.clear();
     _cropStart = null;
     _version++;
-    _step = _Step.pick;
+    _step = step;
   }
 
   @override
@@ -160,13 +151,13 @@ class _AddClothState extends State<AddCloth> {
 
   /* The camera on a phone; on the web, the browser's own file box, which offers the camera too. */
   Future<void> _pick({required bool camera}) async {
-    setState(() => _error = '');
+    setState(() { _error = ''; _toldToWait = false; });
     final Uint8List? bytes;
     try {
       bytes = await widget.photos.pick(camera: camera);
     } catch (e, s) {
       reportClothError(e, s, 'while a photo was taken or chosen');
-      if (mounted) setState(() => _error = words.clothErrorsPieceFailed);
+      if (mounted) setState(() { _error = words.clothErrorsPieceFailed; _toldToWait = false; });
       return;
     }
     if (bytes == null || !mounted) return;
@@ -175,7 +166,7 @@ class _AddClothState extends State<AddCloth> {
     } on Exception catch (e) {
       // Whatever the package says of a file it cannot read, she hears that this one could not be read.
       final named = e is MeasureError ? e : const MeasureError('notAnImage');
-      return setState(() => _error = clothError(words, named, fileName: _fileName));
+      return setState(() { _error = clothError(words, named, fileName: _fileName); _toldToWait = false; });
     }
     // Her first photo makes her box, when she has none yet.
     if (_box == null) {
@@ -184,7 +175,7 @@ class _AddClothState extends State<AddCloth> {
       } catch (e, s) {
         _making = null;
         reportClothError(e, s, 'while her first box was made');
-        if (mounted) setState(() => _error = clothError(words, e, fileName: _fileName));
+        if (mounted) setState(() { _error = clothError(words, e, fileName: _fileName); _toldToWait = false; });
         return;
       }
       if (!mounted) return;
@@ -202,7 +193,7 @@ class _AddClothState extends State<AddCloth> {
       if (e is! MeasureError) reportClothError(e, s, 'while a picked photo was read');
       if (mounted && identical(_picture, bytes)) {
         final named = e is MeasureError ? e : const MeasureError('notAnImage');
-        setState(() { _picture = null; _reading = false; _error = clothError(words, named, fileName: _fileName); });
+        setState(() { _picture = null; _reading = false; _error = clothError(words, named, fileName: _fileName); _toldToWait = false; });
       }
       return;
     }
@@ -214,7 +205,7 @@ class _AddClothState extends State<AddCloth> {
     }
   }
 
-  void _reset() => setState(() { _picture = null; _letGo(); _ready = false; _reading = false; _error = ''; });
+  void _reset() => setState(() { _picture = null; _letGo(); _ready = false; _reading = false; _error = ''; _toldToWait = false; });
 
   /* The finder looks at the photo; what it finds says which step comes next. One it cannot run (its worker did not
      load) is the crop, as before. */
@@ -222,7 +213,7 @@ class _AddClothState extends State<AddCloth> {
     setState(() => _step = _Step.finding);
     FinderAnswer? found;
     try {
-      found = await _finder!.find(photo); // the finder gives up itself after finderWait
+      found = await _finder!.find(photo).timeout(finderWait); // any finder, however it is made
     } catch (e, s) {
       reportClothError(e, s, 'while the pieces in a photo were found');
     }
@@ -230,7 +221,7 @@ class _AddClothState extends State<AddCloth> {
     final route = found == null ? FoundRoute.crop : routeOf(found, Size(photo.width.toDouble(), photo.height.toDouble()));
     setState(() {
       // Done pressed while the photo was read said to wait: the finder has looked now.
-      if (_toldToWait) _error = '';
+      if (_toldToWait) { _error = ''; _toldToWait = false; }
       switch (route) {
         case FoundRoute.crop:
           _step = _Step.crop;
@@ -273,10 +264,9 @@ class _AddClothState extends State<AddCloth> {
 
   /* It's one piece: the photo goes to the crop, as a photo of one piece does, framed from the cropper's own start. */
   void _onePiece() => setState(() {
-        _forgetPieces(); // the photo stays: the crop is cut from it
-        _step = _Step.crop;
-        _cropStart = null;
+        _forgetPieces(step: _Step.crop); // the photo stays: the crop is cut from it
         _error = '';
+        _toldToWait = false;
         _reading = true; // until the cropper is ready
         _ready = false;
       });
@@ -349,13 +339,13 @@ class _AddClothState extends State<AddCloth> {
   /* Next: her cloths. */
   Future<void> _next() async {
     if (_busy) return;
-    setState(() { _busy = true; _error = ''; });
+    setState(() { _busy = true; _error = ''; _toldToWait = false; });
     try {
       await _matchCloths();
       if (mounted) setState(() => _step = _Step.cloths);
     } catch (e, s) {
       reportClothError(e, s, 'while the pieces were cut for her cloths');
-      if (mounted) setState(() => _error = words.clothErrorsPieceFailed);
+      if (mounted) setState(() { _error = words.clothErrorsPieceFailed; _toldToWait = false; });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -366,7 +356,7 @@ class _AddClothState extends State<AddCloth> {
      nothing in: all still waiting. */
   Future<void> _addMany() async {
     if (_busy) return;
-    setState(() { _busy = true; _error = ''; });
+    setState(() { _busy = true; _error = ''; _toldToWait = false; });
     try {
       await _matchCloths();
       final waiting = [..._cloths];
@@ -396,16 +386,16 @@ class _AddClothState extends State<AddCloth> {
       }
     } catch (e, s) {
       reportClothError(e, s, 'while many pieces were added');
-      if (mounted) setState(() { _closeAfter = false; _error = clothError(words, e, fileName: _fileName); });
+      if (mounted) setState(() { _closeAfter = false; _error = clothError(words, e, fileName: _fileName); _toldToWait = false; });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _submit() async {
-    if (_picture == null) return setState(() { _closeAfter = false; _error = words.clothErrorsNoPhoto; });
-    if (!_ready) return setState(() { _closeAfter = false; _tellToWait(); });
-    setState(() { _busy = true; _error = ''; });
+    if (_picture == null) return setState(() { _closeAfter = false; _error = words.clothErrorsNoPhoto; _toldToWait = false; });
+    if (!_ready) return setState(() { _closeAfter = false; _error = words.clothErrorsNotReady; _toldToWait = true; });
+    setState(() { _busy = true; _error = ''; _toldToWait = false; });
     // Drawn as busy first: the crop and the measure can hold the page still.
     await paintedFirst();
     if (mounted) _crop.crop();
@@ -417,7 +407,7 @@ class _AddClothState extends State<AddCloth> {
         _store(croppedImage);
       case CropFailure(:final cause, :final stackTrace):
         reportClothError(cause, stackTrace, 'while the photo was cropped');
-        if (mounted) setState(() { _busy = false; _closeAfter = false; _tellToWait(); });
+        if (mounted) setState(() { _busy = false; _closeAfter = false; _error = words.clothErrorsNotReady; _toldToWait = true; });
     }
   }
 
@@ -436,7 +426,7 @@ class _AddClothState extends State<AddCloth> {
       if (_closeAfter) widget.onClose();
     } catch (e, s) {
       reportClothError(e, s, 'while a piece was added');
-      if (mounted) setState(() { _closeAfter = false; _error = clothError(words, e, fileName: _fileName); });
+      if (mounted) setState(() { _closeAfter = false; _error = clothError(words, e, fileName: _fileName); _toldToWait = false; });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -452,7 +442,7 @@ class _AddClothState extends State<AddCloth> {
               _ready = true;
               _reading = false;
               // A close or an add pressed while the photo was read said to wait: it is ready now.
-              if (_toldToWait) _error = '';
+              if (_toldToWait) { _error = ''; _toldToWait = false; }
             });
             // A close asked for while the finder looked: the piece goes in as framed.
             if (_many && _closeAfter && !_busy) _submit();
@@ -543,7 +533,7 @@ class _AddClothState extends State<AddCloth> {
         return [
           YourCloths(cloths: _cloths, words: words, enabled: !_busy,
               onCount: (c, n) => setState(() { c.count = n; _counts[c.key] = (c.found, n); })),
-          _quietButton(words.clothManyBack, _busy ? null : () => setState(() { _step = _Step.check; _error = ''; })),
+          _quietButton(words.clothManyBack, _busy ? null : () => setState(() { _step = _Step.check; _error = ''; _toldToWait = false; })),
           ...error,
           _buttons(PhoneButton(text: _busy ? words.clothBusy : words.clothManyAdd(pieces), busy: _busy, onPressed: _cloths.isEmpty ? null : _addMany)),
         ];

@@ -477,14 +477,14 @@ void main() {
       });
     }
 
-    testWidgets('a finder that gives up (its own wait, piece_finder_web_test): the crop, and Done adds the photo as one piece',
+    testWidgets('a finder that never answers: after finderWait, the crop, and Done adds the photo as one piece',
         (tester) async {
       finder.findHeld = Completer();
       final c = await openAdd(tester);
       await tester.tap(find.text('Photo of the pieces'));
       await untilFinding(tester);
-      finder.findHeld!.completeError(TimeoutException('the finder did not answer', finderWait));
-      for (var i = 0; i < 20; i++) {
+      await tester.pump(finderWait);
+      for (var i = 0; i < 60; i++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
         await tester.pump(const Duration(milliseconds: 1));
       }

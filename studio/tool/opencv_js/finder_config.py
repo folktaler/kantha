@@ -10,7 +10,7 @@ core = {
 
 imgproc = {
     '': [
-        'resize', 'cvtColor', 'GaussianBlur', 'Canny', 'dilate', 'threshold', 'adaptiveThreshold',
+        'resize', 'cvtColor', 'GaussianBlur', 'Canny', 'dilate', 'getStructuringElement', 'threshold', 'adaptiveThreshold',
         'morphologyEx', 'Sobel', 'findContours', 'arcLength', 'approxPolyDP', 'contourArea',
         'isContourConvex', 'convexHull', 'fillPoly', 'calcHist', 'compareHist', 'createLineSegmentDetector',
         'getPerspectiveTransform', 'warpPerspective',
