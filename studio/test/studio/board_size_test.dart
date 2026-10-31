@@ -76,7 +76,7 @@ void main() {
       expect(key('mount-frame'), findsNothing, reason: 'the frame and the tote stay with 5 × 7');
       expect(key('mount-tote'), findsNothing);
       expect(await tester.runAsync(() => c.shelf.setting(StudioController.sizeKey)), '8x6');
-      expect(await tester.runAsync(() => c.shelf.setting(StudioController.levelKey)), StudioController.levelSize);
+      expect(await tester.runAsync(() => c.shelf.setting(StudioController.levelKey)), 'patchworker');
 
       await tester.tap(key('tab-patterns'));
       await tester.pumpAndSettle();
@@ -205,12 +205,58 @@ void fitsAtIphone13() {
           c.setBoardSize(g);
           await tester.pumpAndSettle();
         }
+        expect(tester.takeException(), isNull);
         final board = tester.getRect(key('phone-board')), dock = tester.getRect(key('dock-panel')),
             bar = tester.getRect(key('phone-topbar'));
+        // Under Safari's banner 12 rows would need squares under 24 px, the owner's floor (31 Oct 2026): they stay at
+        // 24 px and the canvas scrolls to the rest.
+        if (safari && g != null && g.rows == 12) {
+          expect(c.ppc, fitLeast);
+          final scroll = find.descendant(of: key('phone-canvas'), matching: find.byType(Scrollable)).first;
+          expect(tester.state<ScrollableState>(scroll).position.maxScrollExtent, greaterThan(0));
+          return;
+        }
+        expect(c.ppc, greaterThanOrEqualTo(fitLeast), reason: 'squares at least 24 px');
         expect(board.top, greaterThanOrEqualTo(bar.bottom), reason: '$board under the top bar $bar');
         expect(board.bottom, lessThanOrEqualTo(dock.top), reason: '$board over the dock $dock');
         expect((board.left >= 0, board.right <= iphone13.width), (true, true), reason: '$board');
       });
     }
   }
+
+
+  // A phone on its side in Safari: the banner, the panel and the tabs in 390 px of window; the panel gives way.
+  testWidgets('on a phone on its side in Safari (844 × 390) the tabs stay on the screen and nothing overflows', (tester) async {
+    await tester.runAsync(faces.loadFonts);
+    await pumpStudio(tester, size: const Size(844, 390), solver: SizedQuickSolver(), safariOnIphone: true);
+    expect(tester.takeException(), isNull);
+    expect(key('safari-banner'), findsOneWidget);
+    expect(tester.getRect(key('dock-tabs')).bottom, 390);
+    expect(tester.getRect(key('dock-panel')).top, greaterThanOrEqualTo(tester.getRect(key('safari-banner')).bottom - 0.5));
+  });
+
+  testWidgets('where the panel gives way, the toast still stands 14 px over it', (tester) async {
+    final c = await pumpStudio(tester, size: const Size(844, 300), solver: SizedQuickSolver());
+    c.note = 'The cloth could not be read.';
+    // ignore: invalid_use_of_protected_member
+    c.notifyListeners();
+    await tester.pump();
+    final panel = tester.getRect(key('dock-panel'));
+    expect(panel.height, lessThan(232), reason: 'the panel gave way');
+    expect(panel.top - tester.getRect(key('phone-toast')).bottom, 14.0);
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('zoom steps from Fit both ways when Fit sits at the 24 px floor', (tester) async {
+    final c = await pumpStudio(tester, size: const Size(390, 548), solver: SizedQuickSolver());
+    expect((c.ppc, c.percent), (fitLeast, 100));
+    c.zoomTo(80);
+    expect(c.percent, 80);
+    expect(c.ppc, closeTo(fitLeast * 0.8, 1e-9));
+    c.zoomTo(120);
+    expect(c.percent, 120, reason: 'one step, not a jump to the most');
+    expect(c.ppc, closeTo(fitLeast * 1.2, 1e-9));
+    c.zoomTo(100);
+    expect(c.ppc, fitLeast);
+  });
 }

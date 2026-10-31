@@ -42,6 +42,9 @@ class Feasible {
 }
 
 const double zoomMin = 4, zoomMax = 34;
+/* The least fitted scale: a 4 cm square at 24 px, the owner's floor for board squares (31 Oct 2026; WCAG 2.2 AA's
+   target size minimum). Zoom out may still go to zoomMin. */
+const double fitLeast = 24 / patchCm;
 List<int> noTurns([int? n]) => List<int>.filled(n ?? cells, 0);
 
 /* The studio's state and behaviour, without a screen: the studio's screens only
@@ -138,8 +141,8 @@ class StudioController extends ChangeNotifier {
   static const levelKey = 'boardLevel', sizeKey = 'boardSize';
   /* From 30 to 31 Oct 2026 the board had two levels, kept under levelKey: 'beginner' was 5 × 7 whatever sizeKey held,
      'patchworker' the size in sizeKey. A device that still says 'beginner' opens on 5 × 7; one that says 'patchworker'
-     on its size. Every write since says `levelSize`: sizeKey is the size. */
-  static const levelBeginner = 'beginner', levelSize = 'size';
+     on its size. Every write since says 'patchworker', so a build of those two days, still cached, opens her size too. */
+  static const levelBeginner = 'beginner', levelChosen = 'patchworker';
   /* What a board that could not be arranged says: 35 pieces on Level 1, the board's own number on another size. */
   String get cantSolveWords => onA4 ? words.canvasCantSolve : words.canvasCantSolveSize('$squares');
 
@@ -444,7 +447,7 @@ class StudioController extends ChangeNotifier {
 
   Future<void> _keepBoard() async {
     try {
-      await shelf.setSetting(levelKey, levelSize);
+      await shelf.setSetting(levelKey, levelChosen);
       await shelf.setSetting(sizeKey, '${chosen.rows}x${chosen.cols}');
     } on Object {
       // Not remembered: the next visit opens on the board it last remembered.
@@ -506,24 +509,35 @@ class StudioController extends ChangeNotifier {
   /* The setting that says a save has been made on this device, so the first save's note is said once. */
   static const savedOnceKey = 'savedOnce';
 
-  /* The setting that says "Press {pattern} again for a new arrangement." has been said on this device (owner, 31 Oct
-     2026): it is said after her first press of a pattern, once. */
+  /* The setting that says "Press {pattern} again for a new arrangement." has been shown on this device (owner, 31 Oct
+     2026): after her first press of a pattern that deals an arrangement, once. */
   static const patternAgainKey = 'patternAgainSaid';
   bool _patternAgainAsked = false;
 
-  /* True only for the first press of a pattern on this device, and remembered then. Asked once per visit; a setting
-     that cannot be read or written counts as said. */
-  Future<bool> firstPatternPress() async {
+  /* Whether the note is still to be shown: true for one caller at a time, until patternAgainShown or
+     patternAgainMissed. A setting that cannot be read counts as shown. */
+  Future<bool> patternAgainDue() async {
     if (_patternAgainAsked) return false;
     _patternAgainAsked = true;
     try {
-      if (await shelf.setting(patternAgainKey) != null) return false;
-      await shelf.setSetting(patternAgainKey, _now().toUtc().toIso8601String());
-      return true;
+      if (await shelf.setting(patternAgainKey) == null) return true;
     } on Object {
-      return false;
+      // Counts as shown.
+    }
+    return false;
+  }
+
+  /* She had the whole note: remembered, so it is not shown again. */
+  Future<void> patternAgainShown() async {
+    try {
+      await shelf.setSetting(patternAgainKey, _now().toUtc().toIso8601String());
+    } on Object {
+      // Not remembered: the next visit shows it again, which is the safe way to be wrong.
     }
   }
+
+  /* It was not shown after all: the next press may show it. */
+  void patternAgainMissed() => _patternAgainAsked = false;
 
   /* A setting that cannot be read counts as seen: nothing is said twice by mistake. */
   Future<bool> _savedBefore() async {
@@ -847,15 +861,12 @@ class StudioController extends ChangeNotifier {
     // other size, which has no 4 cm line, 8 + 8. 16 px each side.
     final chrome = onA4 ? 48.0 + 32 + 10 : 16.0 + 2, gutter = 32.0;
     final w = pane.width - gutter, h = pane.height - chrome;
-    if (onA4 ? w < 160 || h < 120 : w <= 0 || h <= 0) return false;
+    if (w < 160 || h < 120) return false;
     final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
     final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
-    // A phone's canvas is narrower than a frame or a tote at 9 px a cm, so it may go as small as 4. Where even 4 would
-    // not fit (12 rows on a short phone, or a tote on a short laptop under the taller dock; owner 31 Oct 2026: the board
-    // whole at every level) it is made smaller still: in quarters, so each 4 cm square is whole pixels. A canvas too
-    // small for that (above) keeps the scale, and scrolls.
-    final fits = math.min(w / vw, h / vh);
-    final next = fits >= zoomMin ? fits.floorToDouble().clamp(zoomMin, zoomMax) : math.max(0.25, (fits * 4).floorToDouble() / 4);
+    // Never less than fitLeast, so a square is at least 24 px (owner, 31 Oct 2026); a board that would need less
+    // scrolls.
+    final next = math.min(w / vw, h / vh).floorToDouble().clamp(fitLeast, zoomMax);
     final changed = next != fitPpc || (!zoomed && ppc != next);
     fitPpc = next;
     if (!zoomed) ppc = next;

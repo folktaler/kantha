@@ -34,6 +34,7 @@ void main() {
   testWidgets('on a phone the top bar sits under the status inset, 48 tall: ≡, the title, Save, Share, left to right', (tester) async {
     tester.view.padding = const FakeViewPadding(top: 34, bottom: 14);
     tester.view.viewPadding = const FakeViewPadding(top: 34, bottom: 14);
+    await tester.runAsync(loadFonts);
     final c = await pumpStudio(tester, size: phone);
     final bar = tester.getRect(topbar);
     expect((bar.top, bar.height), (34.0, 48.0));
@@ -66,7 +67,8 @@ void main() {
         w is Container && w.decoration is BoxDecoration && (w.decoration! as BoxDecoration).color == PhonePalette.blue));
     expect(ground, findsOneWidget);
 
-    // The canvas between the bar and the dock; the dock panel 232 over the tabs, 48 and the home indicator.
+    // The canvas between the bar and the dock; the dock panel 232 over the tabs (Rows and Columns on one line, in the
+    // studio's own faces), 48 and the home indicator.
     final area = tester.getRect(canvas), dock = tester.getRect(panel), foot = tester.getRect(tabs);
     expect(area.top, closeTo(bar.bottom, 0.5));
     expect(area.bottom, closeTo(dock.top, 0.5));
@@ -220,14 +222,15 @@ void main() {
   });
 
   // 548: an iPhone SE's window in Safari, its bars showing. The dock's panel is 232 tall (owner, 21 Oct; Rows and Columns,
-  // 31 Oct 2026).
-  testWidgets('on a short phone (390 × 548) the board still fits, at 4 px a cm with no description over it', (tester) async {
+  // 31 Oct 2026), so the board would need squares under 24 px, the owner's floor (31 Oct 2026): it stays at 6 px a cm.
+  testWidgets('on a short phone (390 × 548) the board stays at 6 px a cm, its squares 24 px, and the canvas scrolls to it',
+      (tester) async {
     await tester.runAsync(loadFonts);
     final c = await pumpStudio(tester, size: const Size(390, 548));
     expect(tester.takeException(), isNull);
-    final board = tester.getRect(find.byType(Board)), area = tester.getRect(canvas);
-    expect(area.contains(board.topLeft) && area.contains(board.bottomRight), isTrue, reason: '$board in $area');
-    expect(c.ppc, 4);
+    expect(c.ppc, 6);
+    final scroll = find.descendant(of: canvas, matching: find.byType(Scrollable)).first;
+    expect(tester.state<ScrollableState>(scroll).position.maxScrollExtent, greaterThan(0));
   });
 
   testWidgets('on a phone too short to fit the board (390 × 440) the canvas scrolls to the whole of it', (tester) async {

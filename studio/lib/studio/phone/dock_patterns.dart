@@ -3,6 +3,7 @@
    the thread that clears this design's cloth best, as a dot and its plain colour. The spacing is always Open and is
    not said. Under it Rows and Columns, one line for everyone (owner, 31 Oct 2026). */
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../l10n/app_localizations.dart';
@@ -13,10 +14,28 @@ import '../../solver/layouts.dart';
 import '../controller.dart';
 import '../painters.dart';
 import '../pressable.dart';
-import 'phone_studio.dart' show boardSizeOneRow;
 import 'phone_theme.dart';
 import 'phone_toast.dart';
 import 'strip.dart';
+
+/* Rows and Columns, measured at her text size for a column `width` wide: on one line when both fit beside each other
+   (16 px in each side, 8 between), else Rows over Columns, their words a shared width so the numbers line up. The
+   panel's height follows (phone_studio.dart dockPanelFor). */
+({bool oneLine, double rows, double columns, double number}) boardSizeLine(BuildContext context, double width) {
+  final words = L.of(context), scaler = MediaQuery.textScalerOf(context), dir = Directionality.of(context);
+  double measure(String text) {
+    final t = TextPainter(text: TextSpan(text: text, style: pText(PType.bodySmall)), maxLines: 1, textDirection: dir,
+        textScaler: scaler)..layout();
+    final w = t.width.ceilToDouble();
+    t.dispose();
+    return w;
+  }
+  final rows = measure(words.canvasRows), columns = measure(words.canvasColumns);
+  final number = math.max(28.0, measure('$boardMax') + 4);
+  // Each: its word, 4, minus, the number, plus.
+  double stepper(double word) => word + 4 + 44 + number + 44;
+  return (oneLine: 16 + stepper(rows) + 8 + stepper(columns) + 16 <= width, rows: rows, columns: columns, number: number);
+}
 
 final Map<LayoutKey, List<int>> _icons = {for (final k in layoutKeys) k: layoutIconLevels(k)};
 
@@ -52,30 +71,42 @@ class DockPatterns extends StatelessWidget {
   /* The board's size (owner, 30 and 31 Oct 2026): Rows and Columns, each its word, minus, the number and plus, 16 px
      in, under Show stitches, in the room the taller panel gives them (phone_studio.dart dockPanelFor): side by side
      on one line where the column is boardSizeOneRow wide or more, else Rows over Columns. */
-  Widget _size(BuildContext context) {
-    final words = L.of(context), g = c.chosen;
+  Widget _size(BuildContext context) => LayoutBuilder(builder: (context, box) {
+    final words = L.of(context), g = c.chosen, line = boardSizeLine(context, box.maxWidth);
+    // Stacked, the two words share the wider's width, so the numbers line up.
+    final shared = line.oneLine ? null : math.max(line.rows, line.columns);
     final rows = _stepper('rows', words.canvasRows, g.rows, words.canvasRowsFewer, words.canvasRowsMore,
-            (n) => c.setBoardSize((rows: n, cols: g.cols))),
+            (n) => c.setBoardSize((rows: n, cols: g.cols)), shared, line.number),
         columns = _stepper('columns', words.canvasColumns, g.cols, words.canvasColumnsFewer, words.canvasColumnsMore,
-            (n) => c.setBoardSize((rows: g.rows, cols: n)));
+            (n) => c.setBoardSize((rows: g.rows, cols: n)), shared, line.number);
     return Padding(
       key: const ValueKey('board-size'),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: MediaQuery.sizeOf(context).width >= boardSizeOneRow
-          ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              rows, const SizedBox(width: 8), Flexible(child: columns)])
+      child: line.oneLine
+          ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [rows, const SizedBox(width: 8), columns])
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [rows, columns]),
     );
-  }
+  });
 
-  /* A pattern pressed: the first time on this device, the note that pressing it again makes a new arrangement. */
+  /* A pattern pressed. When it deals an arrangement, the first time on this device: the note that pressing it again
+     makes a new one. It waits for any other toast to go, and counts as shown only once she has had the whole of it. */
   void _press(LayoutKey k, String again) {
     c.loadLayout(k);
-    unawaited(c.firstPatternPress().then((first) { if (first) toaster.say(again); }));
+    if (c.grid != null || c.solving) unawaited(_noteOnce(again));
+  }
+
+  Future<void> _noteOnce(String again) async {
+    if (!await c.patternAgainDue()) return;
+    for (var i = 0; i < 3; i++) {
+      await toaster.idle();
+      if (await toaster.sayWhole(again)) return c.patternAgainShown();
+    }
+    c.patternAgainMissed();
   }
 
   /* Its word, then minus, the number, plus: each button 44 px square, faded and not pressed at its end. */
-  Widget _stepper(String key, String name, int n, String fewer, String more, void Function(int) set) {
+  Widget _stepper(String key, String name, int n, String fewer, String more, void Function(int) set, double? word,
+      double number) {
     Widget button(String k, String label, tabler.Icon icon, bool can, VoidCallback go) => Pressable(
           key: ValueKey('$key-$k'),
           label: label,
@@ -93,10 +124,10 @@ class DockPatterns extends StatelessWidget {
           )),
         );
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: pText(PType.bodySmall))),
+      SizedBox(width: word, child: Text(name, maxLines: 1, style: pText(PType.bodySmall))),
       const SizedBox(width: 4),
       button('fewer', fewer, const tabler.Minus(), n > boardMin, () => set(n - 1)),
-      SizedBox(width: 28, child: Text('$n', key: ValueKey('$key-count'), textAlign: TextAlign.center,
+      SizedBox(width: number, child: Text('$n', key: ValueKey('$key-count'), textAlign: TextAlign.center,
           style: pText(PType.bodySmall, figures: true))),
       button('more', more, const tabler.Plus(), n < boardMax, () => set(n + 1)),
     ]);
@@ -154,17 +185,21 @@ class DockPatterns extends StatelessWidget {
       );
 
   /* 80 × 124 with 2 px corners: the pattern's icon in a 46 × 64 box, the name under it. Selected: the tint, a 2 px
-     edge in the action colour and ↻ in a square of it at the top right, as a press again deals it afresh (owner,
-     31 Oct 2026); a screen reader hears that it is chosen, then "Press {pattern} again for a new arrangement." */
+     edge in the action colour and a mark in a square of it at the top right: ↻ while the board holds an arrangement,
+     as a press again deals it afresh (owner, 31 Oct 2026), and a screen reader hears that it is chosen, then "Press
+     {pattern} again for a new arrangement."; with nothing on the board (an empty box, or none that can fill), the
+     check. */
   Widget _tile(BuildContext context, LayoutKey k) {
     final words = L.of(context), f = c.feasible[k];
     final cannot = f != null && !f.fills;
     final title = words.layoutTitle(k);
     final why = cannot ? words.canvasLayoutCannot(title, words.notFillable(f.why!)) : null;
-    final on = k == c.layout, again = words.canvasPatternAgain(title);
+    // The chosen tile wears ↻, and says to press it again, while the board holds an arrangement a press would deal
+    // afresh.
+    final on = k == c.layout, again = words.canvasPatternAgain(title), anew = on && c.grid != null;
     return Pressable(
       key: ValueKey('tile-${k.name}'),
-      label: why ?? (on ? '$title\n$again' : title),
+      label: why ?? (anew ? '$title\n$again' : title),
       excludeChildSemantics: true,
       selected: on,
       onPressed: () => why != null ? toaster.say(why) : _press(k, again),
@@ -190,8 +225,10 @@ class DockPatterns extends StatelessWidget {
             if (on)
               Positioned(top: 0, right: 0, child: SizedBox.square(dimension: 20,
                   child: ColoredBox(color: PhonePalette.blue,
-                      child: Center(child: KeyedSubtree(key: const ValueKey('tile-again'),
-                          child: tablerIcon(const tabler.RotateClockwise(), size: 14, color: PhonePalette.white)))))),
+                      child: Center(child: anew
+                          ? KeyedSubtree(key: const ValueKey('tile-again'),
+                              child: tablerIcon(const tabler.RotateClockwise(), size: 14, color: PhonePalette.white))
+                          : tablerIcon(const tabler.Check(), size: 14, color: PhonePalette.white))))),
           ]),
         )),
       ),

@@ -9,15 +9,40 @@ class Toaster extends ChangeNotifier {
   String? _text;
   Timer? _timer;
   bool _disposed = false;
+  /* sayWhole's toast, until it goes: true if it went by its time or was cleared, false if another replaced it. */
+  Completer<bool>? _whole;
+  final _idle = <Completer<void>>[];
 
   String? get text => _text;
 
   void say(String text) {
     if (_disposed) return;
+    _ended(false);
     _timer?.cancel();
     _text = text;
     _timer = Timer(showFor, clear);
     notifyListeners();
+  }
+
+  /* `say`, and whether she had the whole of it: false if another toast took its place first. */
+  Future<bool> sayWhole(String text) {
+    if (_disposed) return Future.value(false);
+    say(text);
+    return (_whole = Completer<bool>()).future;
+  }
+
+  /* When nothing is showing. */
+  Future<void> idle() {
+    if (_text == null || _disposed) return Future.value();
+    final c = Completer<void>();
+    _idle.add(c);
+    return c.future;
+  }
+
+  void _ended(bool whole) {
+    final w = _whole;
+    _whole = null;
+    if (w != null && !w.isCompleted) w.complete(whole);
   }
 
   void clear() {
@@ -26,6 +51,9 @@ class Toaster extends ChangeNotifier {
     _timer = null;
     if (_text == null) return;
     _text = null;
+    _ended(true);
+    for (final c in _idle) { c.complete(); }
+    _idle.clear();
     notifyListeners();
   }
 
@@ -33,6 +61,9 @@ class Toaster extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _timer?.cancel();
+    _ended(false);
+    for (final c in _idle) { c.complete(); }
+    _idle.clear();
     super.dispose();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'dart:ui' show Tristate;
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:kantha_studio/studio/painters.dart' show StitchPainter, hexColor
 import 'package:kantha_studio/studio/controller.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
+import '../../support/fonts.dart';
 import '../../support/pump.dart';
 import '../../support/studio_fixture.dart' show fixtureJpeg, measuredFor;
 
@@ -19,6 +21,12 @@ final strip = key('dock-patterns');
 /* Whether a tile wears the selected mark, the white ↻ in its blue square (owner, 31 Oct 2026: press again for a new
    arrangement). */
 bool checked(LayoutKey k) => find.descendant(of: tile(k), matching: find.byType(tabler.RotateClockwise)).evaluate().isNotEmpty;
+
+/* When the press-again note was remembered as shown on this device, if it was. */
+Future<String?> said(WidgetTester tester, StudioController c) async {
+  await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+  return tester.runAsync<String?>(() => c.shelf.setting(StudioController.patternAgainKey));
+}
 
 /* The opacity a tile is drawn at. */
 double opacityOf(WidgetTester tester, LayoutKey k) =>
@@ -80,13 +88,48 @@ void main() {
     final grid = c.grid;
     await press('Chess');
     expect(find.descendant(of: key('phone-toast'), matching: find.text(again)), findsOneWidget);
-    await tester.pumpAndSettle();
     expect(c.grid, isNot(grid), reason: 'pressed again, a new arrangement');
-    expect(await tester.runAsync(() => c.shelf.setting(StudioController.patternAgainKey)), isNotNull);
+    expect(await said(tester, c), isNull, reason: 'not yet: she has not had the whole of it');
     await tester.pump(const Duration(seconds: 3));
+    expect(await said(tester, c), isNotNull, reason: 'shown its whole time, so remembered');
     await press('Gradient');
     expect(find.text('Press Gradient again for a new arrangement.'), findsNothing, reason: 'once on this device');
     await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('another note that takes the toast first does not lose the press-again note: it comes after, then counts',
+      (tester) async {
+    final c = await pumpStudio(tester, size: phone);
+    const again = 'Press Chess again for a new arrangement.', other = 'The cloth could not be read.';
+    await tester.tap(find.descendant(of: strip, matching: find.text('Chess')));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump();
+    expect(find.text(again), findsOneWidget);
+    c.note = other;
+    // ignore: invalid_use_of_protected_member
+    c.notifyListeners();
+    await tester.pump();
+    expect((find.text(other).evaluate().length, find.text(again).evaluate().length), (1, 0), reason: 'the other took its place');
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text(again), findsOneWidget, reason: 'shown again once the other has gone');
+    expect(await said(tester, c), isNull);
+    await tester.pump(const Duration(seconds: 3));
+    expect(await said(tester, c), isNotNull);
+  });
+
+  testWidgets('on an empty box the chosen tile has the check, not ↻, and a press neither re-arranges nor spends the note',
+      (tester) async {
+    final c = await pumpStudio(tester, size: phone, seeded: false);
+    expect((c.grid, c.solving), (null, false));
+    expect(checked(c.layout), isFalse);
+    expect(find.descendant(of: tile(c.layout), matching: find.byType(tabler.Check)), findsOneWidget);
+    expect(tester.widget<Pressable>(tile(c.layout)).label, isNot(contains('again for a new arrangement')),
+        reason: 'no "press again" while nothing would deal');
+    await tester.tap(tile(LayoutKey.gradient));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.textContaining('again for a new arrangement'), findsNothing);
+    expect(await said(tester, c), isNull, reason: 'kept for a press that deals');
   });
 
   testWidgets('a device that has had the note does not have it again on its next visit', (tester) async {
@@ -242,12 +285,31 @@ void main() {
 
     testWidgets('on a phone with its text at 130 % nothing runs over the tabs; larger text scrolls the panel', (tester) async {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.runAsync(loadFonts);
+      // Every overflow is caught, not only the first: one in the dock fails the test. At 200 % the top bar's row
+      // overflows (it did before the dock changed); the dock is what is checked here.
+      final overflows = <String>[];
+      final was = FlutterError.onError;
+      FlutterError.onError = (d) {
+        final all = d.toString();
+        if (all.contains('overflowed') && !all.contains('phone_studio.dart')) overflows.add(all);
+      };
+      addTearDown(() => FlutterError.onError = was);
       for (final scale in [1.3, 2.0]) {
         tester.platformDispatcher.textScaleFactorTestValue = scale;
         await pumpStudio(tester, size: phone);
-        // At 200 % the top bar's row overflows (it did before this row changed); the dock is what is checked here.
-        if (scale == 2.0) tester.takeException();
-        expect(tester.takeException(), isNull, reason: '$scale: no overflow');
+        expect(overflows, isEmpty, reason: '$scale: no overflow in the dock');
+        for (final k in ['rows-fewer', 'rows-more', 'columns-fewer', 'columns-more']) {
+          final r = tester.getRect(key(k));
+          expect(r.right, lessThanOrEqualTo(phone.width - 16 + 0.5), reason: '$scale: $k inside the panel');
+        }
+        for (final w in ['Rows', 'Columns']) {
+          final words = tester.renderObject<RenderParagraph>(find.descendant(of: key('board-size'), matching: find.text(w)));
+          expect(words.didExceedMaxLines, isFalse, reason: '$scale: "$w" whole, not cut short');
+        }
+        // Stacked, Rows over Columns, their minus buttons line up.
+        final rows = tester.getRect(key('rows-fewer')), columns = tester.getRect(key('columns-fewer'));
+        if (rows.top != columns.top) expect(rows.left, columns.left, reason: '$scale: stacked, lined up');
         final panel = tester.getRect(key('dock-panel'));
         if (scale == 2.0) expect(design(tester).maxScrollExtent, greaterThan(0), reason: 'the row is taller than the panel');
         await tester.drag(key('dock-design'), const Offset(0, -200));
