@@ -69,7 +69,7 @@ class _MenuIconState extends State<MenuIcon> with SingleTickerProviderStateMixin
 /* The open menu, filling the room it is given. */
 class MenuPanel extends StatefulWidget {
   const MenuPanel({super.key, required this.actions, required this.onClose, this.space, this.onFreeSpace,
-      this.patchworker = false, this.onLevel});
+      this.advanced = false, this.onLevel});
   final StudioActions actions;
   /* Shuts the menu; a row calls it before it goes. */
   final VoidCallback onClose;
@@ -77,10 +77,10 @@ class MenuPanel extends StatefulWidget {
   final KanthaDatabase? space;
   /* Free up space, pressed: the menu is shut first. */
   final VoidCallback? onFreeSpace;
-  /* "I am a…" (owner, 30 Oct 2026): Beginner, the 5 × 7 board, or Patchworker, any size. A choice shuts the menu, as
-     every row does, then tells the studio: true for Patchworker. No choice is shown without it. */
-  final bool patchworker;
-  final void Function(bool patchworker)? onLevel;
+  /* "I am a…" (owner, 30 Oct 2026): Beginner, the 5 × 7 board, or Advanced, any size. A choice shuts the menu, as
+     every row does, then tells the studio: true for Advanced. No choice is shown without it. */
+  final bool advanced;
+  final void Function(bool advanced)? onLevel;
   @override
   State<MenuPanel> createState() => _MenuPanelState();
 }
@@ -144,9 +144,9 @@ class _MenuPanelState extends State<MenuPanel> with SingleTickerProviderStateMix
                       style: pText(PType.eyebrow, color: PhonePalette.text2)),
                 ),
                 for (final on in [false, true])
-                  _ChoiceRow(key: ValueKey(on ? 'level-patchworker' : 'level-beginner'),
-                      name: on ? words.canvasLevelPatchworker : words.canvasLevelBeginner,
-                      chosen: widget.patchworker == on, onPressed: () => _go(() => level(on))),
+                  _ChoiceRow(key: ValueKey(on ? 'level-advanced' : 'level-beginner'),
+                      name: on ? words.canvasLevelAdvanced : words.canvasLevelBeginner,
+                      chosen: widget.advanced == on, onPressed: () => _go(() => level(on))),
               ],
               if (widget.space case final db?) _SpaceRow(db: db, onFree: () => _go(widget.onFreeSpace ?? () {})),
             ]),

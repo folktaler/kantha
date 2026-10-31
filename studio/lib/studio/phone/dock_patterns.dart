@@ -44,11 +44,11 @@ class DockPatterns extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           _stitches(context),
-          if (c.patchworker) _size(context),
+          if (c.advanced) _size(context),
         ]),
       );
 
-  /* A Patchworker's board (owner, 30 Oct 2026): Rows and Columns, each its word, minus, the number and plus, 16 px in,
+  /* An Advanced's board (owner, 30 Oct 2026): Rows and Columns, each its word, minus, the number and plus, 16 px in,
      under Show stitches, in the room the taller panel gives them (phone_studio.dart dockPanelFor): side by side where
      the column is wide enough, else Rows over Columns. */
   Widget _size(BuildContext context) {

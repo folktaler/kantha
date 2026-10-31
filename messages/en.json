@@ -117,7 +117,7 @@
     "cantSolveSize": "This box holds fewer than {n} pieces — open another box.",
     "levelEyebrow": "I am a…",
     "levelBeginner": "Beginner (5 × 7)",
-    "levelPatchworker": "Patchworker (any size)",
+    "levelAdvanced": "Advanced (any size)",
     "rows": "Rows",
     "columns": "Columns",
     "rowsFewer": "Fewer rows",

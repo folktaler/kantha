@@ -22,7 +22,7 @@ final int cells = a4.rows * a4.cols;
 typedef BoardSize = ({int rows, int cols});
 final BoardSize level1 = (rows: a4.rows, cols: a4.cols);
 
-/* The sizes a Patchworker may choose, rows and columns alike (Level 2). Level 1's 7 × 5 is among them. */
+/* The sizes an Advanced may choose, rows and columns alike (Level 2). Level 1's 7 × 5 is among them. */
 const int boardMin = 3, boardMax = 12;
 bool boardSizeAllowed(BoardSize g) =>
     g == level1 || (g.rows >= boardMin && g.rows <= boardMax && g.cols >= boardMin && g.cols <= boardMax);

@@ -126,18 +126,20 @@ class StudioController extends ChangeNotifier {
   int drops = 0;
   int? _dropFor;
 
-  /* "I am a…" (owner, 30 Oct 2026): a Beginner's board is Level 1's, 7 rows of 5 on A4, exactly as before Level 2; a
-     Patchworker's is the size she chose, rows and columns each boardMin to boardMax. Both are remembered on
+  /* "I am a…" (owner, 30 Oct 2026): a Beginner's board is Level 1's, 7 rows of 5 on A4, exactly as before Level 2; an
+     Advanced's is the size she chose, rows and columns each boardMin to boardMax. Both are remembered on
      the device (loadBoard). */
-  bool patchworker = false;
+  bool advanced = false;
   BoardSize chosen = level1;
-  BoardSize get size => patchworker ? chosen : level1;
+  BoardSize get size => advanced ? chosen : level1;
   /* The squares the board has, and so the pieces a box needs to fill it. */
   int get squares => size.rows * size.cols;
   SheetGrid get sheet => sheetFor(size);
   /* Level 1's A4 board: only it is offered the print sheet, the frame and the tote. */
   bool get onA4 => size == level1;
   static const levelKey = 'boardLevel', sizeKey = 'boardSize';
+  /* Advanced is stored as 'patchworker', its name until 31 Oct 2026, so a device that saved it still opens Advanced. */
+  static const advancedLevel = 'patchworker';
   /* What a board that could not be arranged says: 35 pieces on Level 1, the board's own number on another size. */
   String get cantSolveWords => onA4 ? words.canvasCantSolve : words.canvasCantSolveSize('$squares');
 
@@ -433,7 +435,7 @@ class StudioController extends ChangeNotifier {
       final parts = saved?.split('x');
       final g = parts?.length == 2 ? (rows: int.tryParse(parts![0]) ?? 0, cols: int.tryParse(parts[1]) ?? 0) : null;
       if (g != null && boardSizeAllowed(g)) chosen = g;
-      patchworker = level == 'patchworker';
+      advanced = level == advancedLevel;
     } on Object {
       // A Beginner's board, as before Level 2.
     }
@@ -441,30 +443,30 @@ class StudioController extends ChangeNotifier {
 
   Future<void> _keepBoard() async {
     try {
-      await shelf.setSetting(levelKey, patchworker ? 'patchworker' : 'beginner');
+      await shelf.setSetting(levelKey, advanced ? advancedLevel : 'beginner');
       await shelf.setSetting(sizeKey, '${chosen.rows}x${chosen.cols}');
     } on Object {
       // Not remembered: the next visit opens on the board it last remembered.
     }
   }
 
-  /* Beginner or Patchworker, from the Menu. */
-  void setPatchworker(bool on) {
-    if (on == patchworker) return;
-    _resize(() => patchworker = on);
+  /* Beginner or Advanced, from the Menu. */
+  void setAdvanced(bool on) {
+    if (on == advanced) return;
+    _resize(() => advanced = on);
   }
 
-  /* Rows and Columns, a Patchworker's minus and plus: each kept to boardMin..boardMax. */
+  /* Rows and Columns, an Advanced's minus and plus: each kept to boardMin..boardMax. */
   void setBoardSize(BoardSize g) {
     final next = (rows: g.rows.clamp(boardMin, boardMax), cols: g.cols.clamp(boardMin, boardMax));
-    if (!patchworker || next == chosen) return;
+    if (!advanced || next == chosen) return;
     _resize(() => chosen = next);
   }
 
-  /* The board as a saved design's size: a Patchworker's for any size but Level 1's, as she chose it for the design. */
+  /* The board as a saved design's size: an Advanced's for any size but Level 1's, as she chose it for the design. */
   void _takeSize(BoardSize g) {
-    if (g != level1) patchworker = true;
-    if (patchworker) chosen = g;
+    if (g != level1) advanced = true;
+    if (advanced) chosen = g;
     if (!onA4) mount = Mount.none;
     unawaited(_keepBoard());
   }
@@ -616,7 +618,7 @@ class StudioController extends ChangeNotifier {
     final gi = g.cast<int>();
     _reqId++;
     final b = p.box != null && ownBoxes.contains(p.box) ? p.box : box;
-    // The board takes the design's size: one of another size than Level 1's makes her a Patchworker on that size.
+    // The board takes the design's size: one of another size than Level 1's makes her an Advanced on that size.
     final resized = p.size != size;
     if (resized) _takeSize(p.size);
     if (b != box || resized) _checkFeasible(b);

@@ -26,7 +26,7 @@ class SizedQuickSolver extends QuickSolver implements SizedSolverRunner {
   }
 }
 
-/* "I am a…" (owner, 30 Oct 2026): Beginner is the 5 × 7 A4 board, as before; Patchworker any size, a picture only. */
+/* "I am a…" (owner, 30 Oct 2026): Beginner is the 5 × 7 A4 board, as before; Advanced any size, a picture only. */
 void main() {
   Future<void> choose(WidgetTester tester, String level) async {
     await tester.tap(key('phone-menu'));
@@ -38,7 +38,7 @@ void main() {
   for (final (what, size) in [('phone', phone), ('desk', desk)]) {
     testWidgets('on a $what a Beginner has the 5 × 7 board, the mounts and no Rows or Columns, as before', (tester) async {
       final c = await pumpStudio(tester, size: size, solver: SizedQuickSolver());
-      expect((c.patchworker, c.size, c.onA4), (false, level1, true));
+      expect((c.advanced, c.size, c.onA4), (false, level1, true));
       expect(c.grid, hasLength(35));
       expect(key('cell-34'), findsOneWidget);
       expect(key('cell-35'), findsNothing);
@@ -51,16 +51,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('I AM A…'), findsOneWidget);
       expect(find.text('Beginner (5 × 7)'), findsOneWidget);
-      expect(find.text('Patchworker (any size)'), findsOneWidget);
+      expect(find.text('Advanced (any size)'), findsOneWidget);
     });
 
-    testWidgets('on a $what she becomes a Patchworker, changes the size, and goes back to Beginner', (tester) async {
+    testWidgets('on a $what she becomes an Advanced, changes the size, and goes back to Beginner', (tester) async {
       final solver = SizedQuickSolver();
       final c = await pumpStudio(tester, size: size, solver: solver);
       final beginners = c.grid;
-      await choose(tester, 'patchworker');
-      expect(c.patchworker, isTrue);
-      expect(c.size, level1, reason: 'a Patchworker starts on the board she had');
+      await choose(tester, 'advanced');
+      expect(c.advanced, isTrue);
+      expect(c.size, level1, reason: 'an Advanced starts on the board she had');
       expect(key('board-size'), findsOneWidget);
       expect(tester.widget<Text>(key('rows-count')).data, '7');
       expect(tester.widget<Text>(key('columns-count')).data, '5');
@@ -83,7 +83,7 @@ void main() {
       expect(await tester.runAsync(() => c.shelf.setting(StudioController.sizeKey)), '8x6');
 
       await choose(tester, 'beginner');
-      expect((c.patchworker, c.size), (false, level1));
+      expect((c.advanced, c.size), (false, level1));
       expect(c.grid, beginners, reason: 'the 5 × 7 arrangement she left comes back');
       expect(key('board-size'), findsNothing);
       expect(await tester.runAsync(() => c.shelf.setting(StudioController.levelKey)), 'beginner');
@@ -92,30 +92,39 @@ void main() {
 
   test('the board she chose is remembered on the device, and a setting that does not read is a Beginner\'s', () async {
     final s = await studio(solver: SizedQuickSolver());
-    s.c.setPatchworker(true);
+    s.c.setAdvanced(true);
     s.c.setBoardSize((rows: 4, cols: 9));
     await settle();
     final again = StudioController(shelf: s.shelf, solver: SizedQuickSolver(), words: s.c.words);
     await again.loadBoard();
-    expect((again.patchworker, again.size), (true, (rows: 4, cols: 9)));
+    expect((again.advanced, again.size), (true, (rows: 4, cols: 9)));
     await s.shelf.setSetting(StudioController.sizeKey, '40x2');
     final odd = StudioController(shelf: s.shelf, solver: SizedQuickSolver(), words: s.c.words);
     await odd.loadBoard();
     expect(odd.size, level1, reason: 'a size outside $boardMin to $boardMax is not taken');
   });
 
-  test('Rows and Columns stay between $boardMin and $boardMax, and only a Patchworker has them', () async {
+  test('a device that saved the level as \'patchworker\', its old name, still opens Advanced', () async {
+    final s = await studio(solver: SizedQuickSolver());
+    await s.shelf.setSetting(StudioController.levelKey, 'patchworker');
+    await s.shelf.setSetting(StudioController.sizeKey, '6x8');
+    final again = StudioController(shelf: s.shelf, solver: SizedQuickSolver(), words: s.c.words);
+    await again.loadBoard();
+    expect((again.advanced, again.size), (true, (rows: 6, cols: 8)));
+  });
+
+  test('Rows and Columns stay between $boardMin and $boardMax, and only an Advanced has them', () async {
     final s = await studio(solver: SizedQuickSolver());
     s.c.setBoardSize((rows: 9, cols: 9));
     expect(s.c.size, level1, reason: 'a Beginner has no size to change');
-    s.c.setPatchworker(true);
+    s.c.setAdvanced(true);
     s.c.setBoardSize((rows: 1, cols: 40));
     expect(s.c.size, (rows: boardMin, cols: boardMax));
   });
 
-  test('a Patchworker design saves its size, opens again on it, and makes its picture', () async {
+  test('an Advanced design saves its size, opens again on it, and makes its picture', () async {
     final s = await studio(solver: SizedQuickSolver());
-    s.c.setPatchworker(true);
+    s.c.setAdvanced(true);
     s.c.setBoardSize((rows: 6, cols: 8));
     await settle();
     final id = await s.c.save();
@@ -125,17 +134,17 @@ void main() {
     expect((await s.shelf.watchDesigns().first).single.cols, 8);
     expect(wordsFor(s.c.words, d).caption[2], 'Upcycled from 48 cloth pieces');
 
-    s.c.setPatchworker(false);
+    s.c.setAdvanced(false);
     expect(s.c.size, level1);
     expect(s.c.openSaved(s.c.saved.single), isTrue);
-    expect((s.c.patchworker, s.c.size, s.c.grid?.length), (true, (rows: 6, cols: 8), 48),
+    expect((s.c.advanced, s.c.size, s.c.grid?.length), (true, (rows: 6, cols: 8), 48),
         reason: 'opening it makes the board its size again');
   });
 
-  testWidgets('a Patchworker design makes its 1080 × 1350 picture', (tester) async {
+  testWidgets('an Advanced design makes its 1080 × 1350 picture', (tester) async {
     await tester.runAsync(loadFonts);
     final s = (await tester.runAsync(() => studio(solver: SizedQuickSolver())))!;
-    s.c.setPatchworker(true);
+    s.c.setAdvanced(true);
     s.c.setBoardSize((rows: 3, cols: 11));
     await tester.runAsync(settle);
     final id = await tester.runAsync(() => s.c.save());
@@ -149,7 +158,7 @@ void main() {
       (tester) async {
     final delivery = CaptureDelivery();
     final c = await pumpStudio(tester, size: phone, delivery: delivery, solver: SizedQuickSolver());
-    await choose(tester, 'patchworker');
+    await choose(tester, 'advanced');
     await tester.ensureVisible(key('rows-fewer'));
     await tester.tap(key('rows-fewer'));
     await tester.pumpAndSettle();

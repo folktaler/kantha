@@ -579,11 +579,11 @@ abstract class L {
   /// **'Beginner (5 × 7)'**
   String get canvasLevelBeginner;
 
-  /// No description provided for @canvasLevelPatchworker.
+  /// No description provided for @canvasLevelAdvanced.
   ///
   /// In en, this message translates to:
-  /// **'Patchworker (any size)'**
-  String get canvasLevelPatchworker;
+  /// **'Advanced (any size)'**
+  String get canvasLevelAdvanced;
 
   /// No description provided for @canvasRows.
   ///

@@ -110,7 +110,7 @@ void main() {
       if (n == 'Close') break;
     }
     expect(names, ['Help', 'Privacy policy', 'Shop\ncatsofkochi shop',
-        'Back up or move to another device\nYour work is kept on this device only', 'Beginner (5 × 7)', 'Patchworker (any size)',
+        'Back up or move to another device\nYour work is kept on this device only', 'Beginner (5 × 7)', 'Advanced (any size)',
         c.name, '(its words)', '(its words)', 'Close']);
   });
 

@@ -298,7 +298,7 @@ class LEn extends L {
   String get canvasLevelBeginner => 'Beginner (5 × 7)';
 
   @override
-  String get canvasLevelPatchworker => 'Patchworker (any size)';
+  String get canvasLevelAdvanced => 'Advanced (any size)';
 
   @override
   String get canvasRows => 'Rows';

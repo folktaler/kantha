@@ -187,7 +187,7 @@
   },
   "canvasLevelEyebrow": "I am a…",
   "canvasLevelBeginner": "Beginner (5 × 7)",
-  "canvasLevelPatchworker": "Patchworker (any size)",
+  "canvasLevelAdvanced": "Advanced (any size)",
   "canvasRows": "Rows",
   "canvasColumns": "Columns",
   "canvasRowsFewer": "Fewer rows",
