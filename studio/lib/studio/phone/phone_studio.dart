@@ -3,6 +3,7 @@
    Safari on an iPhone a banner under the top bar says the 7-day rule until she dismisses it (owner, 11 Oct). What the
    controller says comes up as a toast over the dock (decision 10). */
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
@@ -30,12 +31,16 @@ enum DockTab { cloth, patterns, finish }
    height at normal text size (8 + the 124 px tiles + 4 + the 44 px Show stitches row, owner 21 Oct), on every tab,
    so the board keeps its size from tab to tab. */
 const dockPanelHeight = 180.0, dockTabsHeight = 48.0, toastGap = 14.0;
-/* A Patchworker's panel is taller by her Rows and Columns, on every tab, so the board keeps its size from tab to tab and
-   both are in sight without scrolling: one row of 52 px where the column is `boardSizeOneRow` wide or more, else Rows
-   over Columns, 96 px. */
-const boardSizeOneRow = 400.0;
-double dockPanelFor(StudioController c, double width) =>
-    dockPanelHeight + (!c.patchworker ? 0 : width >= boardSizeOneRow ? 52 : 96);
+/* The panel is taller by Rows and Columns (owner, 31 Oct 2026), on every tab, so both are in sight without scrolling:
+   one line of 52 px where both fit side by side (boardSizeLine), else Rows over Columns, 96 px. */
+double dockPanelFor(BoardSizeLine line) => dockPanelHeight + (line.oneLine ? 52 : 96);
+/* What a short window keeps of each, so the board and the patterns both stay in sight (a phone on its side): the canvas
+   120 px, the panel its pattern tiles (8 + 124 + 4). Short of both, everything under the Safari banner scrolls. */
+const canvasLeast = 120.0, panelLeast = 136.0;
+/* The canvas's padding around the board: 16 px each side; 24 over and under on A4, which has the 4 cm line over the
+   sheet in 32 px, and 8 on any other size, which has none. */
+EdgeInsets canvasPadding(bool onA4) => EdgeInsets.symmetric(horizontal: 16, vertical: onA4 ? 24 : 8);
+const scaleLineRoom = 32.0;
 
 /* A 1 px line along one edge, drawn over the box rather than taking room in it. */
 BoxDecoration _edge({bool top = false}) => BoxDecoration(
@@ -69,6 +74,9 @@ class _PhoneStudioState extends State<PhoneStudio> {
   Size? _pane;
   Mount? _paneMount;
   bool _safari = false;
+  final _shortfallKey = GlobalKey();
+  /* The shortfall banner's laid-out height (_measureShortfall); 0 until it has been laid out once. */
+  double _shortfall = 0;
   /* The Menu, open over everything under the top bar (menu_panel.dart). */
   bool _menu = false;
   final _menuFocus = FocusNode(debugLabel: 'menu');
@@ -79,8 +87,12 @@ class _PhoneStudioState extends State<PhoneStudio> {
     // Counted now, so the first note after the studio is built is said.
     _notes = c.notes;
     c.addListener(_heard);
+    // A font that comes after the first frame (the web loads Geist then) measures Rows and Columns again.
+    PaintingBinding.instance.systemFonts.addListener(_fontsCame);
     if (widget.safariOnIphone) _askSafariSeen();
   }
+
+  void _fontsCame() => setState(() {});
 
   /* The Safari banner comes up once the shelf says she has not dismissed it here. A setting that cannot be read leaves it
      up: the rule said again is the safe way to be wrong. */
@@ -117,6 +129,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
   @override
   void dispose() {
     c.removeListener(_heard);
+    PaintingBinding.instance.systemFonts.removeListener(_fontsCame);
     HardwareKeyboard.instance.removeHandler(_escape);
     _menuFocus.dispose();
     super.dispose();
@@ -202,7 +215,6 @@ class _PhoneStudioState extends State<PhoneStudio> {
      hear them. */
   @override
   Widget build(BuildContext context) {
-    final inset = MediaQuery.paddingOf(context).bottom;
     return ListenableBuilder(
       listenable: c,
       // Tab goes through each part before the next, top to bottom: a square scrolled up under the top bar is still
@@ -219,16 +231,11 @@ class _PhoneStudioState extends State<PhoneStudio> {
             // While the menu is open nothing under it is reached by a tap, Tab or a screen reader: focus stays in the
             // top bar and the menu.
             IgnorePointer(ignoring: _menu, child: ExcludeFocus(excluding: _menu,
-                child: ExcludeSemantics(excluding: _menu, child: ToastHost(
-                  toaster: widget.toaster,
-                  bottom: dockPanelFor(c, MediaQuery.sizeOf(context).width) + dockTabsHeight + inset + toastGap,
-                  child: _studio(context),
-                )))),
+                child: ExcludeSemantics(excluding: _menu, child: _studio(context)))),
             if (_menu)
               FocusTraversalOrder(order: const NumericFocusOrder(2),
                   child: FocusTraversalGroup(child: MenuPanel(actions: widget.actions, onClose: _closeMenu,
-                      space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace,
-                      patchworker: c.patchworker, onLevel: c.setPatchworker))),
+                      space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace))),
           ])),
         ]),
       )),
@@ -243,21 +250,36 @@ class _PhoneStudioState extends State<PhoneStudio> {
         child: child,
       );
 
-  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. */
+  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. The panel is its full
+     height (dockPanelFor) unless the window is too short for it over the tabs with canvasLeast left for the board;
+     then it gives way, to panelLeast, and scrolls. Shorter still, the whole of it scrolls. The toasts stand over the
+     dock. */
   Widget _studio(BuildContext context) {
     final inset = MediaQuery.paddingOf(context).bottom;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (_safari) _safariBanner(context),
+          Expanded(child: LayoutBuilder(builder: (context, room) {
+            final line = boardSizeLine(context, room.maxWidth), bars = dockTabsHeight + inset;
+            // The board's 120 px is its own: the shortfall banner, under it in the canvas, comes on top.
+            final canvas = canvasLeast + (ShortfallBanner.shows(c) ? _shortfall : 0);
+            final height = math.max(room.maxHeight, canvas + panelLeast + bars);
+            final panel = math.min(dockPanelFor(line), height - bars - canvas);
+            return ToastHost(
+              toaster: widget.toaster,
+              // Scrolled as a whole, the dock may be out of sight: the toast stands over the window's foot.
+              bottom: (height > room.maxHeight ? 0 : panel + bars) + toastGap,
+              child: SingleChildScrollView(key: const ValueKey('phone-under-banner'), child: SizedBox(height: height,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(child: FocusTraversalGroup(policy: _canvasOrder, child: _canvas())),
           FocusTraversalGroup(
             policy: _panelOrder,
             child: Container(
               key: const ValueKey('dock-panel'),
-              height: dockPanelFor(c, MediaQuery.sizeOf(context).width),
+              height: panel,
               color: PhonePalette.white,
               foregroundDecoration: _edge(top: true),
               child: switch (_tab) {
-                DockTab.patterns => DockPatterns(c: c, toaster: widget.toaster),
+                DockTab.patterns => DockPatterns(c: c, toaster: widget.toaster, line: line),
                 DockTab.cloth => DockCloth(c: c, actions: widget.actions),
                 DockTab.finish => DockFinish(c: c),
               },
@@ -267,7 +289,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
             policy: _tabsOrder,
             child: Container(
               key: const ValueKey('dock-tabs'),
-              height: dockTabsHeight + inset,
+              height: bars,
               padding: EdgeInsets.only(bottom: inset),
               color: PhonePalette.white,
               foregroundDecoration: _edge(top: true),
@@ -276,6 +298,9 @@ class _PhoneStudioState extends State<PhoneStudio> {
               ]),
             ),
           ),
+              ]))),
+            );
+          })),
         ]);
   }
 
@@ -382,18 +407,22 @@ class _PhoneStudioState extends State<PhoneStudio> {
      dashed squares (decision 14), and the shortfall banner sits at the foot of the canvas, outside the scroll, 16 px in
      from each side; the board is fitted to the room above it, so no row of squares is under it. There is no start
      card (decision 15). */
-  Widget _canvas() => ColoredBox(
+  Widget _canvas() {
+    if (ShortfallBanner.shows(c)) WidgetsBinding.instance.addPostFrameCallback((_) => _measureShortfall());
+    return ColoredBox(
         key: const ValueKey('phone-canvas'),
         color: PhonePalette.canvas,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(
             child: LayoutBuilder(builder: (context, box) {
-              final size = box.biggest;
+              final size = box.biggest, pad = canvasPadding(c.onA4);
+              // The board's own room: the canvas less its padding and the 4 cm line.
+              final room = Size(size.width - pad.horizontal, size.height - pad.vertical - (c.onA4 ? scaleLineRoom : 0));
               // A design opened on another mount (openSaved) changes the mount without fitting to it.
-              if (size != _pane || c.mount != _paneMount) {
-                _pane = size;
+              if (room != _pane || c.mount != _paneMount) {
+                _pane = room;
                 _paneMount = c.mount;
-                WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) c.applyFit(size); });
+                WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) c.applyFit(room); });
               }
               return SingleChildScrollView(
                 child: SingleChildScrollView(
@@ -401,11 +430,10 @@ class _PhoneStudioState extends State<PhoneStudio> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minWidth: size.width, minHeight: size.height),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      padding: pad,
                       child: Center(
                         child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          // 32 px for the 4 cm line over the sheet.
-                          const SizedBox(height: 32),
+                          if (c.onA4) const SizedBox(height: scaleLineRoom),
                           Board(key: const ValueKey('phone-board'), c: c, onEmptyCell: _addCloth),
                         ]),
                       ),
@@ -416,9 +444,17 @@ class _PhoneStudioState extends State<PhoneStudio> {
             }),
           ),
           if (ShortfallBanner.shows(c))
-            Padding(padding: const EdgeInsets.all(16), child: ShortfallBanner(c: c, onPressed: _addCloth)),
+            Padding(key: _shortfallKey, padding: const EdgeInsets.all(16),
+                child: ShortfallBanner(c: c, onPressed: _addCloth)),
         ]),
       );
+  }
+
+  /* The shortfall banner's height as it was laid out, so the dock leaves the board its room over it. */
+  void _measureShortfall() {
+    final h = _shortfallKey.currentContext?.size?.height;
+    if (mounted && h != null && h != _shortfall) setState(() => _shortfall = h);
+  }
 
   /* A third of the width: 14 px, 600 and a 2 px blue top edge when selected, else 500 in text2. */
   Widget _tabButton(BuildContext context, DockTab t) {

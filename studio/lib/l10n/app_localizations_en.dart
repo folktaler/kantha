@@ -292,13 +292,9 @@ class LEn extends L {
   }
 
   @override
-  String get canvasLevelEyebrow => 'I am a…';
-
-  @override
-  String get canvasLevelBeginner => 'Beginner (5 × 7)';
-
-  @override
-  String get canvasLevelPatchworker => 'Patchworker (any size)';
+  String canvasPatternAgain(String pattern) {
+    return 'Press $pattern again for a new arrangement.';
+  }
 
   @override
   String get canvasRows => 'Rows';

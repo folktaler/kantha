@@ -68,8 +68,7 @@ class _MenuIconState extends State<MenuIcon> with SingleTickerProviderStateMixin
 
 /* The open menu, filling the room it is given. */
 class MenuPanel extends StatefulWidget {
-  const MenuPanel({super.key, required this.actions, required this.onClose, this.space, this.onFreeSpace,
-      this.patchworker = false, this.onLevel});
+  const MenuPanel({super.key, required this.actions, required this.onClose, this.space, this.onFreeSpace});
   final StudioActions actions;
   /* Shuts the menu; a row calls it before it goes. */
   final VoidCallback onClose;
@@ -77,10 +76,6 @@ class MenuPanel extends StatefulWidget {
   final KanthaDatabase? space;
   /* Free up space, pressed: the menu is shut first. */
   final VoidCallback? onFreeSpace;
-  /* "I am a…" (owner, 30 Oct 2026): Beginner, the 5 × 7 board, or Patchworker, any size. A choice shuts the menu, as
-     every row does, then tells the studio: true for Patchworker. No choice is shown without it. */
-  final bool patchworker;
-  final void Function(bool patchworker)? onLevel;
   @override
   State<MenuPanel> createState() => _MenuPanelState();
 }
@@ -137,17 +132,6 @@ class _MenuPanelState extends State<MenuPanel> with SingleTickerProviderStateMix
                   onPressed: () => _go(() => a.openLink(shopLink))),
               _MenuRow(name: words.deviceBackupTitle, icon: const tabler.DatabaseExport(), note: words.canvasBackupNote,
                   onPressed: () => _go(a.openBackup)),
-              if (widget.onLevel case final level?) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(words.canvasLevelEyebrow.toUpperCase(), semanticsLabel: words.canvasLevelEyebrow,
-                      style: pText(PType.eyebrow, color: PhonePalette.text2)),
-                ),
-                for (final on in [false, true])
-                  _ChoiceRow(key: ValueKey(on ? 'level-patchworker' : 'level-beginner'),
-                      name: on ? words.canvasLevelPatchworker : words.canvasLevelBeginner,
-                      chosen: widget.patchworker == on, onPressed: () => _go(() => level(on))),
-              ],
               if (widget.space case final db?) _SpaceRow(db: db, onFree: () => _go(widget.onFreeSpace ?? () {})),
             ]),
           ),
@@ -192,35 +176,6 @@ class _MenuRow extends StatelessWidget {
                 Text(note!, style: pText(PType.finePrint, color: PhonePalette.text2)),
               ],
             ])),
-          ]),
-        )),
-      );
-}
-
-/* One of the choices under "I am a…": a check before the one chosen (room kept for it before the other), its name in
-   the card-label role, 16 px in, at least 48 tall. */
-class _ChoiceRow extends StatelessWidget {
-  const _ChoiceRow({super.key, required this.name, required this.chosen, required this.onPressed});
-  final String name;
-  final bool chosen;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Pressable(
-        label: name,
-        selected: chosen,
-        excludeChildSemantics: true,
-        onPressed: onPressed,
-        builder: (context, st) => focusRing(st.focused, Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          color: st.hovered ? PhonePalette.hover : const Color(0x00000000),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          alignment: Alignment.centerLeft,
-          child: Row(children: [
-            SizedBox.square(dimension: roleIconSize(PType.cardLabel),
-                child: chosen ? roleIcon(const tabler.Check(), PType.cardLabel, color: PhonePalette.blue) : null),
-            const SizedBox(width: iconGap),
-            Flexible(child: Text(name, style: pText(PType.cardLabel))),
           ]),
         )),
       );

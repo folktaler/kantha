@@ -26,7 +26,10 @@ void main() {
     Finder tile(LayoutKey k) => find.byKey(ValueKey('tile-${k.name}'));
     bool chosen(LayoutKey k) => t.widget<Pressable>(tile(k)).selected ?? false;
     for (final k in layoutKeys) {
-      expect(t.widget<Pressable>(tile(k)).label, words.layoutTitle(k), reason: '${words.layoutTitle(k)}: the Sample box fills it');
+      // The chosen tile also says to press it again (owner, 31 Oct 2026).
+      final title = words.layoutTitle(k);
+      expect(t.widget<Pressable>(tile(k)).label, chosen(k) ? '$title\n${words.canvasPatternAgain(title)}' : title,
+          reason: '$title: the Sample box fills it');
     }
     final board = find.bySemanticsLabel(RegExp(r'^Row 1, column 1 — '));
     bool arranged() => board.evaluate().isNotEmpty && find.text(words.canvasSolving).evaluate().isEmpty;

@@ -279,6 +279,19 @@ void main() {
     expect(told, 1);
   });
 
+  test('a room smaller than one 24 px square (a route turning, the keyboard) leaves the scale as it was', () async {
+    final s = await studio();
+    s.c.applyFit(const Size(358, 400));
+    final was = s.c.ppc;
+    expect(was, greaterThan(fitLeast));
+    for (final room in [const Size(358, 10), const Size(10, 400), Size.zero]) {
+      s.c.applyFit(room);
+      expect(s.c.ppc, was, reason: '$room');
+    }
+    s.c.applyFit(const Size(358, 30));
+    expect(s.c.ppc, fitLeast, reason: 'a room a square fits in is fitted, and scrolls');
+  });
+
   test('the thread on show is the one that clears this cloth best, and the stitches are Open', () async {
     final s = await studio();
     expect(s.c.thread, s.c.recommended.first.thread.key);

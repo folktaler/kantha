@@ -97,8 +97,7 @@ void main() {
     final c = await pumpStudio(tester, size: desk);
     await tester.tap(menu);
     await tester.pumpAndSettle();
-    // From ≡, which the tap focused: the four rows and the two "I am a…" choices straight after it, then the title, Save,
-    // Share, then ≡ again. Save
+    // From ≡, which the tap focused: the four rows straight after it, then the title, Save, Share, then ≡ again. Save
     // and Share name themselves by their words, so they have no label here.
     final names = <String>[];
     for (var i = 0; i < 20; i++) {
@@ -110,8 +109,7 @@ void main() {
       if (n == 'Close') break;
     }
     expect(names, ['Help', 'Privacy policy', 'Shop\ncatsofkochi shop',
-        'Back up or move to another device\nYour work is kept on this device only', 'Beginner (5 × 7)', 'Patchworker (any size)',
-        c.name, '(its words)', '(its words)', 'Close']);
+        'Back up or move to another device\nYour work is kept on this device only', c.name, '(its words)', '(its words)', 'Close']);
   });
 
   testWidgets('≡ is named Menu while the menu is shut and Close while it is open, to a mouse and a screen reader',
@@ -129,8 +127,8 @@ void main() {
     final c = await pumpStudio(tester, size: desk);
     await tester.tap(menu);
     await tester.pumpAndSettle();
-    // ≡, the four rows, the two "I am a…" choices, the title, then Save.
-    for (var i = 0; i < 8; i++) {
+    // ≡, the four rows, the title, then Save.
+    for (var i = 0; i < 6; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
     }
