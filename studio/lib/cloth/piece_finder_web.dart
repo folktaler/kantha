@@ -70,7 +70,11 @@ class _WorkerFinder implements PieceFinder {
     _waiting[id] = done;
     message['id'] = id.toJS;
     _worker.postMessage(message, transfer.toJS);
-    return done.future;
+    // A worker that never answers (OpenCV.js still loading on a slow line, or stuck) does not hold the sheet.
+    return done.future.timeout(finderWait, onTimeout: () {
+      _waiting.remove(id);
+      throw TimeoutException('the finder did not answer', finderWait);
+    });
   }
 
   @override
@@ -91,6 +95,15 @@ class _WorkerFinder implements PieceFinder {
       ],
       groups: (m['groups'] as List).cast<int>(),
       tiny: m['tiny'] as int,
+      look: switch (m['look']) {
+        final Map<String, dynamic> l => (
+            boxSpread: (l['boxSpread'] as num).toDouble(),
+            ringSpread: (l['ringSpread'] as num).toDouble(),
+            ringVsBox: (l['ringVsBox'] as num).toDouble(),
+            ringVsOutside: (l['ringVsOutside'] as num?)?.toDouble(),
+          ),
+        _ => null,
+      },
     );
   }
 

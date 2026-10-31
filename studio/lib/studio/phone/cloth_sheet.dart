@@ -16,6 +16,7 @@ import '../../platform/deferred.dart';
 import '../controller.dart';
 import 'phone_sheet.dart';
 import 'phone_theme.dart';
+import 'phone_toast.dart';
 
 /* What the two sheets need, loaded once: the app asks for it after its first frame, so a sheet opens without waiting.
    A test sets loadClothSheetsWith to stand in a load that fails. */
@@ -39,17 +40,17 @@ Future<bool> _sheetsLoaded() async {
 final _opening = Expando<bool>('cloth sheet');
 
 Future<void> showClothSheet(BuildContext context, {required ClothOpen open, required StudioController c,
-    required PhotoSource photos}) async {
+    required PhotoSource photos, required Toaster toaster}) async {
   if (_opening[c] ?? false) return;
   _opening[c] = true;
   try {
-    await _show(context, open, c, photos);
+    await _show(context, open, c, photos, toaster);
   } finally {
     _opening[c] = null;
   }
 }
 
-Future<void> _show(BuildContext context, ClothOpen open, StudioController c, PhotoSource photos) async {
+Future<void> _show(BuildContext context, ClothOpen open, StudioController c, PhotoSource photos, Toaster toaster) async {
   final loaded = await _sheetsLoaded();
   if (!context.mounted) return;
   final words = c.words;
@@ -70,8 +71,9 @@ Future<void> _show(BuildContext context, ClothOpen open, StudioController c, Pho
     // Where there is a finder the title follows the step (Add pieces, Are these your pieces?, Your cloths).
     final title = ValueNotifier(words.clothTitle);
     String boxName(int box) => c.isSample(box) ? words.boxesSample : words.boxesName('${c.boxNumbers[box] ?? ''}');
-    // Many pieces in as the sheet closes: a toast says how many, and in which box.
-    void manyAdded(int cloths, int pieces, int box) => c.tell(words.clothManyAdded(cloths, pieces, boxName(box)));
+    // Many pieces in as the sheet closes: a toast says how many, and in which box. Said by the toaster itself, not as
+    // the board's note, which keeps what it says (a warning, say).
+    void manyAdded(int cloths, int pieces, int box) => toaster.say(words.clothManyAdded(cloths, pieces, boxName(box)));
     return showPhoneSheet<void>(context, title: words.clothTitle, titleOf: title, drag: false, locked: held,
         builder: (context) => body(add.AddCloth(box: box, shelf: c.shelf, photos: photos, words: words,
             cropHeld: held, title: title, onManyAdded: manyAdded, boxName: boxName, onClose: () => close(context))));

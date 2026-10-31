@@ -1,13 +1,18 @@
 /* Add a piece where there is a finder (the web): many pieces in one photo, the check, her cloths, and every close
    adding what is waiting. The finder here is a stand-in that answers at once; the real one runs in a web worker
    (web/finder_worker.dart) and is checked in a browser. */
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantha_studio/cloth/add_cloth.dart';
+import 'package:kantha_studio/cloth/many_pieces.dart' show CheckPieces, smallestSide;
 import 'package:kantha_studio/cloth/piece_finder.dart';
-import 'package:kantha_studio/cloth/prepare.dart' show PickedPhoto;
+import 'package:kantha_studio/cloth/prepare.dart' show PickedPhoto, readPhoto;
+import 'package:kantha_studio/finder/group_squares.dart' show PrintLook;
+import 'package:kantha_studio/l10n/app_localizations.dart';
 import 'package:kantha_studio/data/database.dart' show ClothRow;
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/measure/measure.dart' show Measured;
@@ -23,20 +28,25 @@ class FakeFinder implements PieceFinder {
   FakeFinder(this.answer, {this.snapped, this.fails = false});
   FinderAnswer answer;
   Float32List? snapped;
+  /* While set, find or snap waits for it. */
+  Completer<FinderAnswer>? findHeld;
+  Completer<void>? snapHeld;
   bool fails;
   final snaps = <Offset>[];
   final cuts = <int>[];
-  var forgot = 0;
+  var forgot = 0, finds = 0;
 
   @override
   Future<FinderAnswer> find(PickedPhoto photo) async {
+    finds++;
     if (fails) throw StateError('the worker did not load');
-    return answer;
+    return findHeld?.future ?? answer;
   }
 
   @override
   Future<Float32List?> snap(Offset at) async {
     snaps.add(at);
+    await snapHeld?.future;
     return snapped;
   }
 
@@ -54,7 +64,9 @@ class FakeFinder implements PieceFinder {
   void forget() => forgot++;
 }
 
-final three = FinderAnswer(squares: [sq(100, 100), sq(250, 100), sq(400, 100), sq(600, 600)], groups: [0, 0, 1, 2], tiny: 0);
+/* Made new each time: a corner she moves moves the answer's own numbers. */
+FinderAnswer get three =>
+    FinderAnswer(squares: [sq(100, 100), sq(250, 100), sq(400, 100), sq(600, 600)], groups: [0, 0, 1, 2], tiny: 0);
 
 /* A cloth printed in squares, as the finder sees it: a cells × cells grid of `side` px squares every `step` px from
    `from`, turned by `turn` about the photo's centre, less the cells in `skip`; its groups the first `groups` numbers
@@ -429,5 +441,181 @@ void main() {
     String row(ClothRow r) => [r.id, r.box, r.name, r.fabric, r.pieces, r.l, r.a, r.b, r.spread, r.colour, r.photo,
         r.photoNumber].join('|');
     expect([for (final r in b) row(r)], [for (final r in a) row(r)]);
+  });
+
+  // The review of 31 October 2026.
+  /* Until the finder is looking (the photo read): its spinner never lets the sheet settle. */
+  Future<void> untilFinding(WidgetTester tester) async {
+    for (var i = 0; i < 60 && finder.finds == 0; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+    expect(find.text('Finding the pieces…'), findsOneWidget);
+  }
+
+  group('while the finder looks', () {
+    for (final MapEntry(key: how, value: close) in closes.entries) {
+      if (how == 'Done') continue;
+      testWidgets('$how closes the sheet at once, nothing added', (tester) async {
+        finder.findHeld = Completer();
+        final c = await openAdd(tester);
+        await tester.tap(find.text('Photo of the pieces'));
+        await untilFinding(tester);
+        await close(tester);
+        await tester.pumpAndSettle();
+        expect(sheet, findsNothing);
+        finder.findHeld!.complete(three);
+        await tester.pumpAndSettle();
+        expect(inBox2(c), isEmpty);
+      });
+    }
+
+    testWidgets('a finder that never answers: after finderWait, the crop, and Done adds the photo as one piece',
+        (tester) async {
+      finder.findHeld = Completer();
+      final c = await openAdd(tester);
+      await tester.tap(find.text('Photo of the pieces'));
+      await untilFinding(tester);
+      await tester.pump(finderWait);
+      for (var i = 0; i < 60; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(tester.takeException(), isA<TimeoutException>(), reason: 'reported');
+      expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+      await tapShown(tester, inSheet(find.text('Add to box')));
+      await letWork(tester, done: () => inBox2(c).isNotEmpty);
+      expect(inBox2(c).single, 1);
+    });
+  });
+
+  testWidgets('one large piece among many tiny outlines (a gingham): the crop, not a closer photo', (tester) async {
+    finder.answer = FinderAnswer(squares: [sq(250, 250, 300)], groups: [0], tiny: 1000);
+    await openAdd(tester);
+    await pick(tester);
+    expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+    expect(find.textContaining('too small'), findsNothing);
+  });
+
+  group('one printed cloth on a table, by how its squares sit', () {
+    const photo = Size(800, 800);
+    // As measured on the test photos, 31 October 2026 (the commit says which).
+    FinderAnswer looking(PrintLook look, {int groups = 3}) =>
+        FinderAnswer(squares: printed(from: 200, step: 60, side: 30, cells: 5).squares,
+            groups: [for (var i = 0; i < 25; i++) i % groups], tiny: 0, look: look);
+    test('a check on a table, its squares in several groups and short of the edges: the crop', () {
+      expect(routeOf(looking((boxSpread: 1.7, ringSpread: 1.6, ringVsBox: 73.5, ringVsOutside: 39.5)), photo),
+          FoundRoute.crop);
+    });
+    test('a tidy grid of pieces of one cloth on a table: the pieces', () {
+      expect(routeOf(looking((boxSpread: 1.1, ringSpread: 1.5, ringVsBox: 61.2, ringVsOutside: 1.3), groups: 1), photo),
+          FoundRoute.check, reason: 'between them is the table, as beyond them');
+    });
+    test('pieces of many colours sewn together: the pieces', () {
+      expect(routeOf(looking((boxSpread: 28.6, ringSpread: 17.2, ringVsBox: 12.8, ringVsOutside: 20.8)), photo),
+          FoundRoute.check);
+    });
+    test('squares filling the photo, nothing beyond them to compare: by the grid only', () {
+      expect(looksPrinted(looking((boxSpread: 0, ringSpread: 0, ringVsBox: 70, ringVsOutside: null))), isFalse);
+    });
+  });
+
+  testWidgets('every box removed, then closed: nothing added and nothing said', (tester) async {
+    final c = await openAdd(tester);
+    await pick(tester);
+    for (final at in const [Offset(150, 150), Offset(300, 150), Offset(450, 150), Offset(650, 650)]) {
+      await tester.tapAt(onPhoto(tester, at));
+      await tester.pumpAndSettle();
+    }
+    expect(inSheet(find.text('0 pieces, 4 removed')), findsOneWidget);
+    await tapShown(tester, inSheet(find.text('Done')));
+    await letWork(tester, done: () => sheet.evaluate().isEmpty);
+    expect(inBox2(c), isEmpty);
+    expect(find.textContaining('0 cloths'), findsNothing);
+  });
+
+  testWidgets('Done while the photo is read says to wait; once the finder has looked, that is gone', (tester) async {
+    final shelf = Shelf(memoryDb());
+    final box = (await tester.runAsync(shelf.makeBox))!;
+    final bytes = (await tester.runAsync(() => FixturePhotos().pick(camera: false)))!;
+    final photo = (await tester.runAsync(() => readPhoto(bytes)))!;
+    final read = Completer<PickedPhoto>();
+    await tester.pumpWidget(MaterialApp(localizationsDelegates: const [L.delegate], supportedLocales: L.supportedLocales,
+        home: Scaffold(body: SingleChildScrollView(child: AddCloth(box: box, shelf: shelf, photos: FixturePhotos(),
+            words: lookupL(const Locale('en')), onClose: () {}, read: (_) => read.future)))));
+    await tester.tap(find.text('Photo of the pieces'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text('Done'));
+    await tester.pump();
+    const wait = 'The cropper is still loading. Give it a moment and press again.';
+    expect(find.text(wait), findsOneWidget);
+    read.complete(photo);
+    await letWork(tester, done: () => find.text('Your cloths').evaluate().isNotEmpty ||
+        find.byKey(const ValueKey('pieces-photo')).evaluate().isNotEmpty);
+    expect(find.byKey(const ValueKey('pieces-photo')), findsOneWidget);
+    expect(find.text(wait), findsNothing);
+  });
+
+  testWidgets('a tap still snapping when she presses Next adds nothing she did not see', (tester) async {
+    finder
+      ..snapped = sq(120, 380, 90)
+      ..snapHeld = Completer();
+    final c = await openAdd(tester);
+    await pick(tester);
+    await tester.tapAt(onPhoto(tester, const Offset(150, 400)));
+    await tester.pump();
+    await tapShown(tester, inSheet(find.text('Next')));
+    finder.snapHeld!.complete();
+    await letWork(tester, done: () => find.text('Your cloths').evaluate().isNotEmpty);
+    expect(inSheet(find.text('Add 4 pieces to box')), findsOneWidget);
+    await tapShown(tester, inSheet(find.text('Add 4 pieces to box')));
+    await letWork(tester, done: () => inBox2(c).isNotEmpty);
+    expect([...inBox2(c)]..sort(), [1, 1, 2], reason: 'the 3 cloths she saw');
+  });
+
+  testWidgets('a press on a corner that does not move it changes nothing; a corner cannot shrink its box to nothing',
+      (tester) async {
+    await openAdd(tester);
+    await pick(tester);
+    await tapAndSettle(tester, inSheet(find.bySemanticsLabel('Zoom in')));
+    final corner = onPhoto(tester, const Offset(200, 200));
+    expect(tester.widget<CheckPieces>(find.byType(CheckPieces)).canUndo, isFalse);
+    final press = await tester.startGesture(corner);
+    await tester.pump();
+    await press.up();
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckPieces>(find.byType(CheckPieces)).canUndo, isFalse, reason: 'no step to undo');
+
+    // Corner 2 (bottom right, 200, 200) dragged onto corner 0 (top left, 100, 100).
+    final to = onPhoto(tester, const Offset(100, 100));
+    final drag = await tester.startGesture(corner);
+    for (var i = 1; i <= 8; i++) {
+      await drag.moveTo(Offset.lerp(corner, to, i / 8)!);
+      await tester.pump();
+    }
+    await drag.up();
+    await tester.pumpAndSettle();
+    final p = tester.widget<CheckPieces>(find.byType(CheckPieces)).pieces.first;
+    for (var j = 0; j < 2; j++) {
+      expect((p.corner(2) - p.corner(j)).distance, greaterThanOrEqualTo(smallestSide));
+    }
+    expect(tester.widget<CheckPieces>(find.byType(CheckPieces)).canUndo, isTrue);
+  });
+
+  testWidgets('many pieces in say so in a toast; a warning the board shows stays its note', (tester) async {
+    final c = await openAdd(tester);
+    c
+      ..note = 'This board needs more pieces.'
+      ..warn = true
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      ..notifyListeners();
+    await tester.pump();
+    await pick(tester);
+    await closes['Done']!(tester);
+    await letWork(tester, done: () => inBox2(c).length == 3 && sheet.evaluate().isEmpty);
+    expect(find.text('3 cloths, 4 pieces, added to Box 2.'), findsOneWidget);
+    expect(c.note, 'This board needs more pieces.');
+    expect(c.warn, isTrue);
   });
 }

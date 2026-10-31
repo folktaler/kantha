@@ -209,13 +209,15 @@ class _AddClothState extends State<AddCloth> {
     setState(() => _step = _Step.finding);
     FinderAnswer? found;
     try {
-      found = await _finder!.find(photo);
+      found = await _finder!.find(photo).timeout(finderWait);
     } catch (e, s) {
       reportClothError(e, s, 'while the pieces in a photo were found');
     }
     if (!mounted || !identical(_photo, photo)) return;
     final route = found == null ? FoundRoute.crop : routeOf(found, Size(photo.width.toDouble(), photo.height.toDouble()));
     setState(() {
+      // Done pressed while the photo was read said to wait: the finder has looked now.
+      if (_error == words.clothErrorsNotReady) _error = '';
       switch (route) {
         case FoundRoute.crop:
           _step = _Step.crop;
@@ -238,9 +240,12 @@ class _AddClothState extends State<AddCloth> {
   }
 
   /* Done, and every other close: with no photo waiting the sheet closes; with one, it is added first, by the same
-     path as Add. With many pieces, those waiting go in. */
-  void _done() {
+     path as Add. With many pieces, those waiting go in. The ×, back, Escape and the scrim (`dismiss`) while the photo
+     is read or looked at close the sheet at once with nothing added: nothing has been found to add yet, and a finder
+     that is slow or stuck must not hold the sheet open. */
+  void _done({bool dismiss = false}) {
     if (_picture == null || _step == _Step.tooSmall) return widget.onClose();
+    if (dismiss && _many && (_step == _Step.pick || _step == _Step.finding)) return widget.onClose();
     _closeAfter = true;
     if (_busy) return;
     switch (_step) {
@@ -276,7 +281,8 @@ class _AddClothState extends State<AddCloth> {
     } catch (e, s) {
       reportClothError(e, s, 'while a tap was snapped to a piece');
     }
-    if (!mounted || _step != _Step.check) return;
+    // Next pressed while the finder looked (_busy), or the step left: the piece she has not seen is not added.
+    if (!mounted || _step != _Step.check || _busy) return;
     final photo = _photo!;
     final square = q ?? defaultSquare(at, _pieces, Size(photo.width.toDouble(), photo.height.toDouble()));
     _edit(() => _pieces.add(Piece(square, 'added ${_tapped++}')));
@@ -347,6 +353,11 @@ class _AddClothState extends State<AddCloth> {
       final ready = [
         for (final (i, out) in prepared.indexed) (photo: out.jpeg, measured: out.measured, pieces: waiting[i].count),
       ];
+      // Every box removed: nothing goes in, and nothing is said.
+      if (ready.isEmpty) {
+        if (_closeAfter) widget.onClose();
+        return;
+      }
       await widget.shelf.addCloths(box: _box!, cloth: ready);
       if (!mounted) return;
       final cloths = ready.length, pieces = ready.fold(0, (n, c) => n + c.pieces), box = _box!;
@@ -446,7 +457,7 @@ class _AddClothState extends State<AddCloth> {
   Widget build(BuildContext context) {
     final last = _added;
     // The ×, the scrim, back and Escape ask the sheet to close; with a photo waiting they go through Done.
-    return PopScope<Object?>(canPop: _picture == null, onPopInvokedWithResult: (didPop, _) { if (!didPop) _done(); },
+    return PopScope<Object?>(canPop: _picture == null, onPopInvokedWithResult: (didPop, _) { if (!didPop) _done(dismiss: true); },
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, spacing: 16,
             children: _many ? _manySteps(last) : [
       if (last != null) _addedNote(last),

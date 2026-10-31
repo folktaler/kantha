@@ -223,7 +223,7 @@ class _KanthaAppState extends State<KanthaApp> with WidgetsBindingObserver {
   }
 
   /* Add a piece or Fix this cloth. */
-  void _openCloth(ClothOpen open) => _over((context) => showClothSheet(context, open: open, c: c, photos: _photos));
+  void _openCloth(ClothOpen open) => _over((context) => showClothSheet(context, open: open, c: c, photos: _photos, toaster: _toaster));
 
   /* Your boxes. */
   void _openBoxes() => _over((context) => showBoxesSheet(context, c: c, toaster: _toaster));

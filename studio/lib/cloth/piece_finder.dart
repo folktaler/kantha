@@ -6,18 +6,21 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Offset, Size;
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import '../finder/group_squares.dart' show PrintLook;
 import 'prepare.dart' show PickedPhoto;
 import 'piece_finder_io.dart' if (dart.library.js_interop) 'piece_finder_web.dart' as impl;
 
 /* What the finder found in one photo. Corners in the picture's own pixels (PickedPhoto's width and height), x0, y0, …
    x3, y3, clockwise from the top left. */
 class FinderAnswer {
-  const FinderAnswer({required this.squares, required this.groups, required this.tiny});
+  const FinderAnswer({required this.squares, required this.groups, required this.tiny, this.look});
   final List<Float32List> squares;
   /* A group number per square: squares of one number are one cloth. */
   final List<int> groups;
   /* How many outlines had a piece's shape but were too small to be one (FoundSquares.tiny). */
   final int tiny;
+  /* How the squares sit in the photo (printLook), for 4 squares or more; null otherwise. */
+  final PrintLook? look;
 }
 
 abstract interface class PieceFinder {
@@ -43,15 +46,51 @@ PieceFinder? Function() pieceFinderWith = impl.create;
    10 or under, and the 57 single-cloth photos (the Sample box's 10 and the 47 start cloths) 28 at most. */
 const tooSmallTiny = 60;
 
+/* The longest the sheet waits for the finder (its first look includes loading OpenCV.js, about 0.7 MB). Past it, or
+   when the finder fails, the photo goes to the crop, as on a phone with no finder. */
+const finderWait = Duration(seconds: 30);
+
 enum FoundRoute { crop, tooSmall, check }
 
-/* 2 or more pieces: she checks them, unless they are one printed cloth (isPrint). Fewer, and many tiny outlines: a
-   closer photo. Otherwise the crop, as before. `picture` is the photo's size in its own pixels. */
-FoundRoute routeOf(FinderAnswer a, Size picture) => a.squares.length >= 2 && !isPrint(a, picture)
-    ? FoundRoute.check
-    : a.squares.length < 2 && a.tiny >= tooSmallTiny
-        ? FoundRoute.tooSmall
-        : FoundRoute.crop;
+/* One piece found whose side is at least this share of the photo's short side is the cloth she photographed: the crop,
+   however many tiny outlines its pattern makes. Measured 31 October 2026: the far-off panels photo's one square, 0.16;
+   one gingham cloth on a table, 0.37, with 900 to 1,100 tiny outlines. */
+const oneClothShare = 0.25;
+
+/* 2 or more pieces: she checks them, unless they are one printed cloth (isPrint). One piece filling a good part of the
+   photo: the crop. Otherwise, many tiny outlines: a closer photo; else the crop, as before. `picture` is the photo's
+   size in its own pixels. */
+FoundRoute routeOf(FinderAnswer a, Size picture) {
+  if (a.squares.length >= 2) return isPrint(a, picture) ? FoundRoute.crop : FoundRoute.check;
+  if (a.squares.length == 1 && _side(a.squares.single) >= oneClothShare * picture.shortestSide) return FoundRoute.crop;
+  return a.tiny >= tooSmallTiny ? FoundRoute.tooSmall : FoundRoute.crop;
+}
+
+double _side(Float32List q) {
+  var s = 0.0;
+  for (var k = 0; k < 4; k++) {
+    s += (Offset(q[2 * ((k + 1) % 4)], q[2 * ((k + 1) % 4) + 1]) - Offset(q[2 * k], q[2 * k + 1])).distance;
+  }
+  return s / 4;
+}
+
+/* One printed cloth, not pieces: its squares on one even grid to the photo's edges (onGridToEdges), or looking
+   printed (looksPrinted). */
+bool isPrint(FinderAnswer a, Size picture) => onGridToEdges(a, picture) || looksPrinted(a);
+
+/* The boxes look like the squares of one print lying on something else: 4 or more, all one colour (boxSpread 5 or
+   under), all with the same colour round them (ringSpread 5 or under), that colour unlike theirs (ringVsBox 15 or
+   more) and unlike what lies beyond them (ringVsOutside 20 or more). Between separate pieces is the table, the same
+   as beyond them. Measured 31 October 2026: see the commit that brought it. */
+bool looksPrinted(FinderAnswer a) {
+  final l = a.look;
+  return a.squares.length >= 4 &&
+      l != null &&
+      l.boxSpread <= 5 &&
+      l.ringSpread <= 5 &&
+      l.ringVsBox >= 15 &&
+      (l.ringVsOutside ?? 0) >= 20;
+}
 
 /* The boxes are the squares of one printed cloth, not pieces: at least 4 boxes, all one cloth, all turned the same
    way, their centres on one even grid (any spacing) with at most 1 cell in 10 empty, and that grid reaching all four
@@ -59,7 +98,7 @@ FoundRoute routeOf(FinderAnswer a, Size picture) => a.squares.length >= 2 && !is
    the 9 test photos, the 57 single-cloth photos, five check prints (47 boxes, 1 grid cell empty, spacing 1.7 sides, so
    the squares do not touch) and same-cloth pieces lying apart: only the check prints are a print. Nine pieces of one
    cloth laid on a table in a neat 3 × 3 grid stay pieces, because the grid stops short of two edges. */
-bool isPrint(FinderAnswer a, Size picture) {
+bool onGridToEdges(FinderAnswer a, Size picture) {
   final n = a.squares.length;
   if (n < 4 || a.groups.toSet().length != 1) return false;
   final centres = [for (final q in a.squares) Offset((q[0] + q[2] + q[4] + q[6]) / 4, (q[1] + q[3] + q[5] + q[7]) / 4)];

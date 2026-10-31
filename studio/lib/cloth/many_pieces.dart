@@ -77,6 +77,8 @@ Float32List defaultSquare(Offset at, List<Piece> pieces, Size picture) {
 
 /* The most a photo is zoomed in. */
 const _maxZoom = 4.0;
+/* A corner moved stops this far (picture pixels) from the box's other corners, so a box never shrinks to nothing. */
+const smallestSide = 16.0;
 /* A box shows its corners, to be moved, once its side is this long on the screen: a finger on each, apart. */
 const _cornersFrom = 56.0;
 
@@ -102,8 +104,10 @@ class CheckPieces extends StatefulWidget {
 
 class _CheckPiecesState extends State<CheckPieces> {
   final _view = TransformationController();
-  /* The corner being moved: the piece and which corner. */
+  /* The corner being moved: the piece and which corner; and whether it has moved yet (kept for Undo when it first
+     does). */
   (Piece, int)? _drag;
+  bool _moved = false;
   /* The press began on a corner: it is not a tap. */
   bool _onCorner = false;
   double _fit = 1;
@@ -142,9 +146,9 @@ class _CheckPiecesState extends State<CheckPieces> {
       if (!_cornersShown(p)) continue;
       for (var k = 0; k < 4; k++) {
         if ((p.corner(k) - at).distance <= reach) {
-          widget.edit(() {});
           setState(() {
             _drag = (p, k);
+            _moved = false;
             _onCorner = true;
           });
           return;
@@ -158,10 +162,20 @@ class _CheckPiecesState extends State<CheckPieces> {
     if (d == null) return;
     final at = _picture(e.localPosition);
     final w = widget.photo.width.toDouble(), h = widget.photo.height.toDouble();
-    setState(() {
-      d.$1.q[2 * d.$2] = at.dx.clamp(0, w);
-      d.$1.q[2 * d.$2 + 1] = at.dy.clamp(0, h);
-    });
+    final (p, k) = d;
+    final to = Offset(at.dx.clamp(0, w), at.dy.clamp(0, h));
+    if (to == p.corner(k)) return;
+    for (var j = 0; j < 4; j++) {
+      if (j != k && (p.corner(j) - to).distance < smallestSide) return;
+    }
+    void place() {
+      p.q[2 * k] = to.dx;
+      p.q[2 * k + 1] = to.dy;
+    }
+    // The first move is one change, kept for Undo; the rest of the same drag carry it on.
+    if (_moved) return setState(place);
+    _moved = true;
+    widget.edit(place);
   }
 
   void _up(PointerEvent _) {

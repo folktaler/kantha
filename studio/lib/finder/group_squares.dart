@@ -107,3 +107,143 @@ int cropSide(Float32List q, double scale) {
   }
   return (s / 4 / scale).round();
 }
+
+/// How the found squares sit in their photo, to tell one printed cloth (a check or a gingham: the squares are its
+/// pattern, and between them is the cloth's own band) from separate pieces (between them is the table). Colours are
+/// CIELAB; each is the median, channel by channel, of points sampled every eighth of a side.
+/// - [boxSpread]: how far each square's middle (its inner 60 %) is from the squares' common colour, the median;
+/// - [ringSpread]: the same for the ring round each square (out to 1.3 times it, other squares left out);
+/// - [ringVsBox]: how far the rings' common colour is from the squares';
+/// - [ringVsOutside]: how far the rings' common colour is from everything more than a side beyond the squares'
+///   outline, or null when that is under 2 % of the photo (the squares fill it).
+/// Null when no square is big enough to sample.
+typedef PrintLook = ({double boxSpread, double ringSpread, double ringVsBox, double? ringVsOutside});
+
+PrintLook? printLook(FinderCv cv, CvMat photo, FoundSquares found) {
+  final work = cv.resizeArea(photo, found.scale);
+  final lab = cv.cvtColor(work, CvColour.bgrToLab);
+  work.dispose();
+  final w = lab.cols, h = lab.rows, px = cv.bytes(lab);
+  lab.dispose();
+  final quads = found.squares;
+  if (quads.isEmpty) return null;
+  final sides = [for (final q in quads) _sideOf(q)]..sort();
+  final side = sides[sides.length ~/ 2];
+  final step = math.max(1.0, side / 8);
+  final centres = [for (final q in quads) ((q[0] + q[2] + q[4] + q[6]) / 4, (q[1] + q[3] + q[5] + q[7]) / 4)];
+  Float32List grown(int i, double by) {
+    final (cx, cy) = centres[i];
+    return Float32List.fromList([for (var k = 0; k < 8; k++) k.isEven ? cx + (quads[i][k] - cx) * by : cy + (quads[i][k] - cy) * by]);
+  }
+
+  final inner = [for (var i = 0; i < quads.length; i++) grown(i, 0.6)];
+  final outer = [for (var i = 0; i < quads.length; i++) grown(i, 1.3)];
+  final hull = _hull([for (final q in quads) for (var k = 0; k < 8; k += 2) (q[k].toDouble(), q[k + 1].toDouble())]);
+  final boxes = [for (final _ in quads) <List<double>>[]], rings = [for (final _ in quads) <List<double>>[]];
+  final outside = <List<double>>[];
+  var all = 0;
+  for (var y = step / 2; y < h; y += step) {
+    for (var x = step / 2; x < w; x += step) {
+      all++;
+      final o = (y.toInt() * w + x.toInt()) * 3;
+      final c = [px[o] * 100 / 255, px[o + 1] - 128.0, px[o + 2] - 128.0];
+      var inBox = -1, inRing = -1;
+      for (var i = 0; i < quads.length; i++) {
+        final (cx, cy) = centres[i];
+        if ((x - cx).abs() > side || (y - cy).abs() > side) continue;
+        if (_holds(quads[i], x, y)) {
+          inBox = i;
+          if (_holds(inner[i], x, y)) boxes[i].add(c);
+          break;
+        }
+        if (inRing < 0 && _holds(outer[i], x, y)) inRing = i;
+      }
+      if (inBox >= 0) continue;
+      if (inRing >= 0) {
+        rings[inRing].add(c);
+      } else if (_beyond(hull, x, y, side)) {
+        outside.add(c);
+      }
+    }
+  }
+  final boxMid = <List<double>>[], ringMid = <List<double>>[];
+  for (var i = 0; i < quads.length; i++) {
+    if (boxes[i].length < 4 || rings[i].length < 4) continue;
+    boxMid.add(_median(boxes[i]));
+    ringMid.add(_median(rings[i]));
+  }
+  if (boxMid.isEmpty) return null;
+  final b = _median(boxMid), r = _median(ringMid);
+  double spread(List<List<double>> cs, List<double> m) => _median([for (final c in cs) [_distance(c, m)]]).single;
+  return (
+    boxSpread: spread(boxMid, b),
+    ringSpread: spread(ringMid, r),
+    ringVsBox: _distance(r, b),
+    ringVsOutside: outside.length < 0.02 * all ? null : _distance(r, _median(outside)),
+  );
+}
+
+double _sideOf(Float32List q) {
+  var s = 0.0;
+  for (var k = 0; k < 4; k++) {
+    s += math.sqrt(math.pow(q[2 * ((k + 1) % 4)] - q[2 * k], 2) + math.pow(q[2 * ((k + 1) % 4) + 1] - q[2 * k + 1], 2));
+  }
+  return s / 4;
+}
+
+double _distance(List<double> a, List<double> b) =>
+    math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2));
+
+/// The median of each channel, the upper one of an even count.
+List<double> _median(List<List<double>> cs) => [
+      for (var k = 0; k < cs.first.length; k++) ([for (final c in cs) c[k]]..sort())[cs.length ~/ 2],
+    ];
+
+/// Inside the convex quad [q], either way round.
+bool _holds(Float32List q, double x, double y) {
+  var sign = 0;
+  for (var k = 0; k < 4; k++) {
+    final ax = q[2 * k], ay = q[2 * k + 1], bx = q[2 * ((k + 1) % 4)], by = q[2 * ((k + 1) % 4) + 1];
+    final s = ((bx - ax) * (y - ay) - (by - ay) * (x - ax)).sign.toInt();
+    if (s == 0) continue;
+    if (sign == 0) sign = s;
+    if (s != sign) return false;
+  }
+  return true;
+}
+
+/// The convex hull, anticlockwise in image axes (Andrew's monotone chain).
+List<(double, double)> _hull(List<(double, double)> points) {
+  final p = [...points]..sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+  double cross((double, double) o, (double, double) a, (double, double) b) =>
+      (a.$1 - o.$1) * (b.$2 - o.$2) - (a.$2 - o.$2) * (b.$1 - o.$1);
+  final lower = <(double, double)>[], upper = <(double, double)>[];
+  for (final q in p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower.last, q) <= 0) {
+      lower.removeLast();
+    }
+    lower.add(q);
+  }
+  for (final q in p.reversed) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper.last, q) <= 0) {
+      upper.removeLast();
+    }
+    upper.add(q);
+  }
+  return [...lower..removeLast(), ...upper..removeLast()];
+}
+
+/// More than [by] outside the convex [hull].
+bool _beyond(List<(double, double)> hull, double x, double y, double by) {
+  var inside = true;
+  var nearest = double.infinity;
+  for (var k = 0; k < hull.length; k++) {
+    final (ax, ay) = hull[k];
+    final (bx, by2) = hull[(k + 1) % hull.length];
+    if ((bx - ax) * (y - ay) - (by2 - ay) * (x - ax) < 0) inside = false;
+    final dx = bx - ax, dy = by2 - ay, len = dx * dx + dy * dy;
+    final t = len == 0 ? 0.0 : (((x - ax) * dx + (y - ay) * dy) / len).clamp(0.0, 1.0);
+    nearest = math.min(nearest, math.sqrt(math.pow(x - ax - t * dx, 2) + math.pow(y - ay - t * dy, 2)));
+  }
+  return !inside && nearest > by;
+}
