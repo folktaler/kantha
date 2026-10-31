@@ -39,8 +39,9 @@ void main() {
             edge: (poolFixture['edge'] as List)[i] == null ? null : d((poolFixture['edge'] as List)[i]),
             grain: null, stock: stock[i]),
     ];
-    final got = layoutsFrom(fabrics);
     final want = recorded['start'] as List;
+    // The recording holds the eleven templates there were then; a template added since is not in it.
+    final got = [for (final l in layoutsFrom(fabrics)) if (want.any((w) => w['key'] == l.key.name)) l];
     expect([for (final l in got) l.key.name], [for (final l in want) l['key']]);
     final p = poolOf(fabrics);
     final members = [for (var i = 0; i < fabrics.length; i++) i];
@@ -92,6 +93,10 @@ void main() {
       'blocks': [68, 68, 68, 138, 138, 68, 68, 68, 138, 138, 68, 68, 68, 138, 138, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198],
       'medallionPrint': [228, 203, 194, 203, 228, 185, 152, 139, 152, 185, 152, 106, 83, 106, 152, 139, 83, 28, 83, 139, 152, 106, 83, 106, 152, 185, 152, 139, 152, 185, 228, 203, 194, 203, 228],
       'heart': [228, 228, 228, 228, 228, 228, 88, 228, 88, 228, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88, 228, 88, 88, 88, 228, 228, 228, 88, 228, 228, 228, 228, 228, 228, 228],
+      'stripes': [28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28],
+      'zigzag': [128, 228, 228, 228, 128, 128, 128, 228, 128, 128, 28, 128, 128, 128, 28, 28, 28, 128, 28, 28, 228, 28, 28, 28, 228, 228, 228, 28, 228, 228, 128, 228, 228, 228, 128],
+      'chain': [228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228],
+      'diamond': [228, 128, 28, 128, 228, 128, 28, 228, 28, 128, 28, 228, 128, 228, 28, 228, 128, 28, 128, 228, 28, 228, 128, 228, 28, 128, 28, 228, 28, 128, 228, 128, 28, 128, 228],
     };
     expect(want.keys, [for (final k in layoutKeys) k.name]);
     for (final key in layoutKeys) {

@@ -77,6 +77,22 @@
       "heart": {
         "title": "Heart",
         "name": "A red heart on the lightest cloth, every seam around it held apart."
+      },
+      "stripes": {
+        "title": "Stripes",
+        "name": "Rows of light and dark, straight across the panel."
+      },
+      "zigzag": {
+        "title": "Zigzag",
+        "name": "Bands of tone zigzagging across, the chevron way."
+      },
+      "chain": {
+        "title": "Chain",
+        "name": "Dark chains on the diagonals, over a light ground."
+      },
+      "diamond": {
+        "title": "Diamond",
+        "name": "Rings of dark, middle and light, spreading out from the centre."
       }
     },
     "mounts": {

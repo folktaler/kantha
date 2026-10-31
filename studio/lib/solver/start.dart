@@ -16,7 +16,7 @@ class StartLayout {
   final List<StartCell> cells;
 }
 
-/* The eleven templates solved from the given cloth as the studio solves them; one it cannot fill is left out. */
+/* Every template solved from the given cloth as the studio solves them; one it cannot fill is left out. */
 List<StartLayout> layoutsFrom(List<Fabric> fabrics, {int seed = 20260929}) {
   if (fabrics.isEmpty) return const [];
   final p = poolOf(fabrics);

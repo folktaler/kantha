@@ -115,4 +115,19 @@ abstract final class Ramps {
     return 1 - jsHypot2(r - cr, c - cc) / jsHypot2(cr, cc);
   }
   static double spectrumHue(int r, int c, BoardSize g) => 200 - 180 * (c / (g.cols - 1));
+  /* Dark rows and light rows in turn, the top row dark, so the rows along the edge stand off the mount. */
+  static double stripes(int r, int c, BoardSize g) => r.isEven ? 0 : 1;
+  /* The quilters' Chevron: light, mid and dark bands two squares deep, dipping to a V in the middle column(s). */
+  static double zigzag(int r, int c, BoardSize g) =>
+      const [1.0, 0.5, 0.0][((r + (c - (g.cols - 1) / 2).abs().floor()) % 6) ~/ 2];
+  /* The quilters' Irish Chain: dark squares on the diagonals every fourth square both ways, crossing at the middle
+     square (the upper-left of the middle ones on an even side), the rest light ground. No two chain squares share a
+     side, so one dark cloth can make every link. */
+  static double chain(int r, int c, BoardSize g) {
+    final dr = r - (g.rows - 1) ~/ 2, dc = c - (g.cols - 1) ~/ 2;
+    return (dr + dc) % 4 == 0 || (dr - dc) % 4 == 0 ? 0 : 1;
+  }
+  /* The Amish Sunshine and Shadow: diamond rings out from the middle, dark, mid and light in turn. */
+  static double diamond(int r, int c, BoardSize g) =>
+      const [0.0, 0.5, 1.0][((r - (g.rows - 1) / 2).abs().floor() + (c - (g.cols - 1) / 2).abs().floor()) % 3];
 }

@@ -1,4 +1,4 @@
-/* The eleven templates. */
+/* The templates. A new one goes at the end: a saved design names its template. */
 import 'dart:typed_data';
 import 'compile.dart';
 import 'geometry.dart';
@@ -6,7 +6,7 @@ import 'score.dart';
 import 'spec.dart';
 import 'tuned.dart';
 
-enum LayoutKey { contrast, gradient, medallion, wave, framed, cross, spectrum, boro, blocks, medallionPrint, heart }
+enum LayoutKey { contrast, gradient, medallion, wave, framed, cross, spectrum, boro, blocks, medallionPrint, heart, stripes, zigzag, chain, diamond }
 const layoutKeys = LayoutKey.values;
 const double heartHue = 30;
 
@@ -39,6 +39,10 @@ final Map<LayoutKey, LayoutSpec> layouts = {
     within: const SeamNone(), boundary: SeamCustom(lTarget: baseWeightsWith(Tuned.lightness).lTarget, weight: Tuned.boundaryWeight),
     perimeter: false, balance: false, ground: 0,
   ),
+  LayoutKey.stripes: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.stripes, wFit))}, within: const SeamNone(), perimeter: true, balance: false),
+  LayoutKey.zigzag: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.zigzag, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.chain: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.chain, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.diamond: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.diamond, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
 };
 
 Compiled modelFor(LayoutKey key, ObjectiveInput input) => compile(layouts[key]!, input);

@@ -196,6 +196,34 @@ class LEn extends L {
       'A red heart on the lightest cloth, every seam around it held apart.';
 
   @override
+  String get canvasLayoutsStripesTitle => 'Stripes';
+
+  @override
+  String get canvasLayoutsStripesName =>
+      'Rows of light and dark, straight across the panel.';
+
+  @override
+  String get canvasLayoutsZigzagTitle => 'Zigzag';
+
+  @override
+  String get canvasLayoutsZigzagName =>
+      'Bands of tone zigzagging across, the chevron way.';
+
+  @override
+  String get canvasLayoutsChainTitle => 'Chain';
+
+  @override
+  String get canvasLayoutsChainName =>
+      'Dark chains on the diagonals, over a light ground.';
+
+  @override
+  String get canvasLayoutsDiamondTitle => 'Diamond';
+
+  @override
+  String get canvasLayoutsDiamondName =>
+      'Rings of dark, middle and light, spreading out from the centre.';
+
+  @override
   String get canvasMountsNoneName => 'Panel';
 
   @override

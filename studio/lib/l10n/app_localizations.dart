@@ -411,6 +411,54 @@ abstract class L {
   /// **'A red heart on the lightest cloth, every seam around it held apart.'**
   String get canvasLayoutsHeartName;
 
+  /// No description provided for @canvasLayoutsStripesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stripes'**
+  String get canvasLayoutsStripesTitle;
+
+  /// No description provided for @canvasLayoutsStripesName.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows of light and dark, straight across the panel.'**
+  String get canvasLayoutsStripesName;
+
+  /// No description provided for @canvasLayoutsZigzagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Zigzag'**
+  String get canvasLayoutsZigzagTitle;
+
+  /// No description provided for @canvasLayoutsZigzagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Bands of tone zigzagging across, the chevron way.'**
+  String get canvasLayoutsZigzagName;
+
+  /// No description provided for @canvasLayoutsChainTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain'**
+  String get canvasLayoutsChainTitle;
+
+  /// No description provided for @canvasLayoutsChainName.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark chains on the diagonals, over a light ground.'**
+  String get canvasLayoutsChainName;
+
+  /// No description provided for @canvasLayoutsDiamondTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Diamond'**
+  String get canvasLayoutsDiamondTitle;
+
+  /// No description provided for @canvasLayoutsDiamondName.
+  ///
+  /// In en, this message translates to:
+  /// **'Rings of dark, middle and light, spreading out from the centre.'**
+  String get canvasLayoutsDiamondName;
+
   /// No description provided for @canvasMountsNoneName.
   ///
   /// In en, this message translates to:
