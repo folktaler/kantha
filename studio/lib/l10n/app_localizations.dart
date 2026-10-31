@@ -567,23 +567,11 @@ abstract class L {
   /// **'This box holds fewer than {n} pieces — open another box.'**
   String canvasCantSolveSize(String n);
 
-  /// No description provided for @canvasLevelEyebrow.
+  /// No description provided for @canvasPatternAgain.
   ///
   /// In en, this message translates to:
-  /// **'I am a…'**
-  String get canvasLevelEyebrow;
-
-  /// No description provided for @canvasLevelBeginner.
-  ///
-  /// In en, this message translates to:
-  /// **'Beginner (5 × 7)'**
-  String get canvasLevelBeginner;
-
-  /// No description provided for @canvasLevelAdvanced.
-  ///
-  /// In en, this message translates to:
-  /// **'Advanced (any size)'**
-  String get canvasLevelAdvanced;
+  /// **'Press {pattern} again for a new arrangement.'**
+  String canvasPatternAgain(String pattern);
 
   /// No description provided for @canvasRows.
   ///

@@ -3,6 +3,7 @@
    Safari on an iPhone a banner under the top bar says the 7-day rule until she dismisses it (owner, 11 Oct). What the
    controller says comes up as a toast over the dock (decision 10). */
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
@@ -30,12 +31,10 @@ enum DockTab { cloth, patterns, finish }
    height at normal text size (8 + the 124 px tiles + 4 + the 44 px Show stitches row, owner 21 Oct), on every tab,
    so the board keeps its size from tab to tab. */
 const dockPanelHeight = 180.0, dockTabsHeight = 48.0, toastGap = 14.0;
-/* An Advanced's panel is taller by her Rows and Columns, on every tab, so the board keeps its size from tab to tab and
-   both are in sight without scrolling: one row of 52 px where the column is `boardSizeOneRow` wide or more, else Rows
-   over Columns, 96 px. */
-const boardSizeOneRow = 400.0;
-double dockPanelFor(StudioController c, double width) =>
-    dockPanelHeight + (!c.advanced ? 0 : width >= boardSizeOneRow ? 52 : 96);
+/* The panel is taller by Rows and Columns (owner, 31 Oct 2026), on every tab, so both are in sight without scrolling:
+   one line of 52 px where the column is `boardSizeOneRow` wide or more, else Rows over Columns, 96 px. */
+const boardSizeOneRow = 380.0;
+double dockPanelFor(double width) => dockPanelHeight + (width >= boardSizeOneRow ? 52 : 96);
 
 /* A 1 px line along one edge, drawn over the box rather than taking room in it. */
 BoxDecoration _edge({bool top = false}) => BoxDecoration(
@@ -221,14 +220,13 @@ class _PhoneStudioState extends State<PhoneStudio> {
             IgnorePointer(ignoring: _menu, child: ExcludeFocus(excluding: _menu,
                 child: ExcludeSemantics(excluding: _menu, child: ToastHost(
                   toaster: widget.toaster,
-                  bottom: dockPanelFor(c, MediaQuery.sizeOf(context).width) + dockTabsHeight + inset + toastGap,
+                  bottom: dockPanelFor(MediaQuery.sizeOf(context).width) + dockTabsHeight + inset + toastGap,
                   child: _studio(context),
                 )))),
             if (_menu)
               FocusTraversalOrder(order: const NumericFocusOrder(2),
                   child: FocusTraversalGroup(child: MenuPanel(actions: widget.actions, onClose: _closeMenu,
-                      space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace,
-                      advanced: c.advanced, onLevel: c.setAdvanced))),
+                      space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace))),
           ])),
         ]),
       )),
@@ -243,9 +241,12 @@ class _PhoneStudioState extends State<PhoneStudio> {
         child: child,
       );
 
-  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. */
-  Widget _studio(BuildContext context) {
+  /* Under the top bar: the Safari banner, the canvas, and the dock — its panel over its tabs. On a window too short for
+     the whole panel (a phone on its side) the panel gives way, and scrolls, rather than running off the screen. */
+  Widget _studio(BuildContext context) => LayoutBuilder(builder: (context, room) {
     final inset = MediaQuery.paddingOf(context).bottom;
+    final panel = math.min(dockPanelFor(MediaQuery.sizeOf(context).width),
+        math.max(0.0, room.maxHeight - dockTabsHeight - inset));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (_safari) _safariBanner(context),
           Expanded(child: FocusTraversalGroup(policy: _canvasOrder, child: _canvas())),
@@ -253,7 +254,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
             policy: _panelOrder,
             child: Container(
               key: const ValueKey('dock-panel'),
-              height: dockPanelFor(c, MediaQuery.sizeOf(context).width),
+              height: panel,
               color: PhonePalette.white,
               foregroundDecoration: _edge(top: true),
               child: switch (_tab) {
@@ -277,7 +278,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
             ),
           ),
         ]);
-  }
+  });
 
   /* ≡, the design's name over the whole middle (it opens My designs), Save, Share. */
   Widget _topBar(BuildContext context) {
@@ -401,11 +402,11 @@ class _PhoneStudioState extends State<PhoneStudio> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minWidth: size.width, minHeight: size.height),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: c.onA4 ? 24 : 8),
                       child: Center(
                         child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          // 32 px for the 4 cm line over the sheet.
-                          const SizedBox(height: 32),
+                          // 32 px for the 4 cm line over the sheet, which only A4 has (controller.dart _fitTo).
+                          if (c.onA4) const SizedBox(height: 32),
                           Board(key: const ValueKey('phone-board'), c: c, onEmptyCell: _addCloth),
                         ]),
                       ),

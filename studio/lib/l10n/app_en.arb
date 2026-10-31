@@ -185,9 +185,14 @@
       }
     }
   },
-  "canvasLevelEyebrow": "I am a…",
-  "canvasLevelBeginner": "Beginner (5 × 7)",
-  "canvasLevelAdvanced": "Advanced (any size)",
+  "canvasPatternAgain": "Press {pattern} again for a new arrangement.",
+  "@canvasPatternAgain": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
   "canvasRows": "Rows",
   "canvasColumns": "Columns",
   "canvasRowsFewer": "Fewer rows",

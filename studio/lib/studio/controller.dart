@@ -126,20 +126,20 @@ class StudioController extends ChangeNotifier {
   int drops = 0;
   int? _dropFor;
 
-  /* "I am a…" (owner, 30 Oct 2026): a Beginner's board is Level 1's, 7 rows of 5 on A4, exactly as before Level 2; an
-     Advanced's is the size she chose, rows and columns each boardMin to boardMax. Both are remembered on
-     the device (loadBoard). */
-  bool advanced = false;
+  /* The board is the size she chose with Rows and Columns, each boardMin to boardMax, from Level 1's 7 rows of 5 on A4
+     (owner, 31 Oct 2026: one board, no levels). Remembered on the device (loadBoard). */
   BoardSize chosen = level1;
-  BoardSize get size => advanced ? chosen : level1;
+  BoardSize get size => chosen;
   /* The squares the board has, and so the pieces a box needs to fill it. */
   int get squares => size.rows * size.cols;
   SheetGrid get sheet => sheetFor(size);
   /* Level 1's A4 board: only it is offered the print sheet, the frame and the tote. */
   bool get onA4 => size == level1;
   static const levelKey = 'boardLevel', sizeKey = 'boardSize';
-  /* Advanced is stored as 'patchworker', its name until 31 Oct 2026, so a device that saved it still opens Advanced. */
-  static const advancedLevel = 'patchworker';
+  /* From 30 to 31 Oct 2026 the board had two levels, kept under levelKey: 'beginner' was 5 × 7 whatever sizeKey held,
+     'patchworker' the size in sizeKey. A device that still says 'beginner' opens on 5 × 7; one that says 'patchworker'
+     on its size. Every write since says `levelSize`: sizeKey is the size. */
+  static const levelBeginner = 'beginner', levelSize = 'size';
   /* What a board that could not be arranged says: 35 pieces on Level 1, the board's own number on another size. */
   String get cantSolveWords => onA4 ? words.canvasCantSolve : words.canvasCantSolveSize('$squares');
 
@@ -428,45 +428,39 @@ class StudioController extends ChangeNotifier {
 
   void setMount(Mount m) { mount = onA4 ? m : Mount.none; fit(); }
 
-  /* The board's size as she last left it on this device; one that cannot be read is a Beginner's. Read before start. */
+  /* The board's size as she last left it on this device; one that cannot be read, or a Beginner's of the two levels,
+     is 5 × 7. Read before start. */
   Future<void> loadBoard() async {
     try {
       final level = await shelf.setting(levelKey), saved = await shelf.setting(sizeKey);
+      if (level == levelBeginner) return;
       final parts = saved?.split('x');
       final g = parts?.length == 2 ? (rows: int.tryParse(parts![0]) ?? 0, cols: int.tryParse(parts[1]) ?? 0) : null;
       if (g != null && boardSizeAllowed(g)) chosen = g;
-      advanced = level == advancedLevel;
     } on Object {
-      // A Beginner's board, as before Level 2.
+      // 5 × 7, as before Level 2.
     }
   }
 
   Future<void> _keepBoard() async {
     try {
-      await shelf.setSetting(levelKey, advanced ? advancedLevel : 'beginner');
+      await shelf.setSetting(levelKey, levelSize);
       await shelf.setSetting(sizeKey, '${chosen.rows}x${chosen.cols}');
     } on Object {
       // Not remembered: the next visit opens on the board it last remembered.
     }
   }
 
-  /* Beginner or Advanced, from the Menu. */
-  void setAdvanced(bool on) {
-    if (on == advanced) return;
-    _resize(() => advanced = on);
-  }
-
-  /* Rows and Columns, an Advanced's minus and plus: each kept to boardMin..boardMax. */
+  /* Rows and Columns, their minus and plus: each kept to boardMin..boardMax. */
   void setBoardSize(BoardSize g) {
     final next = (rows: g.rows.clamp(boardMin, boardMax), cols: g.cols.clamp(boardMin, boardMax));
-    if (!advanced || next == chosen) return;
+    if (next == chosen) return;
     _resize(() => chosen = next);
   }
 
-  /* The board as a saved design's size: an Advanced's for any size but Level 1's, as she chose it for the design. */
+  /* The board as a saved design's size, as she chose it for the design. */
   void _takeSize(BoardSize g) {
-    if (g != level1) advanced = true;
-    if (advanced) chosen = g;
+    chosen = g;
     if (!onA4) mount = Mount.none;
     unawaited(_keepBoard());
   }
@@ -511,6 +505,25 @@ class StudioController extends ChangeNotifier {
 
   /* The setting that says a save has been made on this device, so the first save's note is said once. */
   static const savedOnceKey = 'savedOnce';
+
+  /* The setting that says "Press {pattern} again for a new arrangement." has been said on this device (owner, 31 Oct
+     2026): it is said after her first press of a pattern, once. */
+  static const patternAgainKey = 'patternAgainSaid';
+  bool _patternAgainAsked = false;
+
+  /* True only for the first press of a pattern on this device, and remembered then. Asked once per visit; a setting
+     that cannot be read or written counts as said. */
+  Future<bool> firstPatternPress() async {
+    if (_patternAgainAsked) return false;
+    _patternAgainAsked = true;
+    try {
+      if (await shelf.setting(patternAgainKey) != null) return false;
+      await shelf.setSetting(patternAgainKey, _now().toUtc().toIso8601String());
+      return true;
+    } on Object {
+      return false;
+    }
+  }
 
   /* A setting that cannot be read counts as seen: nothing is said twice by mistake. */
   Future<bool> _savedBefore() async {
@@ -618,7 +631,7 @@ class StudioController extends ChangeNotifier {
     final gi = g.cast<int>();
     _reqId++;
     final b = p.box != null && ownBoxes.contains(p.box) ? p.box : box;
-    // The board takes the design's size: one of another size than Level 1's makes her an Advanced on that size.
+    // The board takes the design's size.
     final resized = p.size != size;
     if (resized) _takeSize(p.size);
     if (b != box || resized) _checkFeasible(b);
@@ -830,14 +843,19 @@ class StudioController extends ChangeNotifier {
 
   bool _fitTo(Size pane) {
     _pane = pane;
-    // The canvas: 24 + 24 padding, the 4 cm line over the sheet and its gap; 16 px each side.
-    const chrome = 48.0 + 32 + 10, gutter = 32.0;
+    // The canvas (phone_studio.dart _canvas): on A4 24 + 24 padding, the 4 cm line over the sheet and its gap; on any
+    // other size, which has no 4 cm line, 8 + 8. 16 px each side.
+    final chrome = onA4 ? 48.0 + 32 + 10 : 16.0 + 2, gutter = 32.0;
     final w = pane.width - gutter, h = pane.height - chrome;
-    if (w < 160 || h < 120) return false;
+    if (onA4 ? w < 160 || h < 120 : w <= 0 || h <= 0) return false;
     final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
     final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
-    // A phone's canvas is narrower than a frame or a tote at 9 px a cm, so it may go as small as 4.
-    final next = math.min(w / vw, h / vh).floorToDouble().clamp(zoomMin, zoomMax);
+    // A phone's canvas is narrower than a frame or a tote at 9 px a cm, so it may go as small as 4. Where even 4 would
+    // not fit (12 rows on a short phone, or a tote on a short laptop under the taller dock; owner 31 Oct 2026: the board
+    // whole at every level) it is made smaller still: in quarters, so each 4 cm square is whole pixels. A canvas too
+    // small for that (above) keeps the scale, and scrolls.
+    final fits = math.min(w / vw, h / vh);
+    final next = fits >= zoomMin ? fits.floorToDouble().clamp(zoomMin, zoomMax) : math.max(0.25, (fits * 4).floorToDouble() / 4);
     final changed = next != fitPpc || (!zoomed && ppc != next);
     fitPpc = next;
     if (!zoomed) ppc = next;

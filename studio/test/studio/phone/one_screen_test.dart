@@ -338,7 +338,7 @@ void main() {
       names.add(n);
     }
     final tiles = [for (final k in layoutKeys) tester.widget<Pressable>(key('tile-${k.name}')).label!];
-    expect(names, ['Menu', c.name, 'Save', 'Share', ...tiles, 'Show stitches', 'Cloth box', 'Design', 'Preview']);
+    expect(names, ['Menu', c.name, 'Save', 'Share', ...tiles, 'Show stitches', 'Fewer rows', 'More rows', 'Fewer columns', 'More columns', 'Cloth box', 'Design', 'Preview']);
   });
 
   testWidgets('on a desk with the empty board zoomed and scrolled, Tab still goes the top bar, the squares, the panel, the tabs',
@@ -363,7 +363,7 @@ void main() {
     // Share waits for a board. The squares are the canvas's, all 35 between Save and the panel, row by row.
     expect(names.take(3), ['Menu', c.name, 'Save']);
     expect(names.sublist(3, 3 + squares.length), squares);
-    expect(names.sublist(3 + squares.length), [...tiles, 'Show stitches', 'Cloth box', 'Design', 'Preview']);
+    expect(names.sublist(3 + squares.length), [...tiles, 'Show stitches', 'Fewer rows', 'More rows', 'Fewer columns', 'More columns', 'Cloth box', 'Design', 'Preview']);
   });
 
   for (final (what, size) in [('desk', desk), ('phone', phone)]) {

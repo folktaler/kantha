@@ -6,6 +6,7 @@ import 'package:kantha_studio/l10n/words.dart';
 import 'package:kantha_studio/solver/compile.dart' show Unfillable;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/studio/painters.dart' show StitchPainter, hexColor;
+import 'package:kantha_studio/studio/controller.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../support/pump.dart';
@@ -15,8 +16,9 @@ import '../../support/studio_fixture.dart' show fixtureJpeg, measuredFor;
 Finder tile(LayoutKey k) => key('tile-${k.name}');
 final strip = key('dock-patterns');
 
-/* Whether a tile wears the selected check, the white mark in its blue square. */
-bool checked(LayoutKey k) => find.descendant(of: tile(k), matching: find.byType(tabler.Check)).evaluate().isNotEmpty;
+/* Whether a tile wears the selected mark, the white ↻ in its blue square (owner, 31 Oct 2026: press again for a new
+   arrangement). */
+bool checked(LayoutKey k) => find.descendant(of: tile(k), matching: find.byType(tabler.RotateClockwise)).evaluate().isNotEmpty;
 
 /* The opacity a tile is drawn at. */
 double opacityOf(WidgetTester tester, LayoutKey k) =>
@@ -60,6 +62,41 @@ void main() {
     expect(c.layout, LayoutKey.gradient);
     expect(layoutKeys.where(checked), [LayoutKey.gradient]);
     expect(find.descendant(of: key('phone-title'), matching: find.text('Gradient')), findsOneWidget);
+  });
+
+  testWidgets('the chosen tile says to press it again; the first press on this device says so in a note, once', (tester) async {
+    final handle = tester.ensureSemantics();
+    final c = await pumpStudio(tester, size: phone);
+    const again = 'Press Chess again for a new arrangement.';
+    final heard = tester.getSemantics(find.bySemanticsLabel('Chess\n$again')).getSemanticsData();
+    expect((heard.flagsCollection.isButton, heard.flagsCollection.isSelected), (true, Tristate.isTrue));
+    handle.dispose();
+
+    Future<void> press(String name) async {
+      await tester.tap(find.descendant(of: strip, matching: find.text(name)));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+    }
+    final grid = c.grid;
+    await press('Chess');
+    expect(find.descendant(of: key('phone-toast'), matching: find.text(again)), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(c.grid, isNot(grid), reason: 'pressed again, a new arrangement');
+    expect(await tester.runAsync(() => c.shelf.setting(StudioController.patternAgainKey)), isNotNull);
+    await tester.pump(const Duration(seconds: 3));
+    await press('Gradient');
+    expect(find.text('Press Gradient again for a new arrangement.'), findsNothing, reason: 'once on this device');
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('a device that has had the note does not have it again on its next visit', (tester) async {
+    final c = await pumpStudio(tester, size: phone);
+    await tester.runAsync(() => c.shelf.setSetting(StudioController.patternAgainKey, '2026-10-31T00:00:00Z'));
+    await tester.tap(find.descendant(of: strip, matching: find.text('Gradient')));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump();
+    expect(find.text('Press Gradient again for a new arrangement.'), findsNothing);
+    await tester.pumpAndSettle();
   });
 
   // The Sample box fills all eleven, so a box of three greys (36 pieces) stands in: it has no red for the heart.
