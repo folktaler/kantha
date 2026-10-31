@@ -11,6 +11,7 @@ import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart';
 import 'package:kantha_studio/studio/controller.dart';
+import 'package:kantha_studio/studio/phone/shortfall_banner.dart';
 import 'package:kantha_studio/studio/phone/phone_studio.dart' show canvasLeast, dockPanelHeight, panelLeast;
 import '../downloads/photo_png_test.dart' show loadFonts;
 import '../support/db.dart';
@@ -279,6 +280,28 @@ void fitsAtIphone13() {
     expect(panel.top - tester.getRect(key('phone-toast')).bottom, 14.0);
     await tester.pump(const Duration(seconds: 3));
   });
+
+  // A short box on a phone on its side in Safari: the shortfall banner sits in the canvas, under the board, and the
+  // board still has its 120 px over it, at 100 % and at 130 %.
+  for (final scale in [1.0, 1.3]) {
+    testWidgets('on a phone on its side in Safari with a short box, at ${(scale * 100).round()} %, the board keeps 120 px '
+        'over the shortfall banner and nothing overflows', (tester) async {
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      await tester.runAsync(faces.loadFonts);
+      final overflows = <String>[];
+      final was = FlutterError.onError;
+      FlutterError.onError = (d) { if (d.toString().contains('overflowed')) overflows.add(d.toString()); };
+      final c = await pumpStudio(tester, size: const Size(844, 390), solver: SizedQuickSolver(), safariOnIphone: true);
+      await boxWith(tester, c, 10);
+      await tester.pumpAndSettle();
+      FlutterError.onError = was;
+      expect(overflows, isEmpty);
+      final canvas = tester.getRect(key('phone-canvas')), banner = tester.getRect(find.byType(ShortfallBanner));
+      expect(banner.bottom, lessThanOrEqualTo(canvas.bottom + 0.5), reason: 'the banner inside the canvas');
+      expect(banner.top - 16 - canvas.top, greaterThanOrEqualTo(canvasLeast), reason: "the board's own room");
+    });
+  }
 
   // 190 px under the top bar: the board keeps 120 px and the panel its pattern tiles; the rest is a scroll away, and the
   // toast stands 14 px over the window's foot.

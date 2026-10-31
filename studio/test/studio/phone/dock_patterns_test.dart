@@ -194,6 +194,32 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  // A pattern the box cannot fill, pressed (the tile itself only says why; the controller still deals): its own note
+  // stays, and the press-again note is neither said nor spent.
+  testWidgets('a press that says it cannot fill keeps that note, and the press-again note waits', (tester) async {
+    final c = await pumpOnSample(tester, size: phone);
+    await tester.runAsync(() async {
+      final greys = await c.shelf.makeBox();
+      for (final l in [25.0, 50.0, 75.0]) {
+        await c.shelf.addCloth(box: greys, photo: fixtureJpeg, measured: measuredFor(l: l), fabric: 'Cotton', pieces: 12);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      c.openBox(greys);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await tester.pumpAndSettle();
+    final bad = c.feasible.entries.firstWhere((e) => !e.value.fills);
+    final cannot = c.words.canvasCantFill(c.words.notFillable(bad.value.why!));
+    c.loadLayout(bad.key);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pump();
+    expect(c.grid, isNotNull, reason: 'dealt');
+    expect(find.text(cannot), findsOneWidget);
+    expect(find.textContaining('again for a new arrangement'), findsNothing);
+    expect(await said(tester, c), isNull, reason: 'kept for a press that deals without a note');
+    await tester.pump(const Duration(seconds: 3));
+  });
+
   // The Sample box fills all eleven, so a box of three greys (36 pieces) stands in: it has no red for the heart.
   testWidgets('on a phone a pattern the box cannot fill stays in the strip at 35 %; a tap says why and changes nothing',
       (tester) async {

@@ -412,13 +412,15 @@ class StudioController extends ChangeNotifier {
     name = fresh;
     solving = true;
     final f = feasible[next];
-    if (f != null && !f.fills) {
+    final cannot = f != null && !f.fills;
+    if (cannot) {
       note = words.canvasCantFill(words.notFillable(f.why!)); warn = true;
     }
     notifyListeners();
     _requestSolve();
     _dropFor = changed ? _reqId : null;
-    _pressFor = _reqId;
+    // A press that said it cannot fill keeps that note: no press-again note after it.
+    _pressFor = cannot ? null : _reqId;
   }
 
   /* `made`: the number of a box the shelf has just made for her; it is hers, and named, before the feed lists it. */

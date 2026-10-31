@@ -74,6 +74,9 @@ class _PhoneStudioState extends State<PhoneStudio> {
   Size? _pane;
   Mount? _paneMount;
   bool _safari = false;
+  final _shortfallKey = GlobalKey();
+  /* The shortfall banner's laid-out height (_measureShortfall); 0 until it has been laid out once. */
+  double _shortfall = 0;
   /* The Menu, open over everything under the top bar (menu_panel.dart). */
   bool _menu = false;
   final _menuFocus = FocusNode(debugLabel: 'menu');
@@ -257,8 +260,10 @@ class _PhoneStudioState extends State<PhoneStudio> {
           if (_safari) _safariBanner(context),
           Expanded(child: LayoutBuilder(builder: (context, room) {
             final line = boardSizeLine(context, room.maxWidth), bars = dockTabsHeight + inset;
-            final height = math.max(room.maxHeight, canvasLeast + panelLeast + bars);
-            final panel = math.min(dockPanelFor(line), height - bars - canvasLeast);
+            // The board's 120 px is its own: the shortfall banner, under it in the canvas, comes on top.
+            final canvas = canvasLeast + (ShortfallBanner.shows(c) ? _shortfall : 0);
+            final height = math.max(room.maxHeight, canvas + panelLeast + bars);
+            final panel = math.min(dockPanelFor(line), height - bars - canvas);
             return ToastHost(
               toaster: widget.toaster,
               // Scrolled as a whole, the dock may be out of sight: the toast stands over the window's foot.
@@ -402,7 +407,9 @@ class _PhoneStudioState extends State<PhoneStudio> {
      dashed squares (decision 14), and the shortfall banner sits at the foot of the canvas, outside the scroll, 16 px in
      from each side; the board is fitted to the room above it, so no row of squares is under it. There is no start
      card (decision 15). */
-  Widget _canvas() => ColoredBox(
+  Widget _canvas() {
+    if (ShortfallBanner.shows(c)) WidgetsBinding.instance.addPostFrameCallback((_) => _measureShortfall());
+    return ColoredBox(
         key: const ValueKey('phone-canvas'),
         color: PhonePalette.canvas,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -437,9 +444,17 @@ class _PhoneStudioState extends State<PhoneStudio> {
             }),
           ),
           if (ShortfallBanner.shows(c))
-            Padding(padding: const EdgeInsets.all(16), child: ShortfallBanner(c: c, onPressed: _addCloth)),
+            Padding(key: _shortfallKey, padding: const EdgeInsets.all(16),
+                child: ShortfallBanner(c: c, onPressed: _addCloth)),
         ]),
       );
+  }
+
+  /* The shortfall banner's height as it was laid out, so the dock leaves the board its room over it. */
+  void _measureShortfall() {
+    final h = _shortfallKey.currentContext?.size?.height;
+    if (mounted && h != null && h != _shortfall) setState(() => _shortfall = h);
+  }
 
   /* A third of the width: 14 px, 600 and a 2 px blue top edge when selected, else 500 in text2. */
   Widget _tabButton(BuildContext context, DockTab t) {
