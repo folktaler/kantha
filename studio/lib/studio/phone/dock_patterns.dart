@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../l10n/app_localizations.dart';
 import '../../l10n/words.dart';
+import '../../solver/geometry.dart' show boardMin, boardMax;
 import '../../solver/icons.dart';
 import '../../solver/layouts.dart';
 import '../controller.dart';
 import '../painters.dart';
 import '../pressable.dart';
+import 'phone_studio.dart' show boardSizeOneRow;
 import 'phone_theme.dart';
 import 'phone_toast.dart';
 import 'strip.dart';
@@ -42,8 +44,56 @@ class DockPatterns extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           _stitches(context),
+          if (c.patchworker) _size(context),
         ]),
       );
+
+  /* A Patchworker's board (owner, 30 Oct 2026): Rows and Columns, each its word, minus, the number and plus, 16 px in,
+     under Show stitches, in the room the taller panel gives them (phone_studio.dart dockPanelFor): side by side where
+     the column is wide enough, else Rows over Columns. */
+  Widget _size(BuildContext context) {
+    final words = L.of(context), g = c.chosen;
+    return Padding(
+      key: const ValueKey('board-size'),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Wrap(spacing: 16, runSpacing: 0, crossAxisAlignment: WrapCrossAlignment.start,
+          direction: MediaQuery.sizeOf(context).width >= boardSizeOneRow ? Axis.horizontal : Axis.vertical, children: [
+        _stepper('rows', words.canvasRows, g.rows, words.canvasRowsFewer, words.canvasRowsMore,
+            (n) => c.setBoardSize((rows: n, cols: g.cols))),
+        _stepper('columns', words.canvasColumns, g.cols, words.canvasColumnsFewer, words.canvasColumnsMore,
+            (n) => c.setBoardSize((rows: g.rows, cols: n))),
+      ]),
+    );
+  }
+
+  /* Its word, then minus, the number, plus: each button 44 px square, faded and not pressed at its end. */
+  Widget _stepper(String key, String name, int n, String fewer, String more, void Function(int) set) {
+    Widget button(String k, String label, tabler.Icon icon, bool can, VoidCallback go) => Pressable(
+          key: ValueKey('$key-$k'),
+          label: label,
+          value: '$n',
+          excludeChildSemantics: true,
+          onPressed: can ? go : null,
+          builder: (context, st) => focusRing(st.focused, Opacity(
+            opacity: can ? 1 : 0.35,
+            child: Container(
+              width: 44, height: 44,
+              alignment: Alignment.center,
+              color: st.hovered && can ? PhonePalette.hover : PhonePalette.white,
+              child: tablerIcon(icon, size: 18),
+            ),
+          )),
+        );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      // The two words share a width, so stacked the two numbers line up.
+      ConstrainedBox(constraints: const BoxConstraints(minWidth: 64), child: Text(name, style: pText(PType.bodySmall))),
+      const SizedBox(width: 4),
+      button('fewer', fewer, const tabler.Minus(), n > boardMin, () => set(n - 1)),
+      SizedBox(width: 28, child: Text('$n', key: ValueKey('$key-count'), textAlign: TextAlign.center,
+          style: pText(PType.bodySmall, figures: true))),
+      button('more', more, const tabler.Plus(), n < boardMax, () => set(n + 1)),
+    ]);
+  }
 
   /* One row across the panel, at least 44 tall and one target: 16 px in, the switch, the words "Show stitches", then a
      dot in the thread's colour and the colour's plain name (canvas.stitchColours), on or off (owner, 21 Oct). A screen

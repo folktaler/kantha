@@ -282,6 +282,43 @@ class LEn extends L {
   String get canvasNothingToSave => 'Add 35 pieces to your box before saving.';
 
   @override
+  String canvasNothingToSaveSize(String n) {
+    return 'Add $n pieces to your box before saving.';
+  }
+
+  @override
+  String canvasCantSolveSize(String n) {
+    return 'This box holds fewer than $n pieces — open another box.';
+  }
+
+  @override
+  String get canvasLevelEyebrow => 'I am a…';
+
+  @override
+  String get canvasLevelBeginner => 'Beginner (5 × 7)';
+
+  @override
+  String get canvasLevelPatchworker => 'Patchworker (any size)';
+
+  @override
+  String get canvasRows => 'Rows';
+
+  @override
+  String get canvasColumns => 'Columns';
+
+  @override
+  String get canvasRowsFewer => 'Fewer rows';
+
+  @override
+  String get canvasRowsMore => 'More rows';
+
+  @override
+  String get canvasColumnsFewer => 'Fewer columns';
+
+  @override
+  String get canvasColumnsMore => 'More columns';
+
+  @override
   String canvasAddMore(num n) {
     final intl.NumberFormat nNumberFormat = intl.NumberFormat.decimalPattern(
       localeName,

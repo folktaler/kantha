@@ -27,7 +27,8 @@ void main() {
     final b = base;
     if (b == null) return;
     final s = solveLayout(LayoutKey.values.byName(m['layout'] as String), b, (m['members'] as List).cast<int>(),
-        Mount.values.byName(m['mount'] as String), m['seed'] as int);
+        Mount.values.byName(m['mount'] as String), m['seed'] as int,
+        size: m['rows'] == null ? null : (rows: m['rows'] as int, cols: m['cols'] as int));
     _self.postMessage(jsonEncode({'id': m['id'], 'fills': s.fills, 'grid': s.grid, 'rot': s.rot}).toJS);
   }).toJS;
   // Loaded and listening: the studio knows from this that a later error is a solve's, not a missing worker.

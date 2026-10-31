@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../l10n/app_localizations.dart';
-import '../../solver/geometry.dart' show Mount, cells;
+import '../../solver/geometry.dart' show Mount;
 import '../board.dart';
 import '../controller.dart';
 import '../pressable.dart';
@@ -30,6 +30,12 @@ enum DockTab { cloth, patterns, finish }
    height at normal text size (8 + the 124 px tiles + 4 + the 44 px Show stitches row, owner 21 Oct), on every tab,
    so the board keeps its size from tab to tab. */
 const dockPanelHeight = 180.0, dockTabsHeight = 48.0, toastGap = 14.0;
+/* A Patchworker's panel is taller by her Rows and Columns, on every tab, so the board keeps its size from tab to tab and
+   both are in sight without scrolling: one row of 52 px where the column is `boardSizeOneRow` wide or more, else Rows
+   over Columns, 96 px. */
+const boardSizeOneRow = 400.0;
+double dockPanelFor(StudioController c, double width) =>
+    dockPanelHeight + (!c.patchworker ? 0 : width >= boardSizeOneRow ? 52 : 96);
 
 /* A 1 px line along one edge, drawn over the box rather than taking room in it. */
 BoxDecoration _edge({bool top = false}) => BoxDecoration(
@@ -146,7 +152,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
   void _heard() {
     if (c.notes == _notes) return;
     _notes = c.notes;
-    if (c.note.isEmpty || (c.note == c.words.canvasCantSolve && ShortfallBanner.shows(c))) return;
+    if (c.note.isEmpty || (c.note == c.cantSolveWords && ShortfallBanner.shows(c))) return;
     widget.toaster.say(c.note);
   }
 
@@ -159,7 +165,10 @@ class _PhoneStudioState extends State<PhoneStudio> {
       return;
     }
     final b = c.box;
-    if (b == null || c.piecesIn(b) < cells) return widget.toaster.say(L.of(context).canvasNothingToSave);
+    if (b == null || c.piecesIn(b) < c.squares) {
+      final words = L.of(context);
+      return widget.toaster.say(c.onA4 ? words.canvasNothingToSave : words.canvasNothingToSaveSize('${c.squares}'));
+    }
     if (c.solving) return;
     if (c.note.isNotEmpty) widget.toaster.say(c.note);
   }
@@ -212,13 +221,14 @@ class _PhoneStudioState extends State<PhoneStudio> {
             IgnorePointer(ignoring: _menu, child: ExcludeFocus(excluding: _menu,
                 child: ExcludeSemantics(excluding: _menu, child: ToastHost(
                   toaster: widget.toaster,
-                  bottom: dockPanelHeight + dockTabsHeight + inset + toastGap,
+                  bottom: dockPanelFor(c, MediaQuery.sizeOf(context).width) + dockTabsHeight + inset + toastGap,
                   child: _studio(context),
                 )))),
             if (_menu)
               FocusTraversalOrder(order: const NumericFocusOrder(2),
                   child: FocusTraversalGroup(child: MenuPanel(actions: widget.actions, onClose: _closeMenu,
-                      space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace))),
+                      space: c.shelf.db.freesSpace ? c.shelf.db : null, onFreeSpace: _freeSpace,
+                      patchworker: c.patchworker, onLevel: c.setPatchworker))),
           ])),
         ]),
       )),
@@ -243,7 +253,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
             policy: _panelOrder,
             child: Container(
               key: const ValueKey('dock-panel'),
-              height: dockPanelHeight,
+              height: dockPanelFor(c, MediaQuery.sizeOf(context).width),
               color: PhonePalette.white,
               foregroundDecoration: _edge(top: true),
               child: switch (_tab) {

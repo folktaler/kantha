@@ -13,12 +13,12 @@ bool busyOf(double spread) => spread >= busySpread;
 double edgeOf(double spread) => spread * edgePerSpread;
 
 /* Which box the studio opens on (spec 2026-10-07, decision 5): the one asked for, if it is hers; else her
-   newest box that can fill a panel; else her newest box; else none, and the board is the empty sheet. */
-int? openingBox({int? wanted, required List<({int box, int pieces})> own}) {
+   newest box that can fill a panel (of `need` squares, Level 1's 35 unless said); else her newest box; else none, and the board is the empty sheet. */
+int? openingBox({int? wanted, required List<({int box, int pieces})> own, int? need}) {
   if (wanted != null && own.any((b) => b.box == wanted)) return wanted;
   final newestFirst = [...own]..sort((p, q) => q.box.compareTo(p.box));
   for (final b in newestFirst) {
-    if (b.pieces >= cells) return b.box;
+    if (b.pieces >= (need ?? cells)) return b.box;
   }
   return newestFirst.firstOrNull?.box;
 }

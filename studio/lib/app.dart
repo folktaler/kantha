@@ -141,6 +141,8 @@ class _KanthaAppState extends State<KanthaApp> with WidgetsBindingObserver {
     } catch (e, st) {
       reportError(e, st, 'while the Sample box was given its real cloth');
     }
+    // Beginner or Patchworker, and her board's size, before the first solve (it never throws).
+    await c.loadBoard();
     if (!mounted) return; // dispose ran during the await: subscribing now would leak
     _feed = shelfFeed(widget.shelf).listen((s) {
       c.restock(s);

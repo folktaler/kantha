@@ -34,7 +34,9 @@ class Arrangement {
 
 typedef Memory = Map<String, Arrangement>;
 
-String keyOf(int? box, LayoutKey layout) => '${box ?? 'none'}:${layout.name}';
+/* Per box and template, and per board size on Level 2: an arrangement is only ever shown again on its own size. */
+String keyOf(int? box, LayoutKey layout, [BoardSize? size]) =>
+    '${box ?? 'none'}:${layout.name}${size == null || size == level1 ? '' : ':${size.rows}x${size.cols}'}';
 Memory remember(Memory m, String key, Arrangement a) => {...m, key: a};
 Arrangement? recall(Memory m, String key) => m[key];
 /* A design she deleted: every arrangement saved as it still shows, but is no longer saved. */

@@ -555,6 +555,72 @@ abstract class L {
   /// **'Add 35 pieces to your box before saving.'**
   String get canvasNothingToSave;
 
+  /// No description provided for @canvasNothingToSaveSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {n} pieces to your box before saving.'**
+  String canvasNothingToSaveSize(String n);
+
+  /// No description provided for @canvasCantSolveSize.
+  ///
+  /// In en, this message translates to:
+  /// **'This box holds fewer than {n} pieces — open another box.'**
+  String canvasCantSolveSize(String n);
+
+  /// No description provided for @canvasLevelEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'I am a…'**
+  String get canvasLevelEyebrow;
+
+  /// No description provided for @canvasLevelBeginner.
+  ///
+  /// In en, this message translates to:
+  /// **'Beginner (5 × 7)'**
+  String get canvasLevelBeginner;
+
+  /// No description provided for @canvasLevelPatchworker.
+  ///
+  /// In en, this message translates to:
+  /// **'Patchworker (any size)'**
+  String get canvasLevelPatchworker;
+
+  /// No description provided for @canvasRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows'**
+  String get canvasRows;
+
+  /// No description provided for @canvasColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get canvasColumns;
+
+  /// No description provided for @canvasRowsFewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer rows'**
+  String get canvasRowsFewer;
+
+  /// No description provided for @canvasRowsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More rows'**
+  String get canvasRowsMore;
+
+  /// No description provided for @canvasColumnsFewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer columns'**
+  String get canvasColumnsFewer;
+
+  /// No description provided for @canvasColumnsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More columns'**
+  String get canvasColumnsMore;
+
   /// No description provided for @canvasAddMore.
   ///
   /// In en, this message translates to:

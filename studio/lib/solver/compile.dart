@@ -30,12 +30,14 @@ Pool _printPool(Pool pool, List<double?> edge, PoolStats s) {
 
 class ObjectiveInput {
   const ObjectiveInput({required this.pool, required this.edge, required this.members, required this.mount,
-      required this.stock, this.lightnessWeight, this.seamOverride, this.blockWeight, this.boundaryWeight, this.colourWeight});
+      required this.stock, this.size, this.lightnessWeight, this.seamOverride, this.blockWeight, this.boundaryWeight, this.colourWeight});
   final Pool pool;
   final List<double?> edge;
   final List<int> members;
   final Mount mount;
   final List<int> stock;
+  /* The board; null is Level 1's. */
+  final BoardSize? size;
   final double? lightnessWeight, blockWeight, boundaryWeight, colourWeight;
   final SeamRule? seamOverride;
 }
@@ -64,7 +66,9 @@ int anchorFor(Pool pool, List<int> members, double hue) {
 }
 
 Compiled compile(LayoutSpec spec, ObjectiveInput input) {
-  final rows = a4.rows, cols = a4.cols;
+  final size = input.size ?? level1, rows = size.rows, cols = size.cols, cells = rows * cols;
+  if (rows < 2 || cols < 2) throw ArgumentError('a board is at least 2 × 2 squares, not $rows × $cols');
+  final zones = spec.zonesOn(size);
   final members = input.members, mount = input.mount, stock = input.stock;
   final s = _statsOf(input.pool, input.edge, members);
   final weights = baseWeightsWith(input.lightnessWeight ?? Tuned.lightness);
@@ -77,7 +81,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
 
   for (var p = 0; p < pairs.length; p++) {
     final (a, b) = pairs[p];
-    final crosses = spec.zones[a] != spec.zones[b];
+    final crosses = zones[a] != zones[b];
     if (crosses) obj.boundary[p] = 1;
     final rule = input.seamOverride ?? (crosses && spec.boundary != null ? spec.boundary! : spec.within);
     final r = seamOf(rule, weights);
@@ -85,8 +89,8 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     if (crosses && spec.boundary != null && input.boundaryWeight != null) obj.seamL[p] = input.boundaryWeight!;
   }
 
-  final zoneIds = spec.zones.toSet().toList()..sort();
-  List<int> cellsIn(int z) => [for (var i = 0; i < cells; i++) if (spec.zones[i] == z) i];
+  final zoneIds = zones.toSet().toList()..sort();
+  List<int> cellsIn(int z) => [for (var i = 0; i < cells; i++) if (zones[i] == z) i];
   final familyZones = [for (final z in zoneIds) if (spec.rules[z]?.family != null) z];
   final medoidOf = <int, int>{};
   if (familyZones.isNotEmpty) {
@@ -117,9 +121,9 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     final lr = rules.l;
     if (lr != null) {
       ensureL();
-      final t = lr is LFromT ? fieldCells(lr.t) : null;
+      final t = lr is LFromT ? fieldCells(lr.t, size) : null;
       for (final i in zone) {
-        obj.targetL![i] = t != null ? s.lmin + t[i] * (s.lmax - s.lmin) : (lr as LAt).at(i ~/ cols, i % cols, s);
+        obj.targetL![i] = t != null ? s.lmin + t[i] * (s.lmax - s.lmin) : (lr as LAt).at(i ~/ cols, i % cols, size, s);
         obj.wL![i] = lr.weight;
       }
     }
@@ -127,13 +131,13 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     if (er != null) {
       ensureL();
       pool = _printPool(input.pool, input.edge, s);
-      final t = fieldCells(er.t);
+      final t = fieldCells(er.t, size);
       for (final i in zone) { obj.targetL![i] = 100 * t[i]; obj.wL![i] = er.weight; }
     }
     final hr = rules.hue;
     if (hr != null) {
       ensureHue();
-      final t = fieldCells(hr.angle);
+      final t = fieldCells(hr.angle, size);
       for (final i in zone) { obj.targetHue![i] = t[i]; obj.wHue![i] = hr.weight; }
       obj.hueExclude ??= [for (final l in input.pool.lab) chroma(l) < hueMinChroma];
     }
@@ -156,7 +160,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     final or = rules.orient;
     if (or != null) {
       ensureOrient();
-      final t = fieldCells(or.angle);
+      final t = fieldCells(or.angle, size);
       for (final i in zone) { obj.targetOrient![i] = t[i]; obj.wOrient![i] = or.weight; }
     }
   }
@@ -185,9 +189,9 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     var groundL = double.negativeInfinity, target = weights.lTarget;
     for (var p = 0; p < pairs.length; p++) {
       final (a, b) = pairs[p];
-      final mine = spec.zones[a] == z ? a : spec.zones[b] == z ? b : -1;
+      final mine = zones[a] == z ? a : zones[b] == z ? b : -1;
       final other = mine == a ? b : a;
-      if (mine < 0 || spec.zones[other] == z || obj.targetL == null || !(obj.wL![other] > 0)) continue;
+      if (mine < 0 || zones[other] == z || obj.targetL == null || !(obj.wL![other] > 0)) continue;
       touching.add(mine);
       groundL = math.max(groundL, obj.targetL![other]);
       target = obj.seamLTarget[p];

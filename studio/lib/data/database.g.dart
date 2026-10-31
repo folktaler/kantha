@@ -1158,6 +1158,16 @@ class $DesignsTable extends Designs with TableInfo<$DesignsTable, DesignRow> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _colsMeta = const VerificationMeta('cols');
+  @override
+  late final GeneratedColumn<int> cols = GeneratedColumn<int>(
+    'cols',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(5),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1170,6 +1180,7 @@ class $DesignsTable extends Designs with TableInfo<$DesignsTable, DesignRow> {
     firstSolve,
     grid,
     saved,
+    cols,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1252,6 +1263,12 @@ class $DesignsTable extends Designs with TableInfo<$DesignsTable, DesignRow> {
     } else if (isInserting) {
       context.missing(_savedMeta);
     }
+    if (data.containsKey('cols')) {
+      context.handle(
+        _colsMeta,
+        cols.isAcceptableOrUnknown(data['cols']!, _colsMeta),
+      );
+    }
     return context;
   }
 
@@ -1301,6 +1318,10 @@ class $DesignsTable extends Designs with TableInfo<$DesignsTable, DesignRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}saved'],
       )!,
+      cols: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cols'],
+      ),
     );
   }
 
@@ -1321,6 +1342,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
   final String? firstSolve;
   final String grid;
   final DateTime saved;
+  final int? cols;
   const DesignRow({
     required this.id,
     required this.name,
@@ -1332,6 +1354,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
     this.firstSolve,
     required this.grid,
     required this.saved,
+    this.cols,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1354,6 +1377,9 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
     }
     map['grid'] = Variable<String>(grid);
     map['saved'] = Variable<DateTime>(saved);
+    if (!nullToAbsent || cols != null) {
+      map['cols'] = Variable<int>(cols);
+    }
     return map;
   }
 
@@ -1373,6 +1399,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
           : Value(firstSolve),
       grid: Value(grid),
       saved: Value(saved),
+      cols: cols == null && nullToAbsent ? const Value.absent() : Value(cols),
     );
   }
 
@@ -1392,6 +1419,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
       firstSolve: serializer.fromJson<String?>(json['firstSolve']),
       grid: serializer.fromJson<String>(json['grid']),
       saved: serializer.fromJson<DateTime>(json['saved']),
+      cols: serializer.fromJson<int?>(json['cols']),
     );
   }
   @override
@@ -1408,6 +1436,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
       'firstSolve': serializer.toJson<String?>(firstSolve),
       'grid': serializer.toJson<String>(grid),
       'saved': serializer.toJson<DateTime>(saved),
+      'cols': serializer.toJson<int?>(cols),
     };
   }
 
@@ -1422,6 +1451,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
     Value<String?> firstSolve = const Value.absent(),
     String? grid,
     DateTime? saved,
+    Value<int?> cols = const Value.absent(),
   }) => DesignRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1433,6 +1463,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
     firstSolve: firstSolve.present ? firstSolve.value : this.firstSolve,
     grid: grid ?? this.grid,
     saved: saved ?? this.saved,
+    cols: cols.present ? cols.value : this.cols,
   );
   DesignRow copyWithCompanion(DesignsCompanion data) {
     return DesignRow(
@@ -1448,6 +1479,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
           : this.firstSolve,
       grid: data.grid.present ? data.grid.value : this.grid,
       saved: data.saved.present ? data.saved.value : this.saved,
+      cols: data.cols.present ? data.cols.value : this.cols,
     );
   }
 
@@ -1463,7 +1495,8 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
           ..write('started: $started, ')
           ..write('firstSolve: $firstSolve, ')
           ..write('grid: $grid, ')
-          ..write('saved: $saved')
+          ..write('saved: $saved, ')
+          ..write('cols: $cols')
           ..write(')'))
         .toString();
   }
@@ -1480,6 +1513,7 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
     firstSolve,
     grid,
     saved,
+    cols,
   );
   @override
   bool operator ==(Object other) =>
@@ -1494,7 +1528,8 @@ class DesignRow extends DataClass implements Insertable<DesignRow> {
           other.started == this.started &&
           other.firstSolve == this.firstSolve &&
           other.grid == this.grid &&
-          other.saved == this.saved);
+          other.saved == this.saved &&
+          other.cols == this.cols);
 }
 
 class DesignsCompanion extends UpdateCompanion<DesignRow> {
@@ -1508,6 +1543,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
   final Value<String?> firstSolve;
   final Value<String> grid;
   final Value<DateTime> saved;
+  final Value<int?> cols;
   final Value<int> rowid;
   const DesignsCompanion({
     this.id = const Value.absent(),
@@ -1520,6 +1556,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
     this.firstSolve = const Value.absent(),
     this.grid = const Value.absent(),
     this.saved = const Value.absent(),
+    this.cols = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DesignsCompanion.insert({
@@ -1533,6 +1570,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
     this.firstSolve = const Value.absent(),
     required String grid,
     required DateTime saved,
+    this.cols = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -1551,6 +1589,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
     Expression<String>? firstSolve,
     Expression<String>? grid,
     Expression<DateTime>? saved,
+    Expression<int>? cols,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1564,6 +1603,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
       if (firstSolve != null) 'first_solve': firstSolve,
       if (grid != null) 'grid': grid,
       if (saved != null) 'saved': saved,
+      if (cols != null) 'cols': cols,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1579,6 +1619,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
     Value<String?>? firstSolve,
     Value<String>? grid,
     Value<DateTime>? saved,
+    Value<int?>? cols,
     Value<int>? rowid,
   }) {
     return DesignsCompanion(
@@ -1592,6 +1633,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
       firstSolve: firstSolve ?? this.firstSolve,
       grid: grid ?? this.grid,
       saved: saved ?? this.saved,
+      cols: cols ?? this.cols,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1629,6 +1671,9 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
     if (saved.present) {
       map['saved'] = Variable<DateTime>(saved.value);
     }
+    if (cols.present) {
+      map['cols'] = Variable<int>(cols.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1648,6 +1693,7 @@ class DesignsCompanion extends UpdateCompanion<DesignRow> {
           ..write('firstSolve: $firstSolve, ')
           ..write('grid: $grid, ')
           ..write('saved: $saved, ')
+          ..write('cols: $cols, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3293,6 +3339,7 @@ typedef $$DesignsTableCreateCompanionBuilder = DesignsCompanion Function({
   Value<String?> firstSolve,
   required String grid,
   required DateTime saved,
+  Value<int?> cols,
   Value<int> rowid,
 });
 typedef $$DesignsTableUpdateCompanionBuilder = DesignsCompanion Function({
@@ -3306,6 +3353,7 @@ typedef $$DesignsTableUpdateCompanionBuilder = DesignsCompanion Function({
   Value<String?> firstSolve,
   Value<String> grid,
   Value<DateTime> saved,
+  Value<int?> cols,
   Value<int> rowid,
 });
 
@@ -3365,6 +3413,11 @@ class $$DesignsTableFilterComposer
 
   ColumnFilters<DateTime> get saved => $composableBuilder(
     column: $table.saved,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cols => $composableBuilder(
+    column: $table.cols,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3427,6 +3480,11 @@ class $$DesignsTableOrderingComposer
     column: $table.saved,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get cols => $composableBuilder(
+    column: $table.cols,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DesignsTableAnnotationComposer
@@ -3469,6 +3527,9 @@ class $$DesignsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get saved =>
       $composableBuilder(column: $table.saved, builder: (column) => column);
+
+  GeneratedColumn<int> get cols =>
+      $composableBuilder(column: $table.cols, builder: (column) => column);
 }
 
 class $$DesignsTableTableManager
@@ -3512,6 +3573,7 @@ class $$DesignsTableTableManager
                 Value<String?> firstSolve = const Value.absent(),
                 Value<String> grid = const Value.absent(),
                 Value<DateTime> saved = const Value.absent(),
+                Value<int?> cols = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DesignsCompanion(
                 id: id,
@@ -3524,6 +3586,7 @@ class $$DesignsTableTableManager
                 firstSolve: firstSolve,
                 grid: grid,
                 saved: saved,
+                cols: cols,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3538,6 +3601,7 @@ class $$DesignsTableTableManager
                 Value<String?> firstSolve = const Value.absent(),
                 required String grid,
                 required DateTime saved,
+                Value<int?> cols = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DesignsCompanion.insert(
                 id: id,
@@ -3550,6 +3614,7 @@ class $$DesignsTableTableManager
                 firstSolve: firstSolve,
                 grid: grid,
                 saved: saved,
+                cols: cols,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
