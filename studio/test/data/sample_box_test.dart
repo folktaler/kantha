@@ -12,8 +12,9 @@ import 'package:kantha_studio/data/sample_box.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
 import 'package:kantha_studio/measure/measure.dart';
-import 'package:kantha_studio/solver/geometry.dart' show cells;
+import 'package:kantha_studio/solver/geometry.dart' show Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart';
+import 'package:kantha_studio/solver/solve_layout.dart' show Base, LayoutSolve;
 import '../support/db.dart';
 import '../support/files_fixture.dart' show testSideDb;
 import '../solver/pattern_rules.dart' show samplePiecesHere;
@@ -131,9 +132,16 @@ void main() {
       final backup = await exportBackup((await old()).db, testSideDb);
       final shelf = Shelf(memoryDb());
       await ensureSampleBox(shelf);
-      final (:c, shelf: _) = await studio(on: shelf, seeded: false);
+      final solver = _PoolsSeen();
+      final (:c, shelf: _) = await studio(on: shelf, seeded: false, solver: solver);
+      final from = solver.solved.length;
       await c.importFile(backup);
+      await pumpEventQueue();
       expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
+      expect(c.piecesIn(c.box!), samplePieces * sampleCloth.length, reason: 'the studio re-opened on the 12');
+      // Topped up before the studio re-opened: no arrangement was asked of the box at 7.
+      expect(solver.solved.length, greaterThan(from));
+      expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
     });
 
     test('emptied or deleted, stays as she left it', () async {
@@ -373,5 +381,18 @@ class _Writes extends QueryInterceptor {
       return Future.error(Exception('the device refused cloth $clothInserts'));
     }
     return super.runInsert(executor, statement, args);
+  }
+}
+
+/* The pool, as stock per cloth, that each arrangement was asked of. */
+class _PoolsSeen extends QuickSolver {
+  var _stock = const <int>[];
+  final solved = <List<int>>[];
+  @override
+  void setPool(Base base) => _stock = List.of(base.stock);
+  @override
+  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) {
+    solved.add(_stock);
+    return super.solve(layout, members, mount, seed);
   }
 }

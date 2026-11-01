@@ -97,12 +97,6 @@ Measured measureBytes(Uint8List bytes, {bool centre = true}) {
       height: math.max(1, math.min(h - top, jsRound(innerH * (1 - _featureInset * 2)))));
 }
 
-/* Its pixels, read in place. */
-Iterable<img.Pixel> _region(img.Image image, ({int left, int top, int width, int height}) r) sync* {
-  final it = image.getRange(r.left, r.top, r.width, r.height);
-  while (it.moveNext()) { yield it.current; }
-}
-
 Measured measureImage(img.Image picture, {bool centre = true}) {
   // Plain 8-bit RGB first: a greyscale picture has no g or b to read, a palette picture
   // has indexes, not colours, and the package cannot crop a 4-bit one on a pixel boundary.
@@ -111,8 +105,10 @@ Measured measureImage(img.Image picture, {bool centre = true}) {
   // gamma-encoded values, which darkens fine light-and-dark texture (a 1-pixel black-and-white check 3000 pixels
   // square measured L* 59.9 instead of 76.1).
   var x = 0.0, y = 0.0, z = 0.0, n = 0;
-  for (final p in _region(full, _box(full, centre))) {
-    final r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
+  final whole = _box(full, centre);
+  // The region's pixels, read in place.
+  for (final it = full.getRange(whole.left, whole.top, whole.width, whole.height); it.moveNext();) {
+    final p = it.current, r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
     x += _xyzR[r][0] + _xyzG[g][0] + _xyzB[b][0];
     y += _xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1];
     z += _xyzR[r][2] + _xyzG[g][2] + _xyzB[b][2];
@@ -126,12 +122,12 @@ Measured measureImage(img.Image picture, {bool centre = true}) {
         ? img.copyResize(image, width: maxLongSide, interpolation: img.Interpolation.cubic)
         : img.copyResize(image, height: maxLongSide, interpolation: img.Interpolation.cubic);
   }
-  final box = _box(image, centre), ls = <double>[];
-  for (final p in _region(image, box)) {
-    final r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
-    ls.add(ColorUtils.lstarFromY(_xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1]));
+  final box = _box(image, centre), ls = Float64List(box.width * box.height);
+  var m = 0;
+  for (final it = image.getRange(box.left, box.top, box.width, box.height); it.moveNext();) {
+    final p = it.current, r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
+    ls[m++] = ColorUtils.lstarFromY(_xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1]);
   }
-  final m = ls.length;
   final mean = labFromXyz(x / n, y / n, z / n);
   var sum = 0.0;
   for (var i = 0; i < m; i++) { sum += ls[i]; }

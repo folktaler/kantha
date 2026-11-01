@@ -285,6 +285,13 @@ class StudioController extends ChangeNotifier {
      a studio that then fails to re-open is reported, never passed off as the import failing. */
   Future<void> importFile(Uint8List bytes) async {
     await importBackup(bytes, shelf, side);
+    // One made before 1 Nov brings no top-up marker: its Sample box gets its 12 pieces of each cloth now, as on an
+    // open, before the studio re-opens on it.
+    try {
+      await sample.topUpSample(shelf);
+    } catch (e, s) {
+      reportError(e, s, 'while the Sample box was topped up');
+    }
     try {
       await afterImport();
     } catch (e, s) {
@@ -295,12 +302,6 @@ class StudioController extends ChangeNotifier {
       await replaceDrawnSample();
     } catch (e, s) {
       reportError(e, s, 'while the Sample box was given its real cloth');
-    }
-    // One made before 1 Nov brings no top-up marker: its Sample box gets its 12 pieces of each cloth now, as on an open.
-    try {
-      await sample.topUpSample(shelf);
-    } catch (e, s) {
-      reportError(e, s, 'while the Sample box was topped up');
     }
   }
 

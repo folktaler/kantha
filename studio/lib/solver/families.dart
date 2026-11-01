@@ -30,7 +30,8 @@ Families? colourFamilies(List<Lab> lab, List<int> members, int k, {bool lightnes
 
   var best = <int>[];
   var bestCost = double.infinity;
-  if (_choices(m, k) <= _exhaustiveUpTo) {
+  lastSearch = _choices(m, k) <= _exhaustiveUpTo ? Search.everyChoice : Search.pam;
+  if (lastSearch == Search.everyChoice) {
     final pick = <int>[];
     void walk(int from) {
       if (pick.length == k) {
@@ -43,7 +44,8 @@ Families? colourFamilies(List<Lab> lab, List<int> members, int k, {bool lightnes
     walk(0);
   } else {
     // A large box: PAM (Kaufman and Rousseeuw 1990), its BUILD then its SWAP to a local optimum, so a change of box
-    // stays quick. Every choice tried would cost choose(m, k) passes over the cloths.
+    // stays quick. Every choice tried would cost choose(m, k) passes over the cloths. In-house because no maintained
+    // Dart package offers k-medoids (pub.dev, 1 November 2026).
     for (var j = 0; j < k; j++) {
       var add = -1;
       var addCost = double.infinity;
@@ -66,6 +68,8 @@ Families? colourFamilies(List<Lab> lab, List<int> members, int k, {bool lightnes
         }
       }
     }
+    // In ascending order, as every choice tried gives them, so the families' numbers do not jump at the threshold.
+    best.sort();
   }
 
   final family = List<int>.filled(lab.length, -1);
@@ -77,12 +81,16 @@ Families? colourFamilies(List<Lab> lab, List<int> members, int k, {bool lightnes
   return Families([for (final p in best) items[p]], family);
 }
 
+/* How the last call found its medoids, for the tests. */
+enum Search { everyChoice, pam }
+Search? lastSearch;
+
 /* Every choice of medoids is tried while there are at most this many: 47 cloths in 3 families are 16,215, which
    compile in a few milliseconds. Past it, PAM. */
 const _exhaustiveUpTo = 20000;
 
-int _choices(int m, int k) {
+double _choices(int m, int k) {
   var c = 1.0;
   for (var j = 0; j < k; j++) { c = c * (m - j) / (j + 1); }
-  return c > 1e15 ? 1 << 50 : c.round();
+  return c;
 }

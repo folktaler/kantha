@@ -60,6 +60,9 @@ class Objective {
   List<bool>? hueExclude;
   /* Where Spectrum's hue line cuts the CAM16 hue circle (purpleCut); targetHue is a position on that line. */
   double hueCut = 0;
+  /* What a square costs, in degrees on the hue line, for an uncoloured cloth (hueExclude): just past the box's own run
+     from its warmest coloured cloth to its coolest, the farthest any coloured cloth can be from a target in it. */
+  double hueExcludeGap = 0;
   Int32List? targetColour;
   /* A colour a square stays away from (Heart's ground from the heart's cloth): within sameColour of it costs. */
   Int32List? avoidColour;
@@ -173,7 +176,7 @@ Breakdown score(List<int> grid, Objective obj, Prepared prep, [List<int>? rot]) 
     if (obj.targetL != null) { final e = prep.l[f] - obj.targetL![i]; fit += e * e * obj.wL![i]; }
     if (obj.targetHue != null) {
       // Squared, as the lightness fit, so two squares both off one way cost more in the wrong order.
-      final gap = (obj.hueExclude?[f] ?? false) ? 360.0 : hueOnLine(prep.hue[f], obj.hueCut) - obj.targetHue![i];
+      final gap = (obj.hueExclude?[f] ?? false) ? obj.hueExcludeGap : hueOnLine(prep.hue[f], obj.hueCut) - obj.targetHue![i];
       hueFit += gap * gap * obj.wHue![i];
     }
     if (obj.targetColour != null) block += prep.dc[f * n + obj.targetColour![i]] * obj.wColour![i];

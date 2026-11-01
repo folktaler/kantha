@@ -27,9 +27,11 @@ void main() {
         (l: 35.0 + i % 5, a: 20.0 + i % 3, b: -60.0 - i % 7),
       ],
     ];
-    final sw = Stopwatch()..start();
+    colourFamilies(labs.sublist(0, 30), [for (var i = 0; i < 30; i++) i], 3);
+    expect(lastSearch, Search.everyChoice, reason: '30 cloths in 3 are 4,060 choices');
     final f = colourFamilies(labs, [for (var i = 0; i < labs.length; i++) i], 3)!;
-    expect(sw.elapsedMilliseconds, lessThan(2000));
+    expect(lastSearch, Search.pam);
+    expect(f.medoids, [...f.medoids]..sort((a, b) => a.compareTo(b)), reason: 'in ascending order, as every choice tried gives them');
     for (var colour = 0; colour < 3; colour++) {
       expect({for (var i = colour; i < labs.length; i += 3) f.family[i]}.length, 1, reason: 'colour $colour is one family');
     }

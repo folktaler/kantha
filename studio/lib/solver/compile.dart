@@ -162,6 +162,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
       for (final i in zone) { obj.targetHue![i] = warm + (t[i] - 20) / 180 * (cool - warm); obj.wHue![i] = hr.weight; }
       obj.hueExclude ??= [for (final l in input.pool.lab) !coloured(l)];
       obj.hueCut = cut;
+      obj.hueExcludeGap = cool - warm + 1;
     }
     final fr = rules.family;
     if (fr != null && medoidOf[z] != null) {
