@@ -194,7 +194,7 @@ void main() {
     expect(find.text('Measuring…'), findsOneWidget);
     await closes['Done']!(tester);
     await tester.pump();
-    const wait = 'The cropper is still loading. Give it a moment and press again.';
+    const wait = 'The photo is still loading. Wait a moment, then press again.';
     expect(inSheet(find.text(wait)), findsOneWidget);
     await letWork(tester, turns: 10);
     expect(find.text('Measuring…'), findsNothing);
@@ -274,7 +274,7 @@ void main() {
     await openAdd(tester, NotAPicture());
     await tester.tap(find.text('Photo of the piece'));
     await letWork(tester, turns: 5);
-    expect(find.text('The factory answered in a way this could not read. Nothing was added.'), findsOneWidget);
+    expect(find.text('The studio could not read that picture, so no cloth was added. Try a different photo.'), findsOneWidget);
   });
 
   testWidgets('Add asks for nothing but the photo: it is ready at once, and with no photo it says one is needed', (tester) async {

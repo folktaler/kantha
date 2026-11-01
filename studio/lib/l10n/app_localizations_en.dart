@@ -459,11 +459,11 @@ class LEn extends L {
 
   @override
   String get clothErrorsUnreadable =>
-      'The factory answered in a way this could not read. Nothing was added.';
+      'The studio could not read that picture, so no cloth was added. Try a different photo.';
 
   @override
   String get clothErrorsNotReady =>
-      'The cropper is still loading. Give it a moment and press again.';
+      'The photo is still loading. Wait a moment, then press again.';
 
   @override
   String get clothErrorsNoSuchCloth => 'There is no such cloth.';
@@ -589,7 +589,7 @@ class LEn extends L {
 
   @override
   String clothFixAllUsed(String n) {
-    return 'All $n pieces are currently in use. Add more to give the pattern solver more options.';
+    return 'All $n pieces of this cloth are in the pattern. Add more pieces and the studio has more to choose from.';
   }
 
   @override

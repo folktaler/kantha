@@ -112,15 +112,15 @@ void main() {
         'Back up or move to another device\nYour work is kept on this device only', c.name, '(its words)', '(its words)', 'Close']);
   });
 
-  testWidgets('≡ is named Menu while the menu is shut and Close while it is open, to a mouse and a screen reader',
-      (tester) async {
+  testWidgets('≡ is named Menu while the menu is shut and Close while it is open; a mouse sees no Close, which would '
+      'cover Help', (tester) async {
     await pumpStudio(tester, size: desk);
     final button = tester.widget<Pressable>(menu);
     expect((button.label, button.tooltip), ('Menu', 'Menu'));
     await tester.tap(menu);
     await tester.pumpAndSettle();
     final open = tester.widget<Pressable>(menu);
-    expect((open.label, open.tooltip, open.expanded), ('Close', 'Close', true));
+    expect((open.label, open.tooltip, open.expanded), ('Close', null, true));
   });
 
   testWidgets('on a desk Enter on Save while the menu is open shuts it and leaves focus on Save', (tester) async {

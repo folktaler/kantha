@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/studio/controller.dart';
 import 'package:kantha_studio/studio/phone/phone_sheet.dart';
+import 'package:kantha_studio/theme.dart' show PhonePalette;
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../support/db.dart';
 import '../../support/pump.dart';
@@ -35,6 +36,25 @@ Future<void> openSheet(WidgetTester tester) async {
 Future<void> more(WidgetTester tester, int i) async {
   await tester.tap(find.bySemanticsLabel('More').at(i));
   await tester.pumpAndSettle();
+}
+
+/* Every row divider in the open sheet (1 px lines in the border colour) runs 16 px in from each side of the sheet,
+   which on a phone is the window's width. A row with a ⋯ draws its line in two pieces; together they span the same. */
+void expectDividersInset(WidgetTester tester) {
+  final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+  final rects = [
+    for (final e in find.byWidgetPredicate((w) => w is ColoredBox && w.color == PhonePalette.border).evaluate())
+      if (e.renderObject case final RenderBox b when b.hasSize && b.size.height == 1) b.localToGlobal(Offset.zero) & b.size,
+  ];
+  expect(rects, isNotEmpty);
+  final byRow = <double, List<Rect>>{};
+  for (final r in rects) {
+    (byRow[r.top] ??= []).add(r);
+  }
+  for (final row in byRow.values) {
+    final l = row.map((r) => r.left).reduce((a, b) => a < b ? a : b), r = row.map((r) => r.right).reduce((a, b) => a > b ? a : b);
+    expect((l, width - r), (16.0, 16.0), reason: 'a divider 16 px in from each side');
+  }
 }
 
 void main() {
@@ -242,6 +262,7 @@ void main() {
     for (final e in find.byType(SheetRow).evaluate()) {
       expect(tester.getSize(find.byWidget(e.widget)).height, greaterThanOrEqualTo(56));
     }
+    expectDividersInset(tester);
     final dots = tester.getSize(find.bySemanticsLabel('More').first);
     expect(dots.width, 48);
     expect(dots.height, greaterThanOrEqualTo(48));

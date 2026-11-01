@@ -286,8 +286,8 @@
       }
     }
   },
-  "clothErrorsUnreadable": "The factory answered in a way this could not read. Nothing was added.",
-  "clothErrorsNotReady": "The cropper is still loading. Give it a moment and press again.",
+  "clothErrorsUnreadable": "The studio could not read that picture, so no cloth was added. Try a different photo.",
+  "clothErrorsNotReady": "The photo is still loading. Wait a moment, then press again.",
   "clothErrorsNoSuchCloth": "There is no such cloth.",
   "clothErrorsPieceFailed": "That did not work. Try again in a moment.",
   "clothCropHint": "fill the square with the piece",
@@ -347,7 +347,7 @@
     }
   },
   "clothPiecesInBox": "Pieces in the box",
-  "clothFixAllUsed": "All {n} pieces are currently in use. Add more to give the pattern solver more options.",
+  "clothFixAllUsed": "All {n} pieces of this cloth are in the pattern. Add more pieces and the studio has more to choose from.",
   "@clothFixAllUsed": {
     "placeholders": {
       "n": {

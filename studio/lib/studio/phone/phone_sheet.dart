@@ -101,7 +101,7 @@ Future<bool> askSure(BuildContext context, {required String question, required S
 enum RowEnd { none, check, chevron, action }
 
 /* A list row: at least 56 tall, padding 8 16 8 13 inside a 3 px left edge (the action colour, on the tint, when
-   selected), a 1 px divider 16 px in from the left; `name` in the card-label role over `note` in fine print, text2; `leading` an optional 48 px widget;
+   selected), a 1 px divider 16 px in from each side; `name` in the card-label role over `note` in fine print, text2; `leading` an optional 48 px widget;
    `icon` an optional Tabler icon before the name, sized to it (`iconBusy`, a spinner, takes its place). One button,
    named by its name and note. */
 class SheetRow extends StatelessWidget {
@@ -153,7 +153,7 @@ class SheetRow extends StatelessWidget {
             if (trailing != null) ...[const SizedBox(width: 12), trailing],
           ]),
         ),
-        const Positioned(left: 16, right: 0, bottom: 0, height: 1, child: ColoredBox(color: PhonePalette.border)),
+        const Positioned(left: 16, right: 16, bottom: 0, height: 1, child: ColoredBox(color: PhonePalette.border)),
       ])),
     );
   }

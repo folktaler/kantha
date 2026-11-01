@@ -171,8 +171,8 @@
       "badCount": "A count is a whole number, from 1 to 500.",
       "badBox": "That box is not a fabric box.",
       "boxFull": "This box holds {limit} cloths already. Take some out before adding more.",
-      "unreadable": "The factory answered in a way this could not read. Nothing was added.",
-      "notReady": "The cropper is still loading. Give it a moment and press again.",
+      "unreadable": "The studio could not read that picture, so no cloth was added. Try a different photo.",
+      "notReady": "The photo is still loading. Wait a moment, then press again.",
       "noSuchCloth": "There is no such cloth.",
       "pieceFailed": "That did not work. Try again in a moment."
     },
@@ -199,7 +199,7 @@
     "more": "One more piece",
     "addedNext": "{n, plural, one {# piece of {name} added.} other {# pieces of {name} added.}} Photograph the next one.",
     "piecesInBox": "Pieces in the box",
-    "fixAllUsed": "All {n} pieces are currently in use. Add more to give the pattern solver more options.",
+    "fixAllUsed": "All {n} pieces of this cloth are in the pattern. Add more pieces and the studio has more to choose from.",
     "many": {
       "title": "Add pieces",
       "photo": "Photo of the pieces",

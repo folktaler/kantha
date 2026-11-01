@@ -110,8 +110,8 @@ class _DesignRow extends StatelessWidget {
             }),
       ),
       _more(words, () => _showMore(sheet, c, p)),
-      // The row's divider, on under the ⋯.
-      const Positioned(right: 0, bottom: 0, width: 48, height: 1, child: ColoredBox(color: PhonePalette.border)),
+      // The row's divider, on under the ⋯ to 16 px from the edge, as every sheet row's.
+      const Positioned(right: 16, bottom: 0, width: 48, height: 1, child: ColoredBox(color: PhonePalette.border)),
     ]);
   }
 }
@@ -148,7 +148,7 @@ class _PictureRow extends StatelessWidget {
               leading: pictureThumb(context, p), onPressed: () => actions.openPicture(sheet, p)),
         ),
         _more(words, () => _showPictureMore(sheet, c, p)),
-        const Positioned(right: 0, bottom: 0, width: 48, height: 1, child: ColoredBox(color: PhonePalette.border)),
+        const Positioned(right: 16, bottom: 0, width: 48, height: 1, child: ColoredBox(color: PhonePalette.border)),
       ]);
 }
 

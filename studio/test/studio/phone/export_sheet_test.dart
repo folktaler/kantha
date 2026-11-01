@@ -7,6 +7,7 @@ import 'package:kantha_studio/platform/fonts.dart' show fetchPublicSans, forgetP
 import 'package:kantha_studio/platform/links.dart' show helpUri;
 import 'package:kantha_studio/studio/studio_screen.dart' show StudioScreen;
 import 'package:kantha_studio/studio/phone/phone_sheet.dart';
+import 'package:kantha_studio/theme.dart' show PhonePalette;
 import 'package:kantha_studio/studio/shelf_feed.dart' show ClothPhoto;
 import 'package:kantha_studio/studio/take_menus.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
@@ -16,6 +17,25 @@ import '../../support/targets.dart';
 
 /* The Share sheet (redesign handover, Bottom sheets; the owner's markup of 19 Oct). */
 const missing = 'That design uses cloth that is no longer in the box.';
+
+/* Every row divider in the open sheet (1 px lines in the border colour) runs 16 px in from each side of the sheet,
+   which on a phone is the window's width. A row with a ⋯ draws its line in two pieces; together they span the same. */
+void expectDividersInset(WidgetTester tester) {
+  final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+  final rects = [
+    for (final e in find.byWidgetPredicate((w) => w is ColoredBox && w.color == PhonePalette.border).evaluate())
+      if (e.renderObject case final RenderBox b when b.hasSize && b.size.height == 1) b.localToGlobal(Offset.zero) & b.size,
+  ];
+  expect(rects, isNotEmpty);
+  final byRow = <double, List<Rect>>{};
+  for (final r in rects) {
+    (byRow[r.top] ??= []).add(r);
+  }
+  for (final row in byRow.values) {
+    final l = row.map((r) => r.left).reduce((a, b) => a < b ? a : b), r = row.map((r) => r.right).reduce((a, b) => a > b ? a : b);
+    expect((l, width - r), (16.0, 16.0), reason: 'a divider 16 px in from each side');
+  }
+}
 
 void main() {
   testWidgets('on a phone Share saves the design first, then shows its three rows with no headings', (tester) async {
@@ -37,6 +57,7 @@ void main() {
     expect(find.text('How to lay out and stitch the panel'), findsOneWidget);
     expect(find.text('Share design'), findsNothing, reason: 'the owner took the row out on 19 Oct');
     expect(find.byType(SheetRow), findsNWidgets(3));
+    expectDividersInset(tester);
     // Each row's Tabler icon before its words.
     for (final (t, icon) in [('Save photo', tabler.PhotoDown), ('Print pattern PDF', tabler.Printer),
         ('Kantha stitching guide', tabler.Book)]) {

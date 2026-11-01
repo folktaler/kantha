@@ -319,8 +319,9 @@ class _PhoneStudioState extends State<PhoneStudio> {
           focusNode: _menuFocus,
           // Menu while ≡ shows, Close while × does.
           label: _menu ? words.canvasClose : words.canvasMenu,
-          // Its name, under a mouse: the icon alone says nothing.
-          tooltip: _menu ? words.canvasClose : words.canvasMenu,
+          // Its name, under a mouse: the icon alone says nothing. Not while the menu is open: Close's title would
+          // cover Help, the row under it.
+          tooltip: _menu ? null : words.canvasMenu,
           expanded: _menu,
           excludeChildSemantics: true,
           onPressed: _menu ? _closeMenu : _openMenu,

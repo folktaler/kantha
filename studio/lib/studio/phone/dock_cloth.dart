@@ -58,15 +58,16 @@ class DockCloth extends StatelessWidget {
               ],
             ]),
           ),
+          // A text button's words are 12 in from its edge: 4 here puts them on the 16 px line of the picker and swatches.
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Align(alignment: Alignment.centerLeft, child: KeyedSubtree(key: const ValueKey('delete-box'),
                 child: PhoneButton(text: words.boxesDelete, kind: PhoneButtonKind.redText, busy: c.deleting,
                     onPressed: () => actions.deleteBox(box!)))),
           ),
         ] else
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(4, 0, 16, 0),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (mine)
                 PhoneButton(text: words.boxesDelete, kind: PhoneButtonKind.redText, busy: c.deleting,

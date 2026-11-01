@@ -288,8 +288,8 @@ class _CheckPiecesState extends State<CheckPieces> {
   }
 }
 
-/* cropperjs's blue, as the crop step's square. */
-const _blue = Color(0xFF3399FF);
+/* The studio's indigo, as the crop step's square, on its white halo. */
+const _blue = PhonePalette.blue;
 
 class _PiecesPainter extends CustomPainter {
   _PiecesPainter(this.pieces, this.fit, this.zoom, this.corners)

@@ -12,8 +12,9 @@ import '../studio/phone/phone_theme.dart';
 import 'parts.dart';
 import 'prepare.dart';
 
-/* cropperjs's selection: a 1 px blue outline, its grid in thirds, and a small square handle at each corner. */
-const _cropperBlue = Color(0xFF3399FF);
+/* cropperjs's selection: a 1 px outline, its grid in thirds, and a small square handle at each corner; in the studio's
+   indigo (PhonePalette.blue), each on a white edge so it shows on dark cloth as on light. */
+const _white = Color(0xFFFFFFFF);
 
 class CropStep extends StatelessWidget {
   const CropStep({super.key, required this.photo, required this.controller, required this.coverage, required this.hint,
@@ -59,7 +60,8 @@ class CropStep extends StatelessWidget {
               maskColor: const Color(0x00000000),
               overlayBuilder: (context, rect) => const CustomPaint(key: ValueKey('crop-square'), painter: _SelectionPainter()),
               cornerDotBuilder: (size, edge) => SizedBox(width: size, height: size,
-                  child: const Center(child: SizedBox(width: 5, height: 5, child: ColoredBox(color: _cropperBlue)))),
+                  child: const Center(child: SizedBox(width: 7, height: 7, child: ColoredBox(color: _white,
+                      child: Padding(padding: EdgeInsets.all(1), child: ColoredBox(color: PhonePalette.blue)))))),
             ),
           ),
         ),
@@ -102,10 +104,15 @@ class _SelectionPainter extends CustomPainter {
       _dashed(canvas, Offset(x, 0), Offset(x, size.height), grid);
       _dashed(canvas, Offset(0, y), Offset(size.width, y), grid);
     }
-    canvas.drawRect(Offset.zero & size, Paint()
+    final edge = (Offset.zero & size).deflate(0.5);
+    canvas.drawRect(edge, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..color = _white);
+    canvas.drawRect(edge, Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = _cropperBlue);
+      ..color = PhonePalette.blue);
   }
 
   void _dashed(Canvas canvas, Offset a, Offset b, Paint p) {

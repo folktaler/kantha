@@ -616,8 +616,9 @@ class _AddClothState extends State<AddCloth> {
             expanded: _howTo, onPressed: () => setState(() => _howTo = !_howTo),
             builder: (context, st) {
               final row = Row(mainAxisSize: MainAxisSize.min, children: [
-                ExcludeSemantics(child: Icon(_howTo ? Icons.arrow_drop_down : Icons.arrow_right, size: 16,
-                    color: PhonePalette.text)),
+                // The triangle on the sheet's content edge, as the lines under it: Material's arrow glyphs sit 5 to 7
+                // px inside their box.
+                CustomPaint(size: const Size(12, 16), painter: _Caret(open: _howTo)),
                 Text(words.clothHowTo, style: pText(PType.cardLabel)),
               ]);
               // The toggle is a finger's 48 px tall.
@@ -638,6 +639,26 @@ class _AddClothState extends State<AddCloth> {
             ]),
           ),
       ]);
+}
+
+/* <details>' marker, from its left edge: ▸ shut (Material's arrow_right, 3.3 by 6.7 at 16 px), ▾ open (arrow_drop_down,
+   6.7 by 3.3), centred on the box's height. */
+class _Caret extends CustomPainter {
+  const _Caret({required this.open});
+  final bool open;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const a = 10 / 3, b = 20 / 3;
+    final m = size.height / 2;
+    final path = open
+        ? (Path()..moveTo(0, m - a / 2)..lineTo(b, m - a / 2)..lineTo(b / 2, m + a / 2))
+        : (Path()..moveTo(0, m - b / 2)..lineTo(a, m)..lineTo(0, m + b / 2));
+    canvas.drawPath(path..close(), Paint()..color = PhonePalette.text);
+  }
+
+  @override
+  bool shouldRepaint(_Caret old) => old.open != open;
 }
 
 enum _Step { pick, finding, tooSmall, crop, check, cloths }
