@@ -18,7 +18,7 @@ Collect scraps of cloth, cut them 6 × 6 cm, photograph them into a box, and see
 you already had at home. Print the sheet and stitch it yourself, or with friends.
 
 Nobody signs in. The studio starts on a Sample box of real cloth, already arranged. You add a box and
-photograph your own cloth into it, and the studio arranges that too. It fills one of 11 patterns from a
+photograph your own cloth into it, and the studio arranges that too. It fills one of 15 patterns from a
 box, shows it plain, framed or on a tote bag, and makes a true-size PDF to print and a photo to share.
 
 Everything stays on the device: boxes, photos and designs live in a database in the app. Back up, in the

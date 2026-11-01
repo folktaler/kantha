@@ -85,4 +85,3 @@ Ciede2000 ciede2000(Lab lab1, Lab lab2) {
 double hueOf(Lab lab) => math.atan2(lab.b, lab.a) * 180 / math.pi;
 double chroma(Lab lab) => jsHypot2(lab.a, lab.b);
 double angleGap(double p, double q) => ((((p - q).remainder(360)) + 540).remainder(360) - 180).abs();
-double chromaDistance(Lab a, Lab b) => ciede2000(a, b).dEChroma;

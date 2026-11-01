@@ -2,8 +2,9 @@
 library;
 
 import 'dart:io';
-import 'package:drift/drift.dart' show ApplyInterceptor, QueryExecutor, QueryInterceptor, TransactionExecutor, driftRuntimeOptions;
+import 'package:drift/drift.dart' show ApplyInterceptor, Value, QueryExecutor, QueryInterceptor, TransactionExecutor, driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show FlutterError, Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/data/backup.dart';
 import 'package:kantha_studio/data/database.dart';
@@ -11,11 +12,17 @@ import 'package:kantha_studio/data/numbers.dart';
 import 'package:kantha_studio/data/sample_box.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
+import 'package:kantha_studio/l10n/app_localizations.dart' show lookupL;
 import 'package:kantha_studio/measure/measure.dart';
-import 'package:kantha_studio/solver/geometry.dart' show cells;
+import 'package:kantha_studio/platform/solver_runner.dart' show SizedSolverRunner;
+import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart';
+import 'package:kantha_studio/solver/solve_layout.dart' show Base, LayoutSolve;
+import 'package:kantha_studio/studio/controller.dart';
+import 'package:kantha_studio/studio/shelf_feed.dart' show shelfNow;
 import '../support/db.dart';
 import '../support/files_fixture.dart' show testSideDb;
+import '../solver/pattern_rules.dart' show samplePiecesHere;
 import '../support/studio_fixture.dart';
 
 final _names = [for (final s in sampleCloth) s.name];
@@ -27,7 +34,7 @@ void main() {
     expect(m.map((x) => x.name).toSet().length, 10, reason: 'ten colour names');
   });
 
-  test('a fresh install gets the Sample box once, with the 10 cloths of 7, named as the owner named them', () async {
+  test('a fresh install gets the Sample box once, with the 10 cloths of 12, named as the owner named them', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     await ensureSampleBox(shelf);
@@ -35,7 +42,8 @@ void main() {
     expect(boxes.map((b) => b.name), ['sample']);
     final cloth = await shelf.db.select(shelf.db.cloths).get();
     expect(cloth.map((c) => c.name), _names);
-    expect(cloth.every((c) => c.pieces == 7 && c.fabric == ''), isTrue);
+    expect(cloth.every((c) => c.pieces == 12 && c.fabric == ''), isTrue);
+    expect(samplePiecesHere, List.filled(10, samplePieces), reason: 'pattern_rules.dart copies the count');
     expect(await shelf.swatchesToReplace(drawnSwatches), isNull, reason: 'a Sample box made now needs no swap');
   });
 
@@ -99,14 +107,150 @@ void main() {
     expect({for (final b in await shelf.db.select(shelf.db.boxes).get()) b.id: b.name}, before);
   });
 
-  test('every pattern fills from the Sample box', () async {
+  group('a Sample box made with 7 pieces of each cloth', () {
+    // As one made before 1 November 2026: 7 of each, and no top-up marker.
+    Future<Shelf> old() async {
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(pieces: Value(7)));
+      await (shelf.db.delete(shelf.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
+      return shelf;
+    }
+
+    test('gets 12 of each cloth she has not changed, once; a cloth she changed stays as she left it', () async {
+      final shelf = await old();
+      final cloth = await shelf.db.select(shelf.db.cloths).get();
+      await shelf.editCloth(cloth[0].id, fabric: '', pieces: 5);
+      await shelf.editCloth(cloth[1].id, fabric: 'Cotton', pieces: 7);
+      await topUpSample(shelf);
+      final after = {for (final c in await shelf.db.select(shelf.db.cloths).get()) c.id: c.pieces};
+      expect(after[cloth[0].id], 5);
+      expect(after[cloth[1].id], 7);
+      expect([for (final c in cloth.skip(2)) after[c.id]], List.filled(8, 12));
+      // Once: a cloth set back to 7 later is hers, and is not topped up again.
+      await shelf.editCloth(cloth[2].id, fabric: '', pieces: 7);
+      await topUpSample(shelf);
+      expect((await (shelf.db.select(shelf.db.cloths)..where((c) => c.id.equals(cloth[2].id))).getSingle()).pieces, 7);
+    });
+
+    test('in a backup imported later, gets its 12 on import', () async {
+      final backup = await exportBackup((await old()).db, testSideDb);
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      final solver = _PoolsSeen();
+      final (:c, shelf: _) = await studio(on: shelf, seeded: false, solver: solver);
+      final from = solver.solved.length;
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
+      expect(c.piecesIn(c.box!), samplePieces * sampleCloth.length, reason: 'the studio re-opened on the 12');
+      // Topped up before the studio re-opened: no arrangement was asked of the box at 7.
+      expect(solver.solved.length, greaterThan(from));
+      expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
+    });
+
+    test('in a backup from before 22 October, is topped up and swapped, and the board dealt again from the real cloth', () async {
+      final drawn = Shelf(memoryDb());
+      await _oldSample(drawn);
+      await (drawn.db.delete(drawn.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
+      final backup = await exportBackup(drawn.db, testSideDb);
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      final solver = _PoolsSeen();
+      final (:c, shelf: _) = await studio(on: shelf, seeded: false, solver: solver);
+      final from = solver.solved.length;
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect((await shelf.db.select(shelf.db.cloths).get()).map((x) => x.name), _names);
+      expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
+      // Once swapped and topped up, the board was dealt again from the real cloth at 12.
+      expect(solver.solved.length, greaterThan(from));
+      expect(solver.solved.last.where((k) => k > 0).toSet(), {samplePieces});
+    });
+
+    test('in a backup from before 22 October, is not swapped when the studio could not re-open on it: no picture is '
+        'drawn from this device\'s cloth, and the next open swaps it', () async {
+      final shelf = Shelf(memoryDb());
+      await _oldSample(shelf);
+      final swatches = (await shelf.db.select(shelf.db.cloths).get()).toList();
+      await _design(shelf, 'Swatches', [for (final x in swatches.take(5)) x.id]);
+      final backup = await exportBackup(shelf.db, testSideDb);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(l: Value(95), a: Value(0), b: Value(0)));
+      final solver = _RefusesPool();
+      final c = StudioController(shelf: shelf, solver: solver, words: lookupL(const Locale('en')), side: testSideDb);
+      c.restock(await shelfNow(shelf));
+      c.start();
+      var drawn = 0;
+      c.drawPicture = (d) async { drawn++; return (png: fixtureJpeg, thumb: fixtureJpeg); };
+      final reported = <Object>[];
+      final was = FlutterError.onError;
+      FlutterError.onError = (d) => reported.add(d.exception);
+      addTearDown(() => FlutterError.onError = was);
+      solver.refuse = true;
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect(drawn, 0);
+      expect(await shelf.db.select(shelf.db.pictures).get(), isEmpty);
+      expect(reported, [isA<StateError>()], reason: 'the re-open failed and was reported');
+      expect(await shelf.swatchesToReplace(drawnSwatches), isNotEmpty, reason: 'left for the next open');
+    });
+
+    test('in a backup from before 22 October, has its designs pictured in the backup\'s cloth, though this device has '
+        'cloth of the same ids', () async {
+      // Device A made the backup, then its cloth changed colour: the same ids, now in other colours.
+      final shelf = Shelf(memoryDb());
+      await _oldSample(shelf);
+      final swatches = (await shelf.db.select(shelf.db.cloths).get()).toList();
+      await _design(shelf, 'Swatches', [for (final x in swatches.take(5)) x.id]);
+      final backup = await exportBackup(shelf.db, testSideDb);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(l: Value(95), a: Value(0), b: Value(0)));
+      // A studio whose feed has not caught up with the import (none here): what it holds is read only when it asks.
+      final c = StudioController(shelf: shelf, solver: QuickSolver(), words: lookupL(const Locale('en')), side: testSideDb);
+      c.restock(await shelfNow(shelf));
+      c.start();
+      expect(c.cloth.where((x) => x.id == swatches.first.id).single.lab.l, closeTo(95, 1e-9));
+      final seen = <({double l, double a, double b})>[];
+      c.drawPicture = (d) async {
+        for (final id in d.grid.toSet()) {
+          seen.add(c.cloth.where((x) => x.id == id).single.lab);
+        }
+        return (png: fixtureJpeg, thumb: fixtureJpeg);
+      };
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect(seen, hasLength(5), reason: 'the design was pictured before its swatches went');
+      expect(seen.toSet(), {for (final x in swatches.take(5)) (l: x.l, a: x.a, b: x.b)}, reason: "the backup's colours");
+      final pictures = await shelf.db.select(shelf.db.pictures).get();
+      expect({for (final p in pictures) p.name: p.design}, {'Swatches': null}, reason: 'Picture only');
+      expect((await shelf.db.select(shelf.db.cloths).get()).map((x) => x.name), _names);
+    });
+
+    test('emptied or deleted, stays as she left it', () async {
+      final shelf = await old();
+      final box = (await shelf.db.select(shelf.db.boxes).get()).single;
+      final ids = await shelf.clothIn(box.id);
+      await shelf.deleteBox(box.id, cloth: ids);
+      await topUpSample(shelf);
+      expect(await shelf.db.select(shelf.db.cloths).get(), isEmpty);
+      expect(await shelf.counterAt('samplePieces'), 2);
+    });
+
+    test('a Sample box made now needs no top-up', () async {
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      expect(await shelf.counterAt('samplePieces'), 2);
+    });
+  });
+
+  test('every pattern fills from the Sample box at the start size', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     final c = (await studio(on: shelf, seeded: false)).c;
     expect(c.box, isNotNull);
-    expect(c.piecesIn(c.box!), 10 * 7);
+    expect(c.piecesIn(c.box!), 10 * 12);
     for (final k in LayoutKey.values) {
-      expect(c.feasible[k]?.fills, isTrue, reason: '${k.name} fills from the Sample box');
+      // Chain's 9 links on 7 × 5 are one cloth, and Diamond's light rings one family (owner, 1 November 2026).
+      expect(c.feasible[k]?.fills, isTrue, reason: '${k.name} from the Sample box');
     }
     expect(c.starting, isFalse);
   });
@@ -136,7 +280,7 @@ void main() {
       final cloth = await shelf.db.select(shelf.db.cloths).get();
       expect(cloth.map((x) => x.name), [own.name, ..._names]);
       expect(cloth.every((x) => x.box == box), isTrue);
-      expect(cloth.where((x) => x.id != own.id).every((x) => x.pieces == 7), isTrue);
+      expect(cloth.where((x) => x.id != own.id).every((x) => x.pieces == samplePieces), isTrue);
       expect((await shelf.db.select(shelf.db.designs).get()).map((d) => d.id), [hers]);
       final pictures = await shelf.db.select(shelf.db.pictures).get();
       expect({for (final p in pictures) p.name: p.design}, {'Swatches': null, 'Mixed': null}, reason: 'Picture only');
@@ -318,5 +462,32 @@ class _Writes extends QueryInterceptor {
       return Future.error(Exception('the device refused cloth $clothInserts'));
     }
     return super.runInsert(executor, statement, args);
+  }
+}
+
+/* The pool, as stock per cloth, that each arrangement was asked of, at any board size. */
+/* A solver that, once `refuse` is set, refuses the pool it is given: the studio cannot re-open. */
+class _RefusesPool extends QuickSolver {
+  var refuse = false;
+  @override
+  void setPool(Base base) { if (refuse) throw StateError('the solver refused the pool'); }
+}
+
+class _PoolsSeen extends QuickSolver implements SizedSolverRunner {
+  var _stock = const <int>[];
+  final solved = <List<int>>[];
+  @override
+  void setPool(Base base) => _stock = List.of(base.stock);
+  @override
+  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) {
+    solved.add(_stock);
+    return super.solve(layout, members, mount, seed);
+  }
+  @override
+  Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed) async {
+    solved.add(_stock);
+    final n = size.rows * size.cols;
+    return LayoutSolve(true, [for (var i = 0; i < n; i++) members[(i + seed) % members.length]],
+        [for (var i = 0; i < n; i++) (i + seed) % 4]);
   }
 }

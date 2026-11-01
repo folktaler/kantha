@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:archive/archive.dart' show getCrc32; // a top-level function in archive 4.3.0: getCrc32(List<int>, [int crc = 0]) → int
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:kantha_studio/measure/measure.dart';
 import 'package:kantha_studio/measure/named_colours.dart';
 import '../fixtures/fixtures.g.dart' as g;
@@ -74,5 +75,16 @@ void main() {
     final whole = base64Decode(g.pictures['rotated.jpg']!);
     final cut = Uint8List.sublistView(whole, 0, 600);
     expect(() => measureBytes(cut), throwsA(isA<MeasureError>().having((e) => e.key, 'key', 'notAnImage')));
+  });
+
+  test('fine light-and-dark texture past the size limit is measured in linear light, not darkened by the resize', () {
+    // 3000 × 3000 pixels of a one-pixel black-and-white check: half the light of white, so Y 50 and L* 76.1. Resized
+    // first, in gamma-encoded values (as before 1 November 2026), it measured L* 59.9.
+    final check = img.Image(width: 3000, height: 3000);
+    for (final p in check) {
+      final v = (p.x + p.y).isEven ? 255 : 0;
+      p..r = v..g = v..b = v;
+    }
+    expect(measureImage(check).lab.l, closeTo(76.1, 0.1));
   });
 }

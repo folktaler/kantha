@@ -86,45 +86,57 @@ Measured measureBytes(Uint8List bytes, {bool centre = true}) {
   return measureImage(decoded, centre: centre);
 }
 
-Measured measureImage(img.Image picture, {bool centre = true}) {
-  // Plain 8-bit RGB first: a greyscale picture has no g or b to read, a palette picture
-  // has indexes, not colours, and the package cannot crop a 4-bit one on a pixel boundary.
-  var image = img.bakeOrientation(picture.convert(format: img.Format.uint8, numChannels: 3));
-  if (math.max(image.width, image.height) > maxLongSide) {
-    image = image.width >= image.height
-        ? img.copyResize(image, width: maxLongSide, interpolation: img.Interpolation.cubic)
-        : img.copyResize(image, height: maxLongSide, interpolation: img.Interpolation.cubic);
-  }
+/* The measured square: the centre 60 % of the picture, 6 % in from each side of that. */
+({int left, int top, int width, int height}) _box(img.Image image, bool centre) {
   final w = image.width, h = image.height;
   final keep = centre ? _centreFraction : 1.0;
   final innerW = jsRound(w * keep), innerH = jsRound(h * keep);
   final left = jsRound((w - innerW) / 2 + innerW * _featureInset);
   final top = jsRound((h - innerH) / 2 + innerH * _featureInset);
-  final width = math.max(1, jsRound(innerW * (1 - _featureInset * 2)));
-  final height = math.max(1, jsRound(innerH * (1 - _featureInset * 2)));
-  final region = img.copyCrop(image, x: left, y: top, width: width, height: height);
+  return (left: left, top: top, width: math.max(1, math.min(w - left, jsRound(innerW * (1 - _featureInset * 2)))),
+      height: math.max(1, math.min(h - top, jsRound(innerH * (1 - _featureInset * 2)))));
+}
 
+Measured measureImage(img.Image picture, {bool centre = true}) {
+  // Plain 8-bit RGB first: a greyscale picture has no g or b to read, a palette picture
+  // has indexes, not colours, and the package cannot crop a 4-bit one on a pixel boundary.
+  final full = img.bakeOrientation(picture.convert(format: img.Format.uint8, numChannels: 3));
+  // The colour is the mean of every pixel in linear light, taken before any resizing: a resize filters the
+  // gamma-encoded values, which darkens fine light-and-dark texture (a 1-pixel black-and-white check 3000 pixels
+  // square measured L* 59.9 instead of 76.1).
   var x = 0.0, y = 0.0, z = 0.0;
-  final ls = Float64List(region.width * region.height);
-  var n = 0;
-  for (final p in region) {
-    final r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
-    final py = _xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1];
+  final whole = _box(full, centre), n = whole.width * whole.height;
+  // The region's pixels, read in place.
+  for (final it = full.getRange(whole.left, whole.top, whole.width, whole.height); it.moveNext();) {
+    final p = it.current, r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
     x += _xyzR[r][0] + _xyzG[g][0] + _xyzB[b][0];
-    y += py;
+    y += _xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1];
     z += _xyzR[r][2] + _xyzG[g][2] + _xyzB[b][2];
-    ls[n++] = ColorUtils.lstarFromY(py);
+  }
+  // The spread of lightness, a measure of texture whose busy and edge cut-offs were set on pictures of at most
+  // maxLongSide, is read as before from the picture brought down to that size.
+  var image = full;
+  if (math.max(image.width, image.height) > maxLongSide) {
+    image = image.width >= image.height
+        ? img.copyResize(image, width: maxLongSide, interpolation: img.Interpolation.cubic)
+        : img.copyResize(image, height: maxLongSide, interpolation: img.Interpolation.cubic);
+  }
+  final box = _box(image, centre), ls = Float64List(box.width * box.height);
+  var m = 0;
+  for (final it = image.getRange(box.left, box.top, box.width, box.height); it.moveNext();) {
+    final p = it.current, r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
+    ls[m++] = ColorUtils.lstarFromY(_xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1]);
   }
   final mean = labFromXyz(x / n, y / n, z / n);
   var sum = 0.0;
-  for (var i = 0; i < n; i++) { sum += ls[i]; }
-  final avg = sum / n;
+  for (var i = 0; i < m; i++) { sum += ls[i]; }
+  final avg = sum / m;
   var sq = 0.0;
-  for (var i = 0; i < n; i++) { final d = ls[i] - avg; sq += d * d; }
+  for (var i = 0; i < m; i++) { final d = ls[i] - avg; sq += d * d; }
   return Measured(
     lab: (l: _round1(mean.l), a: _round1(mean.a), b: _round1(mean.b)),
     name: colourName(mean),
-    spread: _round1(math.sqrt(sq / n)),
-    width: region.width, height: region.height,
+    spread: _round1(math.sqrt(sq / m)),
+    width: box.width, height: box.height,
   );
 }

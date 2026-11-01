@@ -7,10 +7,25 @@ import 'score.dart';
 export 'js_math.dart' show rng;
 
 class SolveOptions {
-  const SolveOptions({required this.seed, this.restarts = 4, this.steps = 20000, this.acceptStart = 0.8, this.tEnd = 1});
-  final int seed, restarts, steps;
+  const SolveOptions({required this.seed, this.restarts, this.steps, this.acceptStart = 0.8, this.tEnd = 1});
+  final int seed;
+  /* Independent starts, the best kept; null gives [restartsFor]. */
+  final int? restarts;
+  /* Annealing steps per restart; null scales them with the board ([stepsFor]). */
+  final int? steps;
   final double acceptStart, tEnd;
 }
+
+/* The annealing schedule's length grows with the problem, as Johnson et al. (1989, "Optimization by simulated
+   annealing", Operations Research 37(6)) set it, in proportion to the neighbourhood: here, to the squares. The ratio
+   is the one tuned on the 5 × 7 board (20,000 steps for 35 squares, about 571 a square), so 5 × 7 is unchanged. */
+int stepsFor(int squares) => (20000 * squares / 35).round();
+
+/* Multi-start (keep the best of several independent anneals): 4 on boards up to the 5 × 7 start board, 8 past it.
+   Measured 1 November 2026 on the Sample box's Gradient at 12 × 12, seeds 1–3, against the best of 8 starts of
+   400,000 steps: 4 starts were 3.8–20.7% above it, 8 starts 2.9–10.5%, 16 starts 2.9–8.5% at twice the time again;
+   doubling the steps (8.0–13.0%) or ending colder (tEnd 0.1: 8.3–15.3%; 0.01: 5.6–21.6%) did not narrow it. */
+int restartsFor(int squares) => squares <= 35 ? 4 : 8;
 
 class Solved {
   const Solved(this.grid, this.total, this.seed);
@@ -149,10 +164,10 @@ bool withinStock(List<int> grid, List<int> stock) {
 Solved? solve(Objective obj, Prepared prep, List<int> stock, List<int> pool, SolveOptions opts) {
   final rand = rng(opts.seed);
   Solved? best;
-  for (var k = 0; k < opts.restarts; k++) {
+  for (var k = 0, n = opts.restarts ?? restartsFor(obj.rows * obj.cols); k < n; k++) {
     final start = _generate(obj, prep, stock, pool, rand);
     if (start == null) return null;
-    final grid = _polish(_anneal(start, obj, prep, stock, pool, rand, opts.steps, opts.acceptStart, opts.tEnd), obj, prep, stock, pool);
+    final grid = _polish(_anneal(start, obj, prep, stock, pool, rand, opts.steps ?? stepsFor(obj.rows * obj.cols), opts.acceptStart, opts.tEnd), obj, prep, stock, pool);
     final t = _total(grid, obj, prep);
     if (best == null || t < best.total) best = Solved(grid, t, opts.seed);
   }

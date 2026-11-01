@@ -39,8 +39,9 @@ void main() {
             edge: (poolFixture['edge'] as List)[i] == null ? null : d((poolFixture['edge'] as List)[i]),
             grain: null, stock: stock[i]),
     ];
-    final got = layoutsFrom(fabrics);
     final want = recorded['start'] as List;
+    // The recording holds every template the start page deals (tool/rerecord_solver.dart).
+    final got = [for (final l in layoutsFrom(fabrics)) if (want.any((w) => w['key'] == l.key.name)) l];
     expect([for (final l in got) l.key.name], [for (final l in want) l['key']]);
     final p = poolOf(fabrics);
     final members = [for (var i = 0; i < fabrics.length; i++) i];
@@ -52,17 +53,19 @@ void main() {
         // This platform's maths dealt a different arrangement (controller ruling, 6 Oct): it passes only
         // if it is whole, from this box, within stock, and a local minimum of the solver's own moves
         // (the start fixture records no total to re-score against).
+        // Chain is dealt from the stock layoutsFrom raised for its links (owner, 1 November 2026).
+        final stock = got[k].key == LayoutKey.chain ? chainStartStock(p.pool, members, p.stock) : p.stock;
         final m = modelFor(got[k].key, ObjectiveInput(pool: p.pool, edge: p.edge, members: members,
-            mount: Mount.none, stock: p.stock));
-        final prep = prepare(m.pool, m.obj.distance);
+            mount: Mount.none, stock: stock));
+        final prep = prepare(m.pool);
         final gotGrid = [for (final c in got[k].cells) c.fabric];
         final wantGrid = [for (final h in wantHex) hexByIndex.indexOf(h)];
         expect(gotGrid, hasLength(a4.rows * a4.cols));
-        expect(withinStock(gotGrid, p.stock), isTrue, reason: '${got[k].key.name}: within stock');
+        expect(withinStock(gotGrid, stock), isTrue, reason: '${got[k].key.name}: within stock');
         final gotTotal = score(gotGrid, m.obj, prep).total, wantTotal = score(wantGrid, m.obj, prep).total;
         // ignore: avoid_print
         print('${kIsWeb ? 'WEB' : 'VM'}: start ${got[k].key.name} differs; score $gotTotal against $wantTotal');
-        expect(isLocalMinimum(gotGrid, m.obj, prep, p.stock, members), isTrue,
+        expect(isLocalMinimum(gotGrid, m.obj, prep, stock, members), isTrue,
             reason: '${got[k].key.name}: no single move of the solver improves it');
         continue;
       }
@@ -92,6 +95,11 @@ void main() {
       'blocks': [68, 68, 68, 138, 138, 68, 68, 68, 138, 138, 68, 68, 68, 138, 138, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198, 198],
       'medallionPrint': [228, 203, 194, 203, 228, 185, 152, 139, 152, 185, 152, 106, 83, 106, 152, 139, 83, 28, 83, 139, 152, 106, 83, 106, 152, 185, 152, 139, 152, 185, 228, 203, 194, 203, 228],
       'heart': [228, 228, 228, 228, 228, 228, 88, 228, 88, 228, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88, 228, 88, 88, 88, 228, 228, 228, 88, 228, 228, 228, 228, 228, 228, 228],
+      'stripes': [28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28],
+      'zigzag': [128, 228, 228, 228, 128, 128, 128, 228, 128, 128, 28, 128, 128, 128, 28, 28, 28, 128, 28, 28, 228, 28, 28, 28, 228, 228, 228, 28, 228, 228, 128, 228, 228, 228, 128],
+      // The Single Irish Chain, links six squares apart (1 November 2026): Dart, not the TypeScript.
+      'chain': [228, 228, 228, 228, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 228, 228, 228, 228],
+      'diamond': [228, 128, 28, 128, 228, 128, 28, 228, 28, 128, 28, 228, 128, 228, 28, 228, 128, 28, 128, 228, 28, 228, 128, 228, 28, 128, 28, 228, 28, 128, 228, 128, 28, 128, 228],
     };
     expect(want.keys, [for (final k in layoutKeys) k.name]);
     for (final key in layoutKeys) {
@@ -106,15 +114,18 @@ void main() {
     final pool = fixturePool(), edge = fixtureEdge(), stock = ints(poolFixture['stock']);
     final base = Base(pool, edge, stock);
     for (final (members, why, anchor) in [([0, 1, 2], Unfillable.fewPieces, 1), ([3, 4, 5, 6], Unfillable.noDarkEnough, 5)]) {
-      test('members $members: the heart gives its reason, and no template deals a grid', () {
+      test('members $members: the heart and the diamond give their reasons, and no template deals a grid', () {
         final heart = modelFor(LayoutKey.heart, ObjectiveInput(pool: pool, edge: edge, members: members,
             mount: Mount.none, stock: stock));
         expect(heart.fills, isFalse);
         expect(heart.why, why);
         expect(heart.anchors, {1: anchor});
+        final diamond = modelFor(LayoutKey.diamond, ObjectiveInput(pool: pool, edge: edge, members: members,
+            mount: Mount.none, stock: stock));
+        expect(diamond.why, Unfillable.noRingFamily);
         for (final key in layoutKeys) {
           final s = solveLayout(key, base, members, Mount.none, 7);
-          expect(s.fills, key != LayoutKey.heart, reason: key.name);
+          expect(s.fills, key != LayoutKey.heart && key != LayoutKey.diamond, reason: key.name);
           expect(s.grid, isNull, reason: key.name);
           expect(s.rot, isNull, reason: key.name);
         }

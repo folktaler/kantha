@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'hue.dart';
+import 'cam16.dart';
+import 'hue.dart' show Lab;
 import 'js_math.dart';
 
 typedef Pair = (int, int);
@@ -21,8 +22,11 @@ List<Pair> pairsFor(int rows, int cols, List<(int, int)> offsets) {
 
 class Weights {
   const Weights({required this.clump, required this.contrast, required this.lightness, required this.printClash,
-      required this.printFrame, required this.balance, required this.deTarget, required this.lTarget, required this.frameLTarget});
-  final double clump, contrast, lightness, printClash, printFrame, balance, deTarget, lTarget, frameLTarget;
+      required this.printFrame, required this.balance, required this.deTarget, required this.sameColour, required this.lTarget,
+      required this.frameLTarget});
+  /* deTarget: the colour difference a seam asks for (CAM16-UCS ΔE′); sameColour: within it (a′b′ only), a cloth is
+     "that colour". */
+  final double clump, contrast, lightness, printClash, printFrame, balance, deTarget, sameColour, lTarget, frameLTarget;
 }
 
 class Pool {
@@ -36,8 +40,6 @@ class Pool {
       Pool(lab: lab, lightness: l, busy: busy, visualWeight: visualWeight, grain: grain, coherence: coherence);
 }
 
-enum Distance { cie76, ciede2000 }
-
 class Perimeter {
   const Perimeter({required this.groundL, required this.clearance, required this.weight, required this.cells});
   final double groundL, clearance, weight;
@@ -45,25 +47,34 @@ class Perimeter {
 }
 
 class Objective {
-  Objective._(this.rows, this.cols, this.pairs, this.weights, this.balance, this.distance)
+  Objective._(this.rows, this.cols, this.pairs, this.weights, this.balance)
       : seamLTarget = Float64List(pairs.length), seamL = Float64List(pairs.length), seamDE = Float64List(pairs.length),
         seamFrame = Float64List(pairs.length), boundary = Uint8List(pairs.length);
   final int rows, cols;
   final List<Pair> pairs;
   final Weights weights;
   final bool balance;
-  final Distance distance;
   final Float64List seamLTarget, seamL, seamDE, seamFrame;
   final Uint8List boundary;
-  Float64List? targetL, wL, targetHue, wHue, wColour, targetOrient, wOrient;
+  Float64List? targetL, wL, targetHue, wHue, wColour, targetOrient, wOrient, wAvoid;
   List<bool>? hueExclude;
+  /* Where Spectrum's hue line cuts the CAM16 hue circle (purpleCut); targetHue is a position on that line. */
+  double hueCut = 0;
+  /* What a square costs, in degrees on the hue line, for an uncoloured cloth (hueExclude): never less than the farthest
+     a coloured cloth can be from a target, the box's run from its warmest coloured cloth to its coolest (compile). */
+  double hueExcludeGap = 0;
   Int32List? targetColour;
+  /* A colour a square stays away from (Heart's ground from the heart's cloth): within sameColour of it costs. */
+  Int32List? avoidColour;
+  /* The one cloth a square must take (Chain's links), -1 for none; any other costs pinWeight. */
+  Int32List? pin;
+  double pinWeight = 0;
   Perimeter? perimeter;
 }
 
 Objective newObjective({required int rows, required int cols, required List<Pair> pairs, required Weights weights,
-        required bool balance, required Distance distance}) =>
-    Objective._(rows, cols, pairs, weights, balance, distance);
+        required bool balance}) =>
+    Objective._(rows, cols, pairs, weights, balance);
 
 sealed class SeamRule { const SeamRule(); }
 class SeamFull extends SeamRule { const SeamFull(); }
@@ -84,9 +95,10 @@ SeamWeights seamOf(SeamRule rule, Weights w) => switch (rule) {
     };
 
 class Prepared {
-  Prepared(this.n, this.de, this.dl, this.dh, this.dc, this.l, this.vw, this.busy, this.hue, this.grain, this.coherence);
+  Prepared(this.n, this.de, this.dl, this.dc, this.l, this.vw, this.busy, this.hue, this.grain, this.coherence);
   final int n;
-  final Float64List de, dl, dh, dc;
+  /* de: CAM16-UCS ΔE′; dl: |ΔL*|; dc: CAM16-UCS a′b′ distance; hue: CAM16 hue angle. */
+  final Float64List de, dl, dc;
   final List<double> l, vw, hue, grain, coherence;
   final List<bool> busy;
 }
@@ -94,21 +106,20 @@ class Prepared {
 /* `list?.[i] ?? 0` in TypeScript: an index past the end, or a null entry, gives 0. */
 double _at(List<double?>? list, int i) => list != null && i < list.length ? (list[i] ?? 0) : 0;
 
-Prepared prepare(Pool pool, Distance distance) {
+/* Every colour difference is CAM16-UCS (cam16.dart); lightness differences are CIE L*. */
+Prepared prepare(Pool pool) {
   final n = pool.lab.length;
-  final de = Float64List(n * n), dl = Float64List(n * n), dh = Float64List(n * n), dc = Float64List(n * n);
+  final de = Float64List(n * n), dl = Float64List(n * n), dc = Float64List(n * n);
+  final ucs = [for (final l in pool.lab) ucsOf(l)];
   for (var i = 0; i < n; i++) {
     for (var j = 0; j < n; j++) {
-      final p = pool.lab[i], q = pool.lab[j];
-      final d = ciede2000(p, q);
-      de[i * n + j] = distance == Distance.ciede2000 ? d.dE : jsHypot3(p.l - q.l, p.a - q.a, p.b - q.b);
+      de[i * n + j] = deUcs(ucs[i], ucs[j]);
       dl[i * n + j] = (pool.lightness[i] - pool.lightness[j]).abs();
-      dh[i * n + j] = d.dH.abs();
-      dc[i * n + j] = d.dEChroma;
+      dc[i * n + j] = chromaUcs(ucs[i], ucs[j]);
     }
   }
-  return Prepared(n, de, dl, dh, dc, pool.lightness, pool.visualWeight ?? [for (final l in pool.lightness) 100 - l],
-      pool.busy, [for (final l in pool.lab) hueOf(l)],
+  return Prepared(n, de, dl, dc, pool.lightness, pool.visualWeight ?? [for (final l in pool.lightness) 100 - l],
+      pool.busy, [for (final u in ucs) u.hue],
       [for (var i = 0; i < n; i++) _at(pool.grain, i)], [for (var i = 0; i < n; i++) _at(pool.coherence, i)]);
 }
 
@@ -160,11 +171,20 @@ Breakdown score(List<int> grid, Objective obj, Prepared prep, [List<int>? rot]) 
   for (var i = 0; i < grid.length; i++) {
     final f = grid[i], r = i ~/ cols, c = i % cols;
     wsum += prep.vw[f]; wr += prep.vw[f] * r; wc += prep.vw[f] * c;
-    if (obj.targetL != null) fit += (prep.l[f] - obj.targetL![i]).abs() * obj.wL![i];
+    // Squared error: two pieces that both miss on one side cost more in the wrong order than in the right one, so the
+    // fit itself ranks them (an absolute error would let them swap for nothing).
+    if (obj.targetL != null) { final e = prep.l[f] - obj.targetL![i]; fit += e * e * obj.wL![i]; }
     if (obj.targetHue != null) {
-      hueFit += ((obj.hueExclude?[f] ?? false) ? 180 : angleGap(prep.hue[f], obj.targetHue![i])) * obj.wHue![i];
+      // Squared, as the lightness fit, so two squares both off one way cost more in the wrong order.
+      final gap = (obj.hueExclude?[f] ?? false) ? obj.hueExcludeGap : hueOnLine(prep.hue[f], obj.hueCut) - obj.targetHue![i];
+      hueFit += gap * gap * obj.wHue![i];
     }
     if (obj.targetColour != null) block += prep.dc[f * n + obj.targetColour![i]] * obj.wColour![i];
+    // Avoiding a colour and taking a pinned cloth are colour terms too, so they count in `block`.
+    if (obj.avoidColour != null && obj.avoidColour![i] >= 0) {
+      block += math.max(0.0, w.sameColour - prep.dc[f * n + obj.avoidColour![i]]) * obj.wAvoid![i];
+    }
+    if (obj.pin != null && obj.pin![i] >= 0 && f != obj.pin![i]) block += obj.pinWeight;
     if (obj.targetOrient != null && obj.wOrient![i] > 0 && prep.coherence[f] > 0) {
       final t = obj.targetOrient![i];
       final gapAt = rot != null

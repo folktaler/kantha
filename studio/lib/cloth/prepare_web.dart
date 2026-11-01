@@ -157,7 +157,7 @@ Uint8List _rgbaSquare(web.ImageBitmap original, {required Offset topLeft, requir
 }
 
 /* The cropped square (PhotoCropper's RGBA pixels), measured by measureImage — from the crop at its own
-   resolution (measureImage brings anything past 2500 px down first) — then brought down to storedLongSide by the
+   resolution (its colour from every pixel; only its texture from a copy brought to 2500 px) — then brought down to storedLongSide by the
    browser and stored as JPEG, which carries no EXIF — no place, no camera. */
 Future<({Uint8List jpeg, Measured measured})> preparePhoto(Uint8List cropped) async {
   final side = math.sqrt(cropped.length / 4).round();

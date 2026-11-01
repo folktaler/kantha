@@ -196,6 +196,34 @@ class LEn extends L {
       'A red heart on the lightest cloth, every seam around it held apart.';
 
   @override
+  String get canvasLayoutsStripesTitle => 'Stripes';
+
+  @override
+  String get canvasLayoutsStripesName =>
+      'Rows of light and dark, straight across the panel.';
+
+  @override
+  String get canvasLayoutsZigzagTitle => 'Zigzag';
+
+  @override
+  String get canvasLayoutsZigzagName =>
+      'Bands of tone zigzagging across, the chevron way.';
+
+  @override
+  String get canvasLayoutsChainTitle => 'Chain';
+
+  @override
+  String get canvasLayoutsChainName =>
+      'Dark chains on the diagonals, over a light ground.';
+
+  @override
+  String get canvasLayoutsDiamondTitle => 'Diamond';
+
+  @override
+  String get canvasLayoutsDiamondName =>
+      'Rings of colour, dark, middle and light, spreading out from the centre.';
+
+  @override
   String get canvasMountsNoneName => 'Panel';
 
   @override
@@ -219,6 +247,14 @@ class LEn extends L {
   @override
   String get canvasNotFillableNoFamilies =>
       'this box has too few coloured cloths to make its colour families';
+
+  @override
+  String get canvasNotFillableNoChainCloth =>
+      'this box has no dark cloth with enough pieces for every link';
+
+  @override
+  String get canvasNotFillableNoRingFamily =>
+      'this box has too few pieces of one colour for each ring';
 
   @override
   String canvasLayoutCannot(String title, String why) {

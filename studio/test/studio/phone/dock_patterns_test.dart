@@ -43,7 +43,7 @@ class _NoArrangement extends QuickSolver {
 }
 
 void main() {
-  testWidgets('on a phone the Design tab holds the eleven tiles in order, 80 × 124, the first selected; no line over the board',
+  testWidgets('on a phone the Design tab holds every pattern tile in order, 80 × 124, the first selected; no line over the board',
       (tester) async {
     final c = await pumpStudio(tester, size: phone);
     expect(c.layout, LayoutKey.contrast);
@@ -220,7 +220,7 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
   });
 
-  // The Sample box fills all eleven, so a box of three greys (36 pieces) stands in: it has no red for the heart.
+  // The Sample box fills every pattern, so a box of three greys (36 pieces) stands in: it has no red for the heart.
   testWidgets('on a phone a pattern the box cannot fill stays in the strip at 35 %; a tap says why and changes nothing',
       (tester) async {
     final c = await pumpOnSample(tester, size: phone);

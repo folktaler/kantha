@@ -33,6 +33,8 @@ class ThreadScore {
   final double worstL, meanDE;
 }
 
+/* Thread against cloth stays on CIEDE2000, apart from the solver's CAM16-UCS: it is a small-difference match (how
+   near a thread sits to the cloth it is stitched on), which is what CIEDE2000 was fitted to. */
 List<ThreadScore> rankThreads(List<int> grid, List<Lab> lab) {
   final scored = <(int, ThreadScore)>[];
   for (var k = 0; k < threads.length; k++) {
