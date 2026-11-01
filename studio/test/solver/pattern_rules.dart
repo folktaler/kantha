@@ -416,6 +416,25 @@ Verdict _chain(Compiled m, List<int> grid, List<int> stock, List<int> members, B
   final t = targetMap(LayoutKey.chain, g);
   final links = [for (var i = 0; i < grid.length; i++) if (t[i] == 0) i];
   if (!members.any((f) => stock[f] >= links.length)) return _cannot('no cloth has ${links.length} pieces for the links');
+  // The separation, with the links one cloth: that cloth's lightness under the ground's, the ground from the pieces
+  // left, each cloth of it at most an independent set of the ground under the no-same-neighbour rule; the best cloth.
+  final l = m.pool.lightness, tl = m.obj.targetL!;
+  final ground = [for (var i = 0; i < grid.length; i++) if (t[i] != 0) i];
+  if (links.isNotEmpty && ground.isNotEmpty) {
+    final want = _mean(ground.map((i) => tl[i])) - _mean(links.map((i) => tl[i]));
+    final cap = members.length >= apartFrom ? apartCap(ground, m.obj) : null;
+    var best = double.negativeInfinity;
+    for (final c in members.where((f) => stock[f] >= links.length)) {
+      final left = [for (final f in members) f == c ? stock[f] - links.length : stock[f]];
+      final hi = extremeMean(l, [for (var f = 0; f < stock.length; f++) members.contains(f) ? left[members.indexOf(f)] : 0],
+          members, ground.length, darkest: false, cap: cap);
+      if (hi != null) best = math.max(best, hi - l[c]);
+    }
+    if (best < separationShare * want) {
+      return _cannot('at most ${best.toStringAsFixed(1)} of separation with the links one cloth, needs '
+          '${(separationShare * want).toStringAsFixed(1)}');
+    }
+  }
   final v = _map(m, grid, stock, members);
   if (v.outcome == Outcome.cannot) return v;
   final kinds = {for (final i in links) grid[i]}.length;

@@ -17,12 +17,12 @@ final Uint8List _blockZones = zoneMap(['00011', '00011', '00011', '22222', '2222
 final Uint8List _heartZones = zoneMap(['.....', '.1.1.', '11111', '11111', '.111.', '..1..', '.....']);
 
 final Map<LayoutKey, LayoutSpec> layouts = {
-  LayoutKey.contrast: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.chess, wFit))}, within: const SeamFull(), perimeter: true, balance: true),
-  LayoutKey.gradient: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LAt(Ramps.gradient, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
-  LayoutKey.medallion: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.medallion, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
-  LayoutKey.wave: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.wave, wFit))}, within: const SeamNone(), perimeter: true, balance: false),
-  LayoutKey.framed: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.framed, wFit))}, within: const SeamNone(), perimeter: true, balance: false),
-  LayoutKey.cross: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.cross, wFit))}, within: const SeamNone(), perimeter: true, balance: false),
+  LayoutKey.contrast: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.chess, Tuned.fitChess))}, within: const SeamFull(), perimeter: true, balance: true),
+  LayoutKey.gradient: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LAt(Ramps.gradient, Tuned.fitGradient))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.medallion: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.medallion, Tuned.fitCentre))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.wave: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.wave, Tuned.fitWave))}, within: const SeamNone(), perimeter: true, balance: false),
+  LayoutKey.framed: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.framed, Tuned.fitBorder))}, within: const SeamNone(), perimeter: true, balance: false),
+  LayoutKey.cross: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.cross, Tuned.fitCross))}, within: const SeamNone(), perimeter: true, balance: false),
   LayoutKey.spectrum: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(hue: (angle: Ramps.spectrumHue, weight: wHue))}, within: const SeamNone(), perimeter: true, balance: false),
   LayoutKey.boro: LayoutSpec(zones: _plain, rules: {0: const ZoneRules()}, within: const SeamLightness(), perimeter: true, balance: false),
   LayoutKey.blocks: LayoutSpec(
@@ -34,17 +34,17 @@ final Map<LayoutKey, LayoutSpec> layouts = {
     },
     within: const SeamLightness(), perimeter: true, balance: false,
   ),
-  LayoutKey.medallionPrint: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(edge: (t: Ramps.printMedallion, weight: wFit))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.medallionPrint: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(edge: (t: Ramps.printMedallion, weight: Tuned.fitRipple))}, within: const SeamNone(), perimeter: false, balance: false),
   LayoutKey.heart: LayoutSpec(
     zones: _heartZones,
-    rules: {0: ZoneRules(l: LFromT((_, _, _) => 1, wFit), avoid: (weight: Tuned.avoidWeight)), 1: const ZoneRules(colour: (hue: heartHue, weight: Tuned.colourWeight))},
+    rules: {0: ZoneRules(l: LFromT((_, _, _) => 1, Tuned.fitHeart), avoid: (weight: Tuned.avoidWeight)), 1: const ZoneRules(colour: (hue: heartHue, weight: Tuned.colourWeight))},
     within: const SeamNone(), boundary: SeamCustom(lTarget: baseWeightsWith(Tuned.lightness).lTarget, weight: Tuned.boundaryWeight),
     perimeter: false, balance: false, ground: 0,
   ),
-  LayoutKey.stripes: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.stripes, wFit))}, within: const SeamNone(), perimeter: true, balance: false),
-  LayoutKey.zigzag: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.zigzag, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
-  LayoutKey.chain: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.chain, wFit), oneCloth: (weight: Tuned.pinWeight))}, within: const SeamNone(), perimeter: false, balance: false),
-  LayoutKey.diamond: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.diamond, wFit), ringFamilies: (weight: Tuned.ringWeight))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.stripes: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.stripes, Tuned.fitStripes))}, within: const SeamNone(), perimeter: true, balance: false),
+  LayoutKey.zigzag: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.zigzag, Tuned.fitZigzag))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.chain: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.chain, Tuned.fitChain), oneCloth: (weight: Tuned.pinWeight))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.diamond: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.diamond, Tuned.fitDiamond), ringFamilies: (weight: Tuned.ringWeight))}, within: const SeamNone(), perimeter: false, balance: false),
 };
 
 Compiled modelFor(LayoutKey key, ObjectiveInput input) => compile(layouts[key]!, input);

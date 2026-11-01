@@ -48,6 +48,18 @@ void main(List<String> args) {
   }
   List<num>? list(List<num>? v) => v?.toList();
   var runs = 0;
+  // Every template has its runs in every case, one per mount, with the seeds of the case's first run: the templates
+  // added after the TypeScript (stripes, zigzag, chain, diamond) get theirs here the first time.
+  for (final c in (rec['cases'] as List).cast<Map<String, dynamic>>()) {
+    final list = (c['runs'] as List).cast<Map<String, dynamic>>();
+    final seeds = [for (final s in (list.first['solves'] as List).cast<Map<String, dynamic>>()) s['seed']];
+    for (final k in LayoutKey.values) {
+      if (!keys.contains(k.name) || list.any((r) => r['layout'] == k.name)) continue;
+      for (final mount in Mount.values) {
+        c['runs'].add(<String, dynamic>{'layout': k.name, 'mount': mount.name, 'solves': [for (final s in seeds) {'seed': s}]});
+      }
+    }
+  }
   for (final c in rec['cases'] as List) {
     for (final run in (c['runs'] as List).cast<Map<String, dynamic>>()) {
       if (!keys.contains(run['layout'])) continue;

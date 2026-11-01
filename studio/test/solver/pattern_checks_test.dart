@@ -87,6 +87,9 @@ void main() {
     // most 24 seams of 58 can be that far apart and the median cannot reach 25.
     final c = runCase(LayoutKey.contrast, heldOutBoxes().firstWhere((b) => b.name == 'Held Any 8'), (rows: 5, cols: 7), 1);
     expect(c.outcome, Outcome.cannot, reason: c.solved!.rule.detail);
+    // Chain on the same box: its links one cloth, the ground from what is left, cannot reach half the separation.
+    final chain = runCase(LayoutKey.chain, heldOutBoxes().firstWhere((b) => b.name == 'Held Any 8'), (rows: 7, cols: 5), 1);
+    expect(chain.outcome, Outcome.cannot, reason: chain.fills ? chain.solved!.rule.detail : chain.why);
   });
 
   test('the statistics: Somers’ d, its bound from the pieces, and the Wilson interval', () {

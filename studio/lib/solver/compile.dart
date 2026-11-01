@@ -174,6 +174,24 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
       } else {
         ensureColour();
         for (final i in zone) { obj.targetColour![i] = anchor; obj.wColour![i] = input.colourWeight ?? cr.weight; }
+        // Its lightness: the mean of the darkest pieces of its colour, enough for its squares, so the fit asks for the
+        // darkest of that colour and leaves the light pieces to the ground (as Diamond's rings take their family's).
+        final near = [
+          for (final i in members)
+            if (stock[i] > 0 && chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) <= weights.sameColour) i,
+        ]..sort((a, b) => input.pool.lightness[a].compareTo(input.pool.lightness[b]));
+        var left = zone.length, sum = 0.0;
+        for (final i in near) {
+          final k = math.min(stock[i], left);
+          sum += k * input.pool.lightness[i];
+          left -= k;
+          if (left == 0) break;
+        }
+        if (left < zone.length) {
+          ensureL();
+          final mean = sum / (zone.length - left);
+          for (final i in zone) { obj.targetL![i] = mean; obj.wL![i] = Tuned.fitHeart; }
+        }
       }
     }
     final or = rules.orient;
