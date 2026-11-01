@@ -49,6 +49,7 @@ void main() {
           if (o['hueExcludeGap'] != null) expect(m.obj.hueExcludeGap, closeTo(d(o['hueExcludeGap']), 1e-9), reason: 'hueExcludeGap');
           expectSame(m.obj.targetColour, o['targetColour'], 'targetColour');
           expectSame(m.obj.wColour, o['wColour'], 'wColour');
+          expectSame(m.obj.colourFree, o['colourFree'], 'colourFree');
           expectSame(m.obj.avoidColour, o['avoidColour'], 'avoidColour');
           expectSame(m.obj.wAvoid, o['wAvoid'], 'wAvoid');
           expectSame(m.obj.pin, o['pin'], 'pin');

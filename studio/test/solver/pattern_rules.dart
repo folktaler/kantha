@@ -62,9 +62,10 @@ const double blockShare = 0.7;
    (44.3%) as the CIEDE2000 hue-and-chroma distance of 20 it replaces; that 20 had no published source either. */
 const double sameColour = 19.4;
 
-/* Heart: at least [heartShare] of the heart's squares that colour, at most [groundShare] of the ground's, and the
-   ground lighter than the heart on average by at least [seamL]. Design choices. */
-const double heartShare = 0.8, groundShare = 0.2;
+/* Heart: at least heartShare (lib/solver/compile.dart, the solver's own, 0.8) of the heart's squares that colour, at
+   most [groundShare] of the ground's, and the ground lighter than the heart on average by at least [seamL]. Design
+   choices. */
+const double groundShare = 0.2;
 
 /* The no-same-neighbour rule applies when the box holds at least this many cloths. */
 const int apartFrom = 6;
@@ -212,26 +213,6 @@ int apartCap(List<int> region, Objective obj) {
   var matched = 0;
   for (final u in next.keys) { if (augment(u, <int>{})) matched++; }
   return region.length - matched;
-}
-
-/* The least (`darkest`) or the greatest mean lightness `size` squares can have from the box's pieces, at least `need`
-   of them from the cloths `first` allows, each cloth at most `cap` squares: the extreme `need` of `first`'s pieces,
-   then the extreme of what is left. Null when the pieces cannot fill them. */
-double? extremeMean(List<double> l, List<int> stock, List<int> members, int size,
-    {required bool darkest, int need = 0, bool Function(int f)? first, int? cap}) {
-  final order = [...members]..sort((a, b) => darkest ? l[a].compareTo(l[b]) : l[b].compareTo(l[a]));
-  final left = {for (final f in members) f: cap == null ? stock[f] : math.min(stock[f], cap)};
-  var sum = 0.0, placed = 0;
-  void take(Iterable<int> from, int upTo) {
-    for (final f in from) {
-      if (placed >= upTo) return;
-      final k = math.min(left[f]!, upTo - placed);
-      sum += k * l[f]; placed += k; left[f] = left[f]! - k;
-    }
-  }
-  if (need > 0) { take(order.where(first!), need); if (placed < need) return null; }
-  take(order, size);
-  return placed < size ? null : sum / size;
 }
 
 // ---- The verdict on one board. ----

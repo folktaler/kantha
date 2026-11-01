@@ -64,9 +64,10 @@ class Objective {
      a coloured cloth can be from a target, the box's run from its warmest coloured cloth to its coolest (compile). */
   double hueExcludeGap = 0;
   Int32List? targetColour;
-  /* The colour distance (CAM16-UCS a′b′) a square's cloth may be from its targetColour at no cost: 0 for Blocks' and
-     Diamond's families, sameColour for Heart, whose rule counts every cloth that near as the heart's colour. */
-  double colourFree = 0;
+  /* Per square, the colour distance (CAM16-UCS a′b′) its cloth may be from its targetColour at no cost; null, or 0, for
+     every square of Blocks' and Diamond's families. sameColour on Heart's heart, whose rule counts every cloth that
+     near as the heart's colour. */
+  Float64List? colourFree;
   /* A colour a square stays away from (Heart's ground from the heart's cloth): a cloth within sameColour of it is that
      colour, and costs as much wherever it falls within; beyond, nothing. */
   Int32List? avoidColour;
@@ -183,7 +184,7 @@ Breakdown score(List<int> grid, Objective obj, Prepared prep, [List<int>? rot]) 
       final gap = (obj.hueExclude?[f] ?? false) ? obj.hueExcludeGap : hueOnLine(prep.hue[f], obj.hueCut) - obj.targetHue![i];
       hueFit += gap * gap * obj.wHue![i];
     }
-    if (obj.targetColour != null) { final d = prep.dc[f * n + obj.targetColour![i]]; if (d > obj.colourFree) block += d * obj.wColour![i]; }
+    if (obj.targetColour != null) { final d = prep.dc[f * n + obj.targetColour![i]]; if (d > (obj.colourFree?[i] ?? 0)) block += d * obj.wColour![i]; }
     // Avoiding a colour and taking a pinned cloth are colour terms too, so they count in `block`.
     if (obj.avoidColour != null && obj.avoidColour![i] >= 0) {
       if (prep.dc[f * n + obj.avoidColour![i]] <= w.sameColour) block += w.sameColour * obj.wAvoid![i];

@@ -27,10 +27,10 @@ Weights baseWeightsWith(double lightness) => Weights(clump: 100, contrast: 1, li
    on the hue line (1 November 2026), the pattern sweep passed 800 of 800 tuning units and 400 of 400 held-out, with no
    same-cloth neighbours on 100% of boards. */
 const double wFit = 0.05, wHue = 0.001;
-/* Heart: the share of the heart's squares that must be its colour, the rest any cloth. The pattern checks' own
-   heartShare (test/solver/pattern_rules.dart, fixed 1 November 2026) is the same number by definition; Heart's lightness
-   target asks for the darkest heart that share allows (1 November 2026). */
-const double heartColourShare = 0.8;
+/* Heart: the share of the heart's squares that must be its colour, the rest any cloth (a design choice, fixed on
+   1 November 2026 before any run of the pattern checks, which judge by it: test/solver/pattern_rules.dart). Heart's
+   lightness target asks for the darkest heart that share allows. */
+const double heartShare = 0.8;
 const double _canvasClearance = 25, _wPerimeter = 20;
 
 PoolStats _statsOf(Pool pool, List<double?> edge, List<int> members) {
@@ -100,6 +100,27 @@ int anchorFor(Pool pool, List<int> members, double hue) {
   return (squares: squares, cloth: cloth);
 }
 
+/* The least (`darkest`) or the greatest mean lightness `size` squares can have from the box's pieces, at least `need`
+   of them from the cloths `first` allows, each cloth at most `cap` squares: the extreme `need` of `first`'s pieces,
+   then the extreme of what is left. Null when the pieces cannot fill them. Heart's lightness target, and the pattern
+   checks' bounds (test/solver/pattern_rules.dart). */
+double? extremeMean(List<double> l, List<int> stock, List<int> members, int size,
+    {required bool darkest, int need = 0, bool Function(int f)? first, int? cap}) {
+  final order = [...members]..sort((a, b) => darkest ? l[a].compareTo(l[b]) : l[b].compareTo(l[a]));
+  final left = {for (final f in members) f: cap == null ? stock[f] : math.min(stock[f], cap)};
+  var sum = 0.0, placed = 0;
+  void take(Iterable<int> from, int upTo) {
+    for (final f in from) {
+      if (placed >= upTo) return;
+      final k = math.min(left[f]!, upTo - placed);
+      sum += k * l[f]; placed += k; left[f] = left[f]! - k;
+    }
+  }
+  if (need > 0) { take(order.where(first!), need); if (placed < need) return null; }
+  take(order, size);
+  return placed < size ? null : sum / size;
+}
+
 Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   final size = input.size ?? level1, rows = size.rows, cols = size.cols, cells = rows * cols;
   if (rows < 2 || cols < 2) throw ArgumentError('a board is at least 2 × 2 squares, not $rows × $cols');
@@ -113,6 +134,12 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   final anchors = <int, int>{};
   Unfillable? why;
   void refuse(Unfillable reason) => why ??= reason;
+  // The members within sameColour (CAM16-UCS a′b′) of a colour zone's anchor, "that colour": once per anchor.
+  final nearOf = <int, Set<int>>{};
+  Set<int> nearTo(int anchor) => nearOf[anchor] ??= () {
+        final at = ucsOf(input.pool.lab[anchor]);
+        return {for (final i in members) if (chromaUcs(ucsOf(input.pool.lab[i]), at) <= weights.sameColour) i};
+      }();
 
   for (var p = 0; p < pairs.length; p++) {
     final (a, b) = pairs[p];
@@ -203,27 +230,16 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
       } else {
         ensureColour();
         for (final i in zone) { obj.targetColour![i] = anchor; obj.wColour![i] = input.colourWeight ?? cr.weight; }
-        obj.colourFree = weights.sameColour;
+        obj.colourFree ??= Float64List(cells);
+        for (final i in zone) { obj.colourFree![i] = weights.sameColour; }
         // Its lightness: the darkest heart its shares allow, so the fit asks for the darkest of that colour and leaves
-        // the light pieces to the ground: the darkest pieces of its colour for [heartColourShare] of its squares, then the
+        // the light pieces to the ground: the darkest pieces of its colour for [heartShare] of its squares, then the
         // darkest pieces left, of any colour, for the rest (as Diamond's rings take their family's).
-        final l = input.pool.lightness;
-        bool near(int i) => chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) <= weights.sameColour;
-        final dark = [for (final i in members) if (stock[i] > 0) i]..sort((a, b) => l[a].compareTo(l[b]));
-        final left = {for (final i in dark) i: stock[i]};
-        var placed = 0, sum = 0.0;
-        void take(Iterable<int> from, int upTo) {
-          for (final i in from) {
-            final k = math.min(left[i]!, upTo - placed);
-            sum += k * l[i]; placed += k; left[i] = left[i]! - k;
-            if (placed == upTo) return;
-          }
-        }
-        take(dark.where(near), (heartColourShare * zone.length).ceil());
-        if (placed > 0) {
-          take(dark, zone.length);
+        final near = nearTo(anchor);
+        final mean = extremeMean(input.pool.lightness, stock, members, zone.length, darkest: true,
+            need: (heartShare * zone.length).ceil(), first: near.contains);
+        if (mean != null) {
           ensureL();
-          final mean = sum / placed;
           for (final i in zone) { obj.targetL![i] = mean; obj.wL![i] = Tuned.fitHeart; }
         }
       }
@@ -244,8 +260,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
         : [for (final y in zoneIds) if (spec.rules[y]?.colour != null && (anchors[y] ?? -1) >= 0) anchors[y]!].firstOrNull;
     // Only where the box can: as many pieces away from that colour as the zone has squares. Otherwise the ground has
     // to take the colour, and pushing against it buys only same-cloth neighbours.
-    final away = anchor == null ? 0 : [for (final i in members)
-        if (chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) > weights.sameColour) stock[i]].fold(0, (a, b) => a + b);
+    final away = anchor == null ? 0 : [for (final i in members) if (!nearTo(anchor).contains(i)) stock[i]].fold(0, (a, b) => a + b);
     if (av != null && anchor != null && away >= cellsIn(z).length) {
       obj.avoidColour ??= Int32List(cells)..fillRange(0, cells, -1);
       obj.wAvoid ??= Float64List(cells);
@@ -307,10 +322,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     if (why != null || spec.rules[z]?.colour == null || anchors[z]! < 0) continue;
     final anchor = anchors[z]!, zone = cellsIn(z);
     final half = (zone.length / 2).ceil();
-    final candidates = [
-      for (final i in members)
-        if (stock[i] > 0 && chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) <= weights.sameColour) i,
-    ];
+    final candidates = [for (final i in members) if (stock[i] > 0 && nearTo(anchor).contains(i)) i];
     var reach = 0;
     for (final i in candidates) { reach += math.min(stock[i], half); }
     if (reach < zone.length) { refuse(Unfillable.fewPieces); continue; }
