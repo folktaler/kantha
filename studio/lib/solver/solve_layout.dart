@@ -20,9 +20,10 @@ class LayoutSolve {
 /* One template solved from a pool of cloth: the studio's solver runner and the start-page tool both come here, so a
    visitor sees what she would get from the same cloth. Chain's start panel is the exception: there the cloth its links
    are made of may repeat (owner, 1 November 2026; start.dart chainStartStock). */
-LayoutSolve solveLayout(LayoutKey key, Base base, List<int> members, Mount mount, int seed, {BoardSize? size}) {
+LayoutSolve solveLayout(LayoutKey key, Base base, List<int> members, Mount mount, int seed, {BoardSize? size,
+    void Function(int done, int of)? onStep}) {
   final m = modelFor(key, ObjectiveInput(pool: base.pool, edge: base.edge, members: members, mount: mount, stock: base.stock, size: size));
   final prep = prepare(m.pool);
-  final solved = solve(m.obj, prep, base.stock, members, SolveOptions(seed: seed));
+  final solved = solve(m.obj, prep, base.stock, members, SolveOptions(seed: seed), onStep: onStep);
   return LayoutSolve(m.fills, solved?.grid, solved == null ? null : orient(solved.grid, m.obj, prep).toList());
 }

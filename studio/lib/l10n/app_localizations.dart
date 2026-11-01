@@ -231,6 +231,18 @@ abstract class L {
   /// **'Arranging the cloth…'**
   String get canvasSolving;
 
+  /// No description provided for @canvasSolvingStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Tried {done} of {total} arrangements'**
+  String canvasSolvingStep(String done, String total);
+
+  /// No description provided for @canvasWaitStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get canvasWaitStop;
+
   /// No description provided for @canvasCantSolve.
   ///
   /// In en, this message translates to:
@@ -1281,6 +1293,12 @@ abstract class L {
   /// **'Saved {file}.'**
   String deviceExportDone(String file);
 
+  /// No description provided for @deviceSavingBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving a backup…'**
+  String get deviceSavingBackup;
+
   /// No description provided for @deviceImportButton.
   ///
   /// In en, this message translates to:
@@ -1316,6 +1334,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'This device now holds what was in {file}.'**
   String deviceImportDone(String file);
+
+  /// No description provided for @deviceOpeningBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the backup…'**
+  String get deviceOpeningBackup;
 
   /// No description provided for @deviceNotBackup.
   ///

@@ -21,6 +21,7 @@ import 'phone_sheet.dart';
 import 'phone_theme.dart';
 import 'phone_toast.dart';
 import 'shortfall_banner.dart';
+import 'waiting.dart';
 import '../../platform/report.dart';
 
 /* The dock's tabs, left to right: Cloth box · Design · Preview (owner, 19 Oct). Design is the patterns, Preview the
@@ -413,8 +414,8 @@ class _PhoneStudioState extends State<PhoneStudio> {
         key: const ValueKey('phone-canvas'),
         color: PhonePalette.canvas,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(
-            child: LayoutBuilder(builder: (context, box) {
+          Expanded(child: Stack(fit: StackFit.expand, children: [
+            LayoutBuilder(builder: (context, box) {
               final size = box.biggest, pad = canvasPadding(c.onA4);
               // The board's own room: the canvas less its padding and the 4 cm line.
               final room = Size(size.width - pad.horizontal, size.height - pad.vertical - (c.onA4 ? scaleLineRoom : 0));
@@ -442,7 +443,12 @@ class _PhoneStudioState extends State<PhoneStudio> {
                 ),
               );
             }),
-          ),
+            // Arranging, over the board as it stands: past a second, the ring and the words; past 10 s, the bar and Stop.
+            if (c.solving && c.solveSince != null)
+              Center(child: WaitNote(key: ObjectKey(c.solveSince), words: L.of(context).canvasSolving, step: c.solveStep,
+                  stepWords: (done, of) => L.of(context).canvasSolvingStep('$done', '$of'),
+                  onStop: c.canStop ? c.stopSolve : null, stopWords: L.of(context).canvasWaitStop)),
+          ])),
           if (ShortfallBanner.shows(c))
             Padding(key: _shortfallKey, padding: const EdgeInsets.all(16),
                 child: ShortfallBanner(c: c, onPressed: _addCloth)),
@@ -495,7 +501,7 @@ class FreeingSpace extends StatelessWidget {
         child: AlertDialog(
           key: const ValueKey('freeing-space'),
           content: Semantics(liveRegion: true, child: Row(children: [
-            const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2, color: PhonePalette.blue)),
+            const WaitRing(size: 20),
             const SizedBox(width: 16),
             Flexible(child: Text(L.of(context).deviceFreeingSpace, style: pText(PType.bodySmall))),
           ])),

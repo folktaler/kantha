@@ -16,7 +16,7 @@
 # a tracked file (pubspec.lock), so the build that follows is the commit it is named for.
 set -eu
 
-# 1. What the build needs: the packages, sqlite3.wasm, drift_worker.js and the solver's and finder's workers in web/.
+# 1. What the build needs: the packages, sqlite3.wasm, drift_worker.js and the solver's, finder's and measure's workers in web/.
 flutter pub get
 ./tool/prepare_web.sh
 
@@ -47,6 +47,7 @@ flutter build web --release --base-href /studio/ --no-web-resources-cdn --dart-d
 # The workers' Dart source and the compiler's notes on them are not part of the site.
 rm -f build/web/solver_worker.dart build/web/solver_worker.js.deps build/web/solver_worker.js.map
 rm -f build/web/finder_worker.dart build/web/finder_worker.js.deps build/web/finder_worker.js.map
+rm -f build/web/measure_worker.dart build/web/measure_worker.js.deps build/web/measure_worker.js.map
 
 # 4. Every file but index.html moves into r/<release>/. drift_worker.js is copied back beside index.html:
 # drift names its shared worker by the worker's address, so every release must use the same one.

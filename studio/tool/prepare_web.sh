@@ -1,8 +1,9 @@
 #!/bin/sh
 # Puts what the web build needs beside index.html: sqlite3.wasm and drift_worker.js
 # from the drift release matching the drift version pubspec.lock resolved, as drift's
-# web docs direct (and a copy beside the web backup test), and the solver's and the square finder's
-# workers compiled from Dart (Task 10). Run in studio/.
+# web docs direct (and a copy beside the web backup test), and the solver's, the square finder's and the
+# colour measure's workers compiled from Dart (Task 10), the measure's with a copy beside its Chrome test.
+# Run in studio/.
 set -eu
 v=$(awk '/^  drift:$/{f=1} f && /version:/{gsub(/"/, "", $2); print $2; exit}' pubspec.lock)
 base="https://github.com/simolus3/drift/releases/download/drift-$v"
@@ -12,3 +13,6 @@ curl -fL -o web/drift_worker.js "$base/drift_worker.js"
 cp web/sqlite3.wasm test/data/sqlite3.wasm
 dart compile js -O4 -o web/solver_worker.js web/solver_worker.dart
 dart compile js -O4 -o web/finder_worker.js web/finder_worker.dart
+dart compile js -O4 -o web/measure_worker.js web/measure_worker.dart
+# The Chrome test of the measure's worker (test/cloth/measurer_web_test.dart) loads it beside itself.
+cp web/measure_worker.js test/cloth/measure_worker.js
