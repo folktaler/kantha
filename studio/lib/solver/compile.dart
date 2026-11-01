@@ -27,6 +27,10 @@ Weights baseWeightsWith(double lightness) => Weights(clump: 100, contrast: 1, li
    on the hue line (1 November 2026), the pattern sweep passed 800 of 800 tuning units and 400 of 400 held-out, with no
    same-cloth neighbours on 100% of boards. */
 const double wFit = 0.05, wHue = 0.001;
+/* Heart: the share of the heart's squares that must be its colour, the rest any cloth. The pattern checks' own
+   heartShare (test/solver/pattern_rules.dart, fixed 1 November 2026) is the same number by definition; Heart's lightness
+   target asks for the darkest heart that share allows (1 November 2026). */
+const double heartColourShare = 0.8;
 const double _canvasClearance = 25, _wPerimeter = 20;
 
 PoolStats _statsOf(Pool pool, List<double?> edge, List<int> members) {
@@ -199,22 +203,27 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
       } else {
         ensureColour();
         for (final i in zone) { obj.targetColour![i] = anchor; obj.wColour![i] = input.colourWeight ?? cr.weight; }
-        // Its lightness: the mean of the darkest pieces of its colour, enough for its squares, so the fit asks for the
-        // darkest of that colour and leaves the light pieces to the ground (as Diamond's rings take their family's).
-        final near = [
-          for (final i in members)
-            if (stock[i] > 0 && chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) <= weights.sameColour) i,
-        ]..sort((a, b) => input.pool.lightness[a].compareTo(input.pool.lightness[b]));
-        var left = zone.length, sum = 0.0;
-        for (final i in near) {
-          final k = math.min(stock[i], left);
-          sum += k * input.pool.lightness[i];
-          left -= k;
-          if (left == 0) break;
+        obj.colourFree = weights.sameColour;
+        // Its lightness: the darkest heart its shares allow, so the fit asks for the darkest of that colour and leaves
+        // the light pieces to the ground: the darkest pieces of its colour for [heartColourShare] of its squares, then the
+        // darkest pieces left, of any colour, for the rest (as Diamond's rings take their family's).
+        final l = input.pool.lightness;
+        bool near(int i) => chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) <= weights.sameColour;
+        final dark = [for (final i in members) if (stock[i] > 0) i]..sort((a, b) => l[a].compareTo(l[b]));
+        final left = {for (final i in dark) i: stock[i]};
+        var placed = 0, sum = 0.0;
+        void take(Iterable<int> from, int upTo) {
+          for (final i in from) {
+            final k = math.min(left[i]!, upTo - placed);
+            sum += k * l[i]; placed += k; left[i] = left[i]! - k;
+            if (placed == upTo) return;
+          }
         }
-        if (left < zone.length) {
+        take(dark.where(near), (heartColourShare * zone.length).ceil());
+        if (placed > 0) {
+          take(dark, zone.length);
           ensureL();
-          final mean = sum / (zone.length - left);
+          final mean = sum / placed;
           for (final i in zone) { obj.targetL![i] = mean; obj.wL![i] = Tuned.fitHeart; }
         }
       }
