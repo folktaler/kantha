@@ -573,7 +573,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Done'));
     await tester.pump();
-    const wait = 'The photo is still loading. Wait a moment, then press again.';
+    const wait = 'The photo is not ready. Wait a moment, then press again.';
     expect(find.text(wait), findsOneWidget);
     read.complete(photo);
     await letWork(tester, done: () => find.text('Your cloths').evaluate().isNotEmpty ||

@@ -171,8 +171,8 @@
       "badCount": "A count is a whole number, from 1 to 500.",
       "badBox": "That box is not a fabric box.",
       "boxFull": "This box holds {limit} cloths already. Take some out before adding more.",
-      "unreadable": "The studio could not read that picture, so no cloth was added. Try a different photo.",
-      "notReady": "The photo is still loading. Wait a moment, then press again.",
+      "unreadable": "The studio could not read that picture.",
+      "notReady": "The photo is not ready. Wait a moment, then press again.",
       "noSuchCloth": "There is no such cloth.",
       "pieceFailed": "That did not work. Try again in a moment."
     },

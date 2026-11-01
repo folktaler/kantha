@@ -458,12 +458,11 @@ class LEn extends L {
   }
 
   @override
-  String get clothErrorsUnreadable =>
-      'The studio could not read that picture, so no cloth was added. Try a different photo.';
+  String get clothErrorsUnreadable => 'The studio could not read that picture.';
 
   @override
   String get clothErrorsNotReady =>
-      'The photo is still loading. Wait a moment, then press again.';
+      'The photo is not ready. Wait a moment, then press again.';
 
   @override
   String get clothErrorsNoSuchCloth => 'There is no such cloth.';

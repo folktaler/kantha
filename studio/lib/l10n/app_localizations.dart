@@ -840,13 +840,13 @@ abstract class L {
   /// No description provided for @clothErrorsUnreadable.
   ///
   /// In en, this message translates to:
-  /// **'The studio could not read that picture, so no cloth was added. Try a different photo.'**
+  /// **'The studio could not read that picture.'**
   String get clothErrorsUnreadable;
 
   /// No description provided for @clothErrorsNotReady.
   ///
   /// In en, this message translates to:
-  /// **'The photo is still loading. Wait a moment, then press again.'**
+  /// **'The photo is not ready. Wait a moment, then press again.'**
   String get clothErrorsNotReady;
 
   /// No description provided for @clothErrorsNoSuchCloth.
