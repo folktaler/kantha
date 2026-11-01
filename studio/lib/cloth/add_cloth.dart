@@ -407,7 +407,7 @@ class _AddClothState extends State<AddCloth> {
         _store(croppedImage);
       case CropFailure(:final cause, :final stackTrace):
         reportClothError(cause, stackTrace, 'while the photo was cropped');
-        if (mounted) setState(() { _busy = false; _closeAfter = false; _error = words.clothErrorsNotReady; _toldToWait = true; });
+        if (mounted) setState(() { _busy = false; _closeAfter = false; _error = words.clothErrorsUnreadable; _toldToWait = false; });
     }
   }
 

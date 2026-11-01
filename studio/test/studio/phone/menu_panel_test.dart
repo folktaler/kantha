@@ -124,18 +124,20 @@ void main() {
     expect((open.label, open.tooltip, open.expanded), ('Close', null, true));
   });
 
-  testWidgets('≡ turns into × over the menu\'s 300 ms, not at once, though its title goes as it opens', (tester) async {
-    await pumpStudio(tester, size: desk);
-    await tester.tap(menu);
-    await tester.pump();
-    await tester.pump(menuTurn ~/ 2);
-    // The × fades in as ≡ turns away: half way through, it is neither gone nor all there.
-    final x = find.ancestor(of: find.byType(tabler.X), matching: find.byType(FadeTransition)).first;
-    final mid = tester.widget<FadeTransition>(x).opacity.value;
-    expect(mid, inExclusiveRange(0.05, 0.95));
-    await tester.pumpAndSettle();
-    expect(tester.widget<FadeTransition>(x).opacity.value, 1);
-  });
+  for (final (name, size) in [('desk', desk), ('phone', phone)]) {
+    testWidgets('≡ turns into × over the menu\'s 300 ms, not at once, though its title goes as it opens ($name)',
+        (tester) async {
+      await pumpStudio(tester, size: size);
+      await tester.tap(menu);
+      await tester.pump();
+      await tester.pump(menuTurn ~/ 2);
+      // The × fades in as ≡ turns away: half way through, it is neither gone nor all there.
+      final x = find.byKey(const ValueKey('menu-icon-x'));
+      expect(tester.widget<FadeTransition>(x).opacity.value, inExclusiveRange(0.05, 0.95));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FadeTransition>(x).opacity.value, 1);
+    });
+  }
 
   testWidgets('on a desk Enter on Save while the menu is open shuts it and leaves focus on Save', (tester) async {
     final c = await pumpStudio(tester, size: desk);

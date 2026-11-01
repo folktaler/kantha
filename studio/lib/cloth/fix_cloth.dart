@@ -105,7 +105,7 @@ class _FixClothState extends State<FixCloth> {
         _recrop(croppedImage);
       case CropFailure(:final cause, :final stackTrace):
         reportClothError(cause, stackTrace, 'while the photo was cropped');
-        if (mounted) setState(() { _busy = false; _error = words.clothErrorsNotReady; });
+        if (mounted) setState(() { _busy = false; _error = words.clothErrorsUnreadable; });
     }
   }
 

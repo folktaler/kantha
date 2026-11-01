@@ -62,7 +62,7 @@ class _MenuIconState extends State<MenuIcon> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) => SizedBox.square(dimension: 20, child: Stack(children: [
         FadeTransition(opacity: _shut, child: RotationTransition(turns: _away, child: tablerIcon(const tabler.Menu2(), size: 20))),
-        FadeTransition(opacity: _curve, child: RotationTransition(turns: _into, child: tablerIcon(const tabler.X(), size: 20))),
+        FadeTransition(key: const ValueKey('menu-icon-x'), opacity: _curve, child: RotationTransition(turns: _into, child: tablerIcon(const tabler.X(), size: 20))),
       ]));
 }
 

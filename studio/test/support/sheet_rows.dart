@@ -1,15 +1,16 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/theme.dart' show PhonePalette;
-import 'pump.dart' show inSheet, sheet;
+import 'pump.dart' show sheet;
 
-/* Every row divider in the open sheet (1 px lines in the border colour) runs 16 px in from each side of the sheet. A
+/* Every row divider in the open sheet (the top one, sheet.last) (1 px lines in the border colour) runs 16 px in from each side of the sheet. A
    row with a ⋯ draws its line in two pieces (the row's and the ⋯'s): they must meet, end to start, with no gap and no
    overlap. */
 void expectDividersInset(WidgetTester tester) {
-  final box = tester.getRect(sheet.last);
+  final open = sheet.last, box = tester.getRect(open);
+  final lines = find.descendant(of: open, matching: find.byWidgetPredicate((w) => w is ColoredBox && w.color == PhonePalette.border));
   final rects = [
-    for (final e in inSheet(find.byWidgetPredicate((w) => w is ColoredBox && w.color == PhonePalette.border)).evaluate())
+    for (final e in lines.evaluate())
       if (e.renderObject case final RenderBox b when b.hasSize && b.size.height == 1) b.localToGlobal(Offset.zero) & b.size,
   ];
   expect(rects, isNotEmpty, reason: 'the open sheet has row dividers');

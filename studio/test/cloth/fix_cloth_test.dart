@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:crop_your_image/crop_your_image.dart' show CropFailure;
+import 'package:kantha_studio/cloth/crop_step.dart';
 import 'package:kantha_studio/studio/controller.dart';
 import '../support/pump.dart';
 import '../support/studio_fixture.dart';
@@ -109,5 +111,15 @@ void main() {
     await letWork(tester, done: () => c.cloth.firstWhere((x) => x.id == id).version > version);
     expect(c.cloth.firstWhere((x) => x.id == id).version, version + 1);
     expect(sheet, findsNothing, reason: 'the sheet closes');
+  });
+
+  testWidgets('a crop that fails on a ready photo says the picture could not be read, not to wait', (tester) async {
+    await openFix(tester);
+    await letWork(tester, turns: 10); // the cropper reads the stored photo
+    tester.widget<CropStep>(find.byType(CropStep)).onCropped(CropFailure(Exception('the crop failed')));
+    await tester.pump();
+    expect(tester.takeException(), isException, reason: 'it is reported');
+    expect(inSheet(find.text('The studio could not read that picture.')), findsOneWidget);
+    expect(inSheet(find.text('The photo is not ready. Wait a moment, then press again.')), findsNothing);
   });
 }

@@ -80,8 +80,6 @@ class _PhoneStudioState extends State<PhoneStudio> {
   /* The Menu, open over everything under the top bar (menu_panel.dart). */
   bool _menu = false;
   final _menuFocus = FocusNode(debugLabel: 'menu');
-  /* ≡'s icon keeps its state (the turn from ≡ to ×) when its title comes and goes around it, below. */
-  final _menuIcon = GlobalKey(debugLabel: 'menu icon');
 
   @override
   void initState() {
@@ -329,7 +327,7 @@ class _PhoneStudioState extends State<PhoneStudio> {
           onPressed: _menu ? _closeMenu : _openMenu,
           builder: (context, st) => focusRing(st.focused, SizedBox.square(dimension: 48,
               child: ColoredBox(color: st.hovered ? PhonePalette.hover : const Color(0x00000000),
-                  child: Center(child: MenuIcon(key: _menuIcon, open: _menu))))),
+                  child: Center(child: MenuIcon(open: _menu))))),
         )),
         Expanded(child: FocusTraversalGroup(policy: _topOrder, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

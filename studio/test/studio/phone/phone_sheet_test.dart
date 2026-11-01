@@ -125,4 +125,28 @@ void main() {
     }
     expect(checkTargets(tester, 44), 6);
   });
+
+  /* A flush text button lays out from its words: it is drawn, laid out and tapped from the line it is placed on, so a
+     tap just inside its visible start edge presses it, in either reading direction. */
+  for (final dir in TextDirection.values) {
+    testWidgets('a flush text button takes a tap 2 px inside its visible start edge ($dir)', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(MaterialApp(home: Directionality(textDirection: dir, child: Scaffold(body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Align(alignment: AlignmentDirectional.centerStart,
+            child: PhoneButton(text: 'Delete box', kind: PhoneButtonKind.redText, flush: true, onPressed: () => taps++)),
+      )))));
+      final button = tester.getRect(find.byType(PhoneButton)), drawn = tester.getRect(find.byType(DecoratedBox).last);
+      final words = tester.getRect(find.text('Delete box'));
+      expect(drawn, button, reason: 'what it draws is what it lays out');
+      final rtl = dir == TextDirection.rtl, start = rtl ? button.right : button.left;
+      expect(start, rtl ? 800 - 16 : 16, reason: 'its start edge on the line it is placed on');
+      expect(rtl ? words.right : words.left, start, reason: 'its words on that line');
+      await tester.tapAt(Offset(start + (rtl ? -2 : 2), button.center.dy));
+      expect(taps, 1);
+      await tester.tapAt(Offset(start + (rtl ? 2 : -2), button.center.dy));
+      expect(taps, 1, reason: 'nothing outside it');
+    });
+  }
 }
+

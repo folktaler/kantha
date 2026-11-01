@@ -171,11 +171,12 @@ const phoneTextInset = 12.0;
 
 /* A 48 px button with 2 px corners, its words in the control role at the left (0 16; a text button 0 12), `icon` (Tabler)
    before them in their colour. `busy` shows a spinner after them and takes no press; with no `onPressed` it is drawn disabled.
-   `flush`: a text button set out by its inset toward the start (either reading direction), so its words, not its edge,
-   sit on the line it is placed on, as the words above them do. */
+   `flush` (text kinds only): no inset at the start (either reading direction), so its words, not an inset before them,
+   sit on the line it is placed on, as the words above them do; what it draws, lays out and takes a tap on start there. */
 class PhoneButton extends StatelessWidget {
   const PhoneButton({super.key, required this.text, required this.onPressed, this.kind = PhoneButtonKind.blue, this.icon,
-      this.busy = false, this.flush = false});
+      this.busy = false, this.flush = false})
+      : assert(!flush || kind == PhoneButtonKind.text || kind == PhoneButtonKind.redText, 'flush is for text buttons');
   final String text;
   final VoidCallback? onPressed;
   final PhoneButtonKind kind;
@@ -184,13 +185,6 @@ class PhoneButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = _button();
-    if (!flush) return button;
-    final start = Directionality.of(context) == TextDirection.rtl ? 1.0 : -1.0;
-    return Transform.translate(offset: Offset(start * phoneTextInset, 0), child: button);
-  }
-
-  Widget _button() {
     return Pressable(
       onPressed: busy ? null : onPressed,
       builder: (context, st) {
@@ -210,7 +204,7 @@ class PhoneButton extends StatelessWidget {
         final after = busy ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: words)) : null;
         return focusRing(st.focused, Container(
           height: 48,
-          padding: EdgeInsets.symmetric(horizontal: bare ? phoneTextInset : 16),
+          padding: EdgeInsetsDirectional.only(start: flush ? 0 : bare ? phoneTextInset : 16, end: bare ? phoneTextInset : 16),
           decoration: BoxDecoration(color: ground, borderRadius: kControlRadius, border: edge == null ? null : Border.all(color: edge)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (icon != null) ...[roleIcon(icon!, PType.control, color: words), const SizedBox(width: iconGap)],

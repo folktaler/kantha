@@ -61,6 +61,9 @@ class _PressableState extends State<Pressable> {
   bool _hover = false, _focus = false;
   /* Focused by a click or a tap: no ring then, as a browser shows none (:focus-visible). */
   bool _byPointer = false;
+  /* What the builder draws keeps its state when the tooltip comes or goes (a Tooltip with a message wraps it more
+     deeply than none), so an animation in it (the menu icon's turn) runs on through the change. */
+  final _box = GlobalKey(debugLabel: 'pressable box');
 
   bool get _enabled => widget.onPressed != null;
 
@@ -98,7 +101,8 @@ class _PressableState extends State<Pressable> {
 
   @override
   Widget build(BuildContext context) {
-    Widget box = widget.builder(context, PressState(hovered: _hover && _enabled, focused: _focus && !_byPointer, enabled: _enabled));
+    Widget box = KeyedSubtree(key: _box,
+        child: widget.builder(context, PressState(hovered: _hover && _enabled, focused: _focus && !_byPointer, enabled: _enabled)));
     // The browser's title: after a pause, the theme's dark box, so it does not cover the next button at once.
     if (widget.tooltip != null) {
       box = Tooltip(message: widget.tooltip, excludeFromSemantics: true, waitDuration: const Duration(milliseconds: 500), child: box);
