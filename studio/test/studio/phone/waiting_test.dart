@@ -72,12 +72,25 @@ void main() {
     expect(bar, findsNothing);
   });
 
-  testWidgets('with reduced motion the ring stands still', (tester) async {
-    await pumpNote(tester, const WaitNote(words: 'Arranging the cloth…'), still: true);
+  testWidgets('the ring turns an eighth each 125 ms and draws nothing between; with reduced motion it stands still',
+      (tester) async {
+    final turning = find.ancestor(of: ring, matching: find.byType(Transform));
+    Matrix4 turn() => tester.widget<Transform>(turning.first).transform;
+    await pumpNote(tester, const WaitNote(words: 'Arranging the cloth…'));
     await tester.pump(const Duration(seconds: 1));
-    expect(tester.widget<CircularProgressIndicator>(ring).value, isNotNull);
-    await pumpNote(tester, const WaitNote(words: 'Arranging the cloth…'), still: false);
-    expect(tester.widget<CircularProgressIndicator>(ring).value, isNull);
+    final first = turn();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(turn(), first);
+    expect(tester.binding.hasScheduledFrame, isFalse); // no frame between turns
+    await tester.pump(const Duration(milliseconds: 25));
+    expect(turn(), isNot(first));
+
+    await pumpNote(tester, const WaitNote(key: ValueKey('still'), words: 'Arranging the cloth…'), still: true);
+    await tester.pump(const Duration(seconds: 1));
+    expect(ring, findsOneWidget);
+    expect(turning, findsNothing);
+    await tester.pump(WaitRing.turnEvery);
+    expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
   group('a toast that waits', () {

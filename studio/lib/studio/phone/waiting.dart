@@ -6,6 +6,7 @@
    has passed waitShows, so a quick one shows nothing. With reduced motion the ring stands still, as the share sheet's
    busy icon does, and the bar only moves as the steps do. */
 import 'dart:async';
+import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'phone_sheet.dart' show PhoneButton, PhoneButtonKind;
 import 'phone_theme.dart';
@@ -42,22 +43,59 @@ class _ShowAfterState extends State<ShowAfter> {
   Widget build(BuildContext context) => _shown ? widget.child : const SizedBox.shrink();
 }
 
-/* Flutter's CircularProgressIndicator, `size` px, stroke 2, once the wait has passed `delay`. With reduced motion it
-   stands still, three quarters drawn. */
+/* Flutter's CircularProgressIndicator, `size` px, stroke 2, once the wait has passed `delay`: three quarters drawn,
+   turning an eighth each `turnEvery`. With reduced motion it stands still. */
 class WaitRing extends StatelessWidget {
   const WaitRing({super.key, this.size = 16, this.color = PhonePalette.blue, this.delay = waitShows});
   final double size;
   final Color color;
   final Duration delay;
 
+  /* 8 frames a second, not the screen's 60. On the web every frame is the page's own work, so Material's ring, drawn
+     each frame, took the main thread from a wait whose work is there too: opening a backup at 20x CPU took 19 s with
+     it, 5 s at 8 frames a second, 3.4 s with no ring (1 November 2026). */
+  static const turnEvery = Duration(milliseconds: 125);
+
   @override
-  Widget build(BuildContext context) => SizedBox.square(
-        dimension: size,
-        // Its own layer: each turn repaints the ring alone, not the studio under it (on a slow phone that work would
-        // otherwise slow the wait it stands for).
-        child: RepaintBoundary(child: ShowAfter(delay: delay, child: CircularProgressIndicator(strokeWidth: 2, color: color,
-            value: MediaQuery.disableAnimationsOf(context) ? 0.75 : null))),
-      );
+  Widget build(BuildContext context) {
+    final ring = CircularProgressIndicator(strokeWidth: 2, color: color, value: 0.75);
+    return SizedBox.square(
+      dimension: size,
+      // Its own layer: each turn repaints the ring alone, not the studio under it.
+      child: RepaintBoundary(child: ShowAfter(delay: delay,
+          child: MediaQuery.disableAnimationsOf(context) ? ring : _Turning(child: ring))),
+    );
+  }
+}
+
+class _Turning extends StatefulWidget {
+  const _Turning({required this.child});
+  final Widget child;
+
+  @override
+  State<_Turning> createState() => _TurningState();
+}
+
+class _TurningState extends State<_Turning> {
+  late final Timer _timer;
+  var _eighths = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(WaitRing.turnEvery, (_) {
+      if (mounted) setState(() => _eighths = (_eighths + 1) % 8);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(angle: _eighths * pi / 4, child: widget.child);
 }
 
 /* The note a wait shows, on the studio's note card (white, a 1 px border, 16 12; Add pieces' "Finding the pieces…"):
