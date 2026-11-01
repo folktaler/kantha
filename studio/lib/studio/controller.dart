@@ -296,6 +296,12 @@ class StudioController extends ChangeNotifier {
     } catch (e, s) {
       reportError(e, s, 'while the Sample box was given its real cloth');
     }
+    // One made before 1 Nov brings no top-up marker: its Sample box gets its 12 pieces of each cloth now, as on an open.
+    try {
+      await sample.topUpSample(shelf);
+    } catch (e, s) {
+      reportError(e, s, 'while the Sample box was topped up');
+    }
   }
 
   /* The opening box, then the first solve.

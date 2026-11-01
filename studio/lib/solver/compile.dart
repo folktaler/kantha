@@ -85,7 +85,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   final s = _statsOf(input.pool, input.edge, members);
   final weights = baseWeightsWith(input.lightnessWeight ?? Tuned.lightness);
   final pairs = pairsFor(rows, cols, edgeOffsets);
-  final obj = newObjective(rows: rows, cols: cols, pairs: pairs, weights: weights, balance: spec.balance, distance: Distance.cam16Ucs);
+  final obj = newObjective(rows: rows, cols: cols, pairs: pairs, weights: weights, balance: spec.balance);
   var pool = input.pool;
   final anchors = <int, int>{};
   Unfillable? why;
@@ -110,6 +110,9 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     if (families == null) {
       refuse(Unfillable.noFamilies);
     } else {
+      // A family's capacity is its pieces. Capping it at the squares it can tile keeping the light-and-dark seam gap
+      // (tileableCells, until 1 November 2026) matched families to blocks they cannot fill: over the pattern sweep's
+      // tuning boxes it made 650 units, against 751 by pieces, and on the held-out boxes 304 against 377.
       final capacity = [
         for (var q = 0; q < families.medoids.length; q++)
           [for (final i in members) if (families.family[i] == q) stock[i]].fold(0, (a, b) => a + b),
@@ -205,7 +208,9 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   for (final z in zoneIds) {
     final rules = spec.rules[z];
     final av = rules?.avoid;
-    final anchor = anchors.values.where((a) => a >= 0).firstOrNull;
+    // The colour to keep away from: the anchor of the zone that asks for a colour (the heart), not any other zone's.
+    final anchor = av == null ? null
+        : [for (final y in zoneIds) if (spec.rules[y]?.colour != null && (anchors[y] ?? -1) >= 0) anchors[y]!].firstOrNull;
     // Only where the box can: as many pieces away from that colour as the zone has squares. Otherwise the ground has
     // to take the colour, and pushing against it buys only same-cloth neighbours.
     final away = anchor == null ? 0 : [for (final i in members)
@@ -231,7 +236,8 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
         anchors[z] = best;
         obj.pin ??= Int32List(cells)..fillRange(0, cells, -1);
         obj.pinWeight = one.weight;
-        for (final i in links) { obj.pin![i] = best; }
+        // The links' lightness target is the pinned cloth's own, so the fit and the pin ask for the same thing.
+        for (final i in links) { obj.pin![i] = best; obj.targetL![i] = input.pool.lightness[best]; }
       }
     }
   }

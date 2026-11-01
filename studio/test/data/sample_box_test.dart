@@ -127,6 +127,15 @@ void main() {
       expect((await (shelf.db.select(shelf.db.cloths)..where((c) => c.id.equals(cloth[2].id))).getSingle()).pieces, 7);
     });
 
+    test('in a backup imported later, gets its 12 on import', () async {
+      final backup = await exportBackup((await old()).db, testSideDb);
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      final (:c, shelf: _) = await studio(on: shelf, seeded: false);
+      await c.importFile(backup);
+      expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
+    });
+
     test('emptied or deleted, stays as she left it', () async {
       final shelf = await old();
       final box = (await shelf.db.select(shelf.db.boxes).get()).single;

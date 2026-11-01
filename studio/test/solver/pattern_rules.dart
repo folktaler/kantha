@@ -685,7 +685,7 @@ Case runCase(LayoutKey key, Box box, BoardSize g, int seed, {SolveOptions? optio
   final m = modelFor(key, ObjectiveInput(pool: b.pool, edge: b.edge, members: b.members, mount: Mount.none, stock: b.stock, size: g));
   Case refused(String why) => Case(key, box.name, box.heldOut, g, seed, false, why, null, null, null, null, null, 0);
   if (!m.fills) return refused(m.why?.name ?? 'refused');
-  final prep = prepare(m.pool, m.obj.distance);
+  final prep = prepare(m.pool);
   final sw = Stopwatch()..start();
   final s = solve(m.obj, prep, b.stock, b.members, options ?? SolveOptions(seed: seed));
   final ms = sw.elapsedMilliseconds;

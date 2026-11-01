@@ -115,7 +115,7 @@ Uint8List _bmpSquare(img.Image original, {required Offset topLeft, required Size
         width: size.width.toInt(), height: size.height.toInt()));
 
 /* The cropped square, upright, measured by measureImage — from the crop at its
-   own resolution (measureImage brings anything past 2500 px down first) — then brought down
+   own resolution (its colour from every pixel; only its texture from a copy brought to 2500 px) — then brought down
    to storedLongSide and stored as JPEG. What is stored is the plain 8-bit RGB the measure
    read: a grey or a see-through picture stored as it is would read as another colour when
    measured again. The stored file carries no EXIF — no place, no camera — as the old app's

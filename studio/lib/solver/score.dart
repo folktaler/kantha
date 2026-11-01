@@ -40,9 +40,6 @@ class Pool {
       Pool(lab: lab, lightness: l, busy: busy, visualWeight: visualWeight, grain: grain, coherence: coherence);
 }
 
-/* Every colour difference is CAM16-UCS (cam16.dart); lightness differences are CIE L*. */
-enum Distance { cam16Ucs }
-
 class Perimeter {
   const Perimeter({required this.groundL, required this.clearance, required this.weight, required this.cells});
   final double groundL, clearance, weight;
@@ -50,14 +47,13 @@ class Perimeter {
 }
 
 class Objective {
-  Objective._(this.rows, this.cols, this.pairs, this.weights, this.balance, this.distance)
+  Objective._(this.rows, this.cols, this.pairs, this.weights, this.balance)
       : seamLTarget = Float64List(pairs.length), seamL = Float64List(pairs.length), seamDE = Float64List(pairs.length),
         seamFrame = Float64List(pairs.length), boundary = Uint8List(pairs.length);
   final int rows, cols;
   final List<Pair> pairs;
   final Weights weights;
   final bool balance;
-  final Distance distance;
   final Float64List seamLTarget, seamL, seamDE, seamFrame;
   final Uint8List boundary;
   Float64List? targetL, wL, targetHue, wHue, wColour, targetOrient, wOrient, wAvoid;
@@ -74,8 +70,8 @@ class Objective {
 }
 
 Objective newObjective({required int rows, required int cols, required List<Pair> pairs, required Weights weights,
-        required bool balance, required Distance distance}) =>
-    Objective._(rows, cols, pairs, weights, balance, distance);
+        required bool balance}) =>
+    Objective._(rows, cols, pairs, weights, balance);
 
 sealed class SeamRule { const SeamRule(); }
 class SeamFull extends SeamRule { const SeamFull(); }
@@ -107,7 +103,8 @@ class Prepared {
 /* `list?.[i] ?? 0` in TypeScript: an index past the end, or a null entry, gives 0. */
 double _at(List<double?>? list, int i) => list != null && i < list.length ? (list[i] ?? 0) : 0;
 
-Prepared prepare(Pool pool, Distance distance) {
+/* Every colour difference is CAM16-UCS (cam16.dart); lightness differences are CIE L*. */
+Prepared prepare(Pool pool) {
   final n = pool.lab.length;
   final de = Float64List(n * n), dl = Float64List(n * n), dc = Float64List(n * n);
   final ucs = [for (final l in pool.lab) ucsOf(l)];
@@ -176,7 +173,7 @@ Breakdown score(List<int> grid, Objective obj, Prepared prep, [List<int>? rot]) 
     if (obj.targetL != null) { final e = prep.l[f] - obj.targetL![i]; fit += e * e * obj.wL![i]; }
     if (obj.targetHue != null) {
       // Squared, as the lightness fit, so two squares both off one way cost more in the wrong order.
-      final gap = (obj.hueExclude?[f] ?? false) ? 180.0 : hueOnLine(prep.hue[f], obj.hueCut) - obj.targetHue![i];
+      final gap = (obj.hueExclude?[f] ?? false) ? 360.0 : hueOnLine(prep.hue[f], obj.hueCut) - obj.targetHue![i];
       hueFit += gap * gap * obj.wHue![i];
     }
     if (obj.targetColour != null) block += prep.dc[f * n + obj.targetColour![i]] * obj.wColour![i];

@@ -37,7 +37,7 @@ void main(List<String> args) {
       busy: [for (final b in poolJson['busy'] as List) b as bool]);
   final edge = [for (final e in poolJson['edge'] as List) e == null ? null : _d(e)];
   final n = labs.length;
-  final tables = prepare(pool, Distance.cam16Ucs);
+  final tables = prepare(pool);
   rec['cam16'] = [for (var p = 0; p < n; p++) for (var q = 0; q < n; q++) {'p': p, 'q': q, 'de': tables.de[p * n + q], 'dc': tables.dc[p * n + q]}];
   rec['cam16Hue'] = tables.hue;
   // The colour families (families_test.dart), by the same CAM16 measure.
@@ -74,12 +74,13 @@ void main(List<String> args) {
         'seamLTarget': list(o.seamLTarget), 'seamL': list(o.seamL), 'seamDE': list(o.seamDE), 'seamFrame': list(o.seamFrame),
         'boundary': list(o.boundary), 'targetL': list(o.targetL), 'wL': list(o.wL), 'targetHue': list(o.targetHue),
         'wHue': list(o.wHue), 'hueExclude': o.hueExclude?.toList(), 'targetColour': list(o.targetColour),
-        'wColour': list(o.wColour), 'hueCut': o.hueCut,
+        'wColour': list(o.wColour), 'hueCut': o.hueCut, 'avoidColour': list(o.avoidColour), 'wAvoid': list(o.wAvoid),
+        'pin': list(o.pin), 'pinWeight': o.pinWeight,
         'perimeter': o.perimeter == null ? null : {'groundL': o.perimeter!.groundL, 'clearance': o.perimeter!.clearance,
             'weight': o.perimeter!.weight, 'cells': o.perimeter!.cells.toList()},
       };
       run['poolLightness'] = m.pool.lightness;
-      final prep = prepare(m.pool, o.distance);
+      final prep = prepare(m.pool);
       for (final s in (run['solves'] as List).cast<Map<String, dynamic>>()) {
         final got = solve(o, prep, input.stock, input.members, SolveOptions(seed: s['seed'] as int));
         if (got == null) {
@@ -106,11 +107,15 @@ void main(List<String> args) {
           edge: edge[i], grain: null, stock: stock[i]),
   ];
   final dealt = {for (final l in layoutsFrom(fabrics)) l.key.name: l};
-  final start = (rec['start'] as List).cast<Map<String, dynamic>>();
-  start.removeWhere((e) => keys.contains(e['key']) && dealt[e['key']] == null);
-  for (final e in start) {
-    if (keys.contains(e['key'])) e['cells'] = [for (final c in dealt[e['key']]!.cells) {'hex': hexByIndex[c.fabric], 'rot': c.rot}];
-  }
+  // Every template the start page deals, in its order: those re-recorded dealt again, the rest as they were.
+  final was = {for (final e in (rec['start'] as List).cast<Map<String, dynamic>>()) e['key'] as String: e};
+  rec['start'] = [
+    for (final k in LayoutKey.values)
+      if (keys.contains(k.name) && dealt[k.name] != null)
+        {'key': k.name, 'cells': [for (final c in dealt[k.name]!.cells) {'hex': hexByIndex[c.fabric], 'rot': c.rot}]}
+      else if (!keys.contains(k.name) && was[k.name] != null)
+        was[k.name]!,
+  ];
   File(path).writeAsStringSync(jsonEncode(rec));
   stdout.writeln('re-recorded $runs runs and the start panels of ${keys.join(', ')}');
 }

@@ -40,7 +40,7 @@ void main() {
             grain: null, stock: stock[i]),
     ];
     final want = recorded['start'] as List;
-    // The recording holds the eleven templates there were then; a template added since is not in it.
+    // The recording holds every template the start page deals (tool/rerecord_solver.dart).
     final got = [for (final l in layoutsFrom(fabrics)) if (want.any((w) => w['key'] == l.key.name)) l];
     expect([for (final l in got) l.key.name], [for (final l in want) l['key']]);
     final p = poolOf(fabrics);
@@ -55,7 +55,7 @@ void main() {
         // (the start fixture records no total to re-score against).
         final m = modelFor(got[k].key, ObjectiveInput(pool: p.pool, edge: p.edge, members: members,
             mount: Mount.none, stock: p.stock));
-        final prep = prepare(m.pool, m.obj.distance);
+        final prep = prepare(m.pool);
         final gotGrid = [for (final c in got[k].cells) c.fabric];
         final wantGrid = [for (final h in wantHex) hexByIndex.indexOf(h)];
         expect(gotGrid, hasLength(a4.rows * a4.cols));

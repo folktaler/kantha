@@ -87,15 +87,20 @@ Measured measureBytes(Uint8List bytes, {bool centre = true}) {
 }
 
 /* The measured square: the centre 60 % of the picture, 6 % in from each side of that. */
-img.Image _region(img.Image image, bool centre) {
+({int left, int top, int width, int height}) _box(img.Image image, bool centre) {
   final w = image.width, h = image.height;
   final keep = centre ? _centreFraction : 1.0;
   final innerW = jsRound(w * keep), innerH = jsRound(h * keep);
   final left = jsRound((w - innerW) / 2 + innerW * _featureInset);
   final top = jsRound((h - innerH) / 2 + innerH * _featureInset);
-  final width = math.max(1, jsRound(innerW * (1 - _featureInset * 2)));
-  final height = math.max(1, jsRound(innerH * (1 - _featureInset * 2)));
-  return img.copyCrop(image, x: left, y: top, width: width, height: height);
+  return (left: left, top: top, width: math.max(1, math.min(w - left, jsRound(innerW * (1 - _featureInset * 2)))),
+      height: math.max(1, math.min(h - top, jsRound(innerH * (1 - _featureInset * 2)))));
+}
+
+/* Its pixels, read in place. */
+Iterable<img.Pixel> _region(img.Image image, ({int left, int top, int width, int height}) r) sync* {
+  final it = image.getRange(r.left, r.top, r.width, r.height);
+  while (it.moveNext()) { yield it.current; }
 }
 
 Measured measureImage(img.Image picture, {bool centre = true}) {
@@ -106,7 +111,7 @@ Measured measureImage(img.Image picture, {bool centre = true}) {
   // gamma-encoded values, which darkens fine light-and-dark texture (a 1-pixel black-and-white check 3000 pixels
   // square measured L* 59.9 instead of 76.1).
   var x = 0.0, y = 0.0, z = 0.0, n = 0;
-  for (final p in _region(full, centre)) {
+  for (final p in _region(full, _box(full, centre))) {
     final r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
     x += _xyzR[r][0] + _xyzG[g][0] + _xyzB[b][0];
     y += _xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1];
@@ -121,13 +126,12 @@ Measured measureImage(img.Image picture, {bool centre = true}) {
         ? img.copyResize(image, width: maxLongSide, interpolation: img.Interpolation.cubic)
         : img.copyResize(image, height: maxLongSide, interpolation: img.Interpolation.cubic);
   }
-  final region = _region(image, centre);
-  final ls = Float64List(region.width * region.height);
-  var m = 0;
-  for (final p in region) {
+  final box = _box(image, centre), ls = <double>[];
+  for (final p in _region(image, box)) {
     final r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
-    ls[m++] = ColorUtils.lstarFromY(_xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1]);
+    ls.add(ColorUtils.lstarFromY(_xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1]));
   }
+  final m = ls.length;
   final mean = labFromXyz(x / n, y / n, z / n);
   var sum = 0.0;
   for (var i = 0; i < m; i++) { sum += ls[i]; }
@@ -138,6 +142,6 @@ Measured measureImage(img.Image picture, {bool centre = true}) {
     lab: (l: _round1(mean.l), a: _round1(mean.a), b: _round1(mean.b)),
     name: colourName(mean),
     spread: _round1(math.sqrt(sq / m)),
-    width: region.width, height: region.height,
+    width: box.width, height: box.height,
   );
 }

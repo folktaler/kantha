@@ -51,7 +51,7 @@ void main() {
                 mount: Mount.values.byName(run['mount'] as String), stock: ints(c['stock']));
             final key = LayoutKey.values.byName(run['layout'] as String);
             final m = modelFor(key, input);
-            final prep = prepare(m.pool, m.obj.distance);
+            final prep = prepare(m.pool);
             final got = solve(m.obj, prep, input.stock, input.members, SolveOptions(seed: s['seed'] as int));
             if (s['grid'] == null) { expect(got, isNull); return; }
             final recordedGrid = ints(s['grid']);
@@ -105,7 +105,7 @@ void main() {
                 mount: Mount.values.byName(run['mount'] as String), stock: ints(c['stock']));
             final key = LayoutKey.values.byName(run['layout'] as String);
             final m = modelFor(key, input);
-            final p = prepare(m.pool, m.obj.distance);
+            final p = prepare(m.pool);
             final prep = Prepared(p.n, de, p.dl, dc, p.l, p.vw, p.busy, hue, p.grain, p.coherence);
             final got = solve(m.obj, prep, input.stock, input.members, SolveOptions(seed: s['seed'] as int))!;
             expect(got.grid, ints(s['grid']), reason: 'grid');
