@@ -2,6 +2,8 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantha_studio/solver/compile.dart';
+import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'pattern_rules.dart';
 
@@ -11,35 +13,23 @@ import 'pattern_rules.dart';
 
 const _sizes = [(rows: 7, cols: 5), (rows: 3, cols: 12), (rows: 12, cols: 3), (rows: 8, cols: 8), (rows: 12, cols: 12)];
 
-/* Cases that failed their rule when the rules were first run (31 October 2026), reported to the owner with a proposed
-   fix (Chess, Spectrum, Blocks, Ripple, Heart); each stays here, as it is, until he decides. A case not listed must
-   pass. Keyed '<pattern> <box> <rows>x<cols>'; the comment is what the rule measured then. */
+/* Cases that fail their rule, each reported to the owner (1 November 2026) and left until he decides; a case not
+   listed must pass. Keyed '<pattern> <box> <rows>x<cols>'; the comment is what the rule measured then. Heart's three
+   cannot pass from the Sample box's pieces at all: its light cloth away from the heart's colour is too little for the
+   ground (tool/pattern_sweep.dart's sweep, and the bound in the report). */
 const Set<String> _knownFailures = {
-  'contrast Sample 7x5', // median seam 35.2 (needs 25.0), checker 0.31
-  'contrast Sample 3x12', // median seam 36.8 (needs 25.0), checker 0.26
-  'contrast Sample 12x3', // median seam 35.2 (needs 25.0), checker 0.58
-  'contrast Sample 8x8', // median seam 37.8 (needs 25.0), checker 0.36
-  'contrast Sample 12x12', // median seam 39.3 (needs 20.5), checker 0.38
-  'contrast Tuning pool 7x5', // median seam 41.0 (needs 25.0), checker 0.79
-  'contrast Tuning pool 3x12', // median seam 41.4 (needs 25.0), checker 0.79
-  'contrast Tuning pool 8x8', // median seam 39.8 (needs 25.0), checker 0.07
-  'contrast Tuning pool 12x12', // median seam 36.9 (needs 25.0), checker 0.17
-  'spectrum Sample 7x5', // ρ 0.49 over 35 coloured squares
-  'spectrum Sample 3x12', // ρ 0.58 over 36 coloured squares
-  'spectrum Sample 12x3', // ρ 0.42 over 36 coloured squares
-  'spectrum Sample 8x8', // ρ 0.61 over 64 coloured squares
-  'spectrum Sample 12x12', // ρ 0.66 over 144 coloured squares
-  'blocks Sample 3x12', // 50% nearest their own block’s colour
-  'blocks Sample 12x12', // 65% nearest their own block’s colour
   'medallionPrint Tuning pool 7x5', // ρ 0.63, separation 82.8 of 65.7
   'medallionPrint Tuning pool 8x8', // ρ 0.59, separation 35.3 of 50.0
   'medallionPrint Tuning pool 12x12', // ρ 0.49, separation 50.0 of 53.0
-  'heart Sample 7x5', // heart 100% its colour, ground 26%, ground lighter by 22.8 (needs 19.7)
-  'heart Sample 3x12', // heart 75% its colour, ground 56%, ground lighter by 15.6 (needs 19.7)
-  'heart Sample 12x3', // heart 75% its colour, ground 56%, ground lighter by 15.3 (needs 19.7)
-  'heart Sample 8x8', // heart 100% its colour, ground 26%, ground lighter by 23.1 (needs 19.7)
-  'heart Sample 12x12', // heart 52% its colour, ground 39%, ground lighter by 24.6 (needs 19.7)
+  'heart Sample 3x12', // heart 100% its colour, ground 16%, ground lighter by 11.2 (needs 19.7)
+  'heart Sample 12x3', // heart 100% its colour, ground 13%, ground lighter by 10.7 (needs 19.7)
+  'heart Sample 12x12', // heart 90% its colour, ground 14%, ground lighter by 14.4 (needs 19.7)
 };
+
+ObjectiveInput _input(Box box, BoardSize g) {
+  final b = box.forBoard(g.rows * g.cols);
+  return ObjectiveInput(pool: b.pool, edge: b.edge, members: b.members, mount: Mount.none, stock: b.stock, size: g);
+}
 
 void main() {
   final boxes = [sampleBox(), tuningBox()];
@@ -50,6 +40,11 @@ void main() {
         for (final g in _sizes) {
           final c = runCase(key, box, g, 1);
           final id = '${key.name} ${box.name} ${g.rows}x${g.cols}';
+          if (key == LayoutKey.chain && !c.fills) {
+            // Every link one cloth (owner, 1 November 2026): no cloth of these has a piece for each link.
+            expect(modelFor(key, _input(box, g)).why, Unfillable.noChainCloth, reason: id);
+            continue;
+          }
           expect(c.fills, isTrue, reason: '$id: the box fills it');
           final v = c.solved!;
           if (v.rule.applies) {
@@ -61,6 +56,7 @@ void main() {
           if (v.apartApplies) expect(v.repeats, 0, reason: '$id: same-cloth neighbours');
         }
       }
+      if (key == LayoutKey.chain && judged == 0) return;
       expect(judged, greaterThan(0));
       expect(mine, greaterThan(chance), reason: 'passes $mine of $judged; random $chance');
     }, timeout: const Timeout(Duration(minutes: 3)));

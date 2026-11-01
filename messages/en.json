@@ -110,7 +110,8 @@
       "noColour": "this box has no cloth with that colour",
       "fewPieces": "this box has too few pieces near that colour to fill the shape",
       "noDarkEnough": "this box has no cloth of that colour dark enough to stand against the ground",
-      "noFamilies": "this box has too few coloured cloths to make its colour families"
+      "noFamilies": "this box has too few coloured cloths to make its colour families",
+      "noChainCloth": "this box has no dark cloth with enough pieces for every link"
     },
     "layoutCannot": "{title} — {why}",
     "cantFill": "This box cannot fill this layout: {why}.",

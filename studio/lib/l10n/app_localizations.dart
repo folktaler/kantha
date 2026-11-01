@@ -501,6 +501,12 @@ abstract class L {
   /// **'this box has too few coloured cloths to make its colour families'**
   String get canvasNotFillableNoFamilies;
 
+  /// No description provided for @canvasNotFillableNoChainCloth.
+  ///
+  /// In en, this message translates to:
+  /// **'this box has no dark cloth with enough pieces for every link'**
+  String get canvasNotFillableNoChainCloth;
+
   /// No description provided for @canvasLayoutCannot.
   ///
   /// In en, this message translates to:

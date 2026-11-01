@@ -111,15 +111,18 @@ void main() {
     final pool = fixturePool(), edge = fixtureEdge(), stock = ints(poolFixture['stock']);
     final base = Base(pool, edge, stock);
     for (final (members, why, anchor) in [([0, 1, 2], Unfillable.fewPieces, 1), ([3, 4, 5, 6], Unfillable.noDarkEnough, 5)]) {
-      test('members $members: the heart gives its reason, and no template deals a grid', () {
+      test('members $members: the heart and the chain give their reasons, and no template deals a grid', () {
         final heart = modelFor(LayoutKey.heart, ObjectiveInput(pool: pool, edge: edge, members: members,
             mount: Mount.none, stock: stock));
         expect(heart.fills, isFalse);
         expect(heart.why, why);
         expect(heart.anchors, {1: anchor});
+        final chain = modelFor(LayoutKey.chain, ObjectiveInput(pool: pool, edge: edge, members: members,
+            mount: Mount.none, stock: stock));
+        expect(chain.why, Unfillable.noChainCloth);
         for (final key in layoutKeys) {
           final s = solveLayout(key, base, members, Mount.none, 7);
-          expect(s.fills, key != LayoutKey.heart, reason: key.name);
+          expect(s.fills, key != LayoutKey.heart && key != LayoutKey.chain, reason: key.name);
           expect(s.grid, isNull, reason: key.name);
           expect(s.rot, isNull, reason: key.name);
         }

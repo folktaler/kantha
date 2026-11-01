@@ -54,6 +54,8 @@ const double blockShare = 0.7;
    colour cloth. */
 const double heartShare = 0.8, groundShare = 0.2, heartContrastShare = 0.5;
 
+/* Chain (owner, 1 November 2026) also needs every link, the squares its target makes darkest, in one cloth. */
+
 /* The no-same-neighbour rule applies when the box holds at least this many cloths. */
 const int apartFrom = 6;
 
@@ -225,6 +227,11 @@ Verdict ruleFor(LayoutKey key, Compiled m, List<int> grid, List<int> stock, List
       final kinds = {for (final i in members) m.pool.lightness[i]}.length;
       if (kinds < rippleKinds) return Verdict(false, false, double.nan, '$kinds kinds of busy');
       return _map(m, grid, stock, members);
+    case LayoutKey.chain:
+      final v = _map(m, grid, stock, members);
+      final links = [for (var i = 0; i < grid.length; i++) if (m.obj.pin![i] >= 0) grid[i]];
+      final one = links.toSet().length == 1;
+      return Verdict(v.applies, v.passes && one, v.stat, '${v.detail}, links of ${links.toSet().length} cloth');
     default: return _map(m, grid, stock, members);
   }
 }

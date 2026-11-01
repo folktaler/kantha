@@ -3,7 +3,10 @@ import 'package:kantha_studio/solver/hue.dart';
 import '../fixtures/fixtures.g.dart' as g;
 
 /* The snapshots, a fixed answer sheet: test/fixtures/solver/recorded.json, pool-2026-09-11.json and js-math.json
-   were recorded once from the TypeScript solver under Node 22 (commit 6d3fb2b), before the Dart port replaced it. */
+   were recorded once from the TypeScript solver under Node 22 (commit 6d3fb2b), before the Dart port replaced it.
+   Chess, Spectrum, Blocks and Heart, whose objectives the owner had changed on 1 November 2026, were recorded again
+   from the Dart solver with Node's colour tables (tool/rerecord_solver.dart); every other template's record is
+   the TypeScript one. */
 
 final Map<String, dynamic> recorded = jsonDecode(g.solverRecorded) as Map<String, dynamic>;
 final Map<String, dynamic> poolFixture = jsonDecode(g.pool) as Map<String, dynamic>;

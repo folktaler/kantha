@@ -42,7 +42,7 @@ class ObjectiveInput {
   final SeamRule? seamOverride;
 }
 
-enum Unfillable { noColour, fewPieces, noDarkEnough, noFamilies }
+enum Unfillable { noColour, fewPieces, noDarkEnough, noFamilies, noChainCloth }
 
 class Compiled {
   const Compiled(this.obj, this.pool, this.fills, this.why, this.anchors);
@@ -100,7 +100,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     } else {
       final capacity = [
         for (var q = 0; q < families.medoids.length; q++)
-          tileableCells([for (final i in members) if (families.family[i] == q) i], input.pool.lightness, stock, weights.lTarget),
+          [for (final i in members) if (families.family[i] == q) stock[i]].fold(0, (a, b) => a + b),
       ];
       final byCapacity = [for (var q = 0; q < families.medoids.length; q++) q]
         ..sort((a, b) { final c = capacity[b].compareTo(capacity[a]); return c != 0 ? c : a.compareTo(b); });
@@ -138,8 +138,13 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     if (hr != null) {
       ensureHue();
       final t = fieldCells(hr.angle, size);
-      for (final i in zone) { obj.targetHue![i] = t[i]; obj.wHue![i] = hr.weight; }
+      // Spectrum runs from the box's coolest coloured cloth to its warmest, on the cool-to-warm line, as Gradient runs
+      // from its lightest to its darkest: the drawn 200° to 20° is stretched onto the box's own run.
+      final axis = [for (final i in members) if (chroma(input.pool.lab[i]) >= hueMinChroma) warmthAxis(hueOf(input.pool.lab[i]))];
+      final cool = axis.isEmpty ? 200.0 : axis.reduce(math.max), warm = axis.isEmpty ? 20.0 : axis.reduce(math.min);
+      for (final i in zone) { obj.targetHue![i] = warm + (t[i] - 20) / 180 * (cool - warm); obj.wHue![i] = hr.weight; }
       obj.hueExclude ??= [for (final l in input.pool.lab) chroma(l) < hueMinChroma];
+      obj.hueOnAxis = true;
     }
     final fr = rules.family;
     if (fr != null && medoidOf[z] != null) {
@@ -162,6 +167,40 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
       ensureOrient();
       final t = fieldCells(or.angle, size);
       for (final i in zone) { obj.targetOrient![i] = t[i]; obj.wOrient![i] = or.weight; }
+    }
+  }
+
+  for (final z in zoneIds) {
+    final rules = spec.rules[z];
+    final av = rules?.avoid;
+    final anchor = anchors.values.where((a) => a >= 0).firstOrNull;
+    // Only where the box can: as many pieces away from that colour as the zone has squares. Otherwise the ground has
+    // to take the colour, and pushing against it buys only same-cloth neighbours.
+    final away = anchor == null ? 0 : [for (final i in members)
+        if (chromaDistance(input.pool.lab[i], input.pool.lab[anchor]) > weights.deTarget) stock[i]].fold(0, (a, b) => a + b);
+    if (av != null && anchor != null && away >= cellsIn(z).length) {
+      obj.avoidColour ??= Int32List(cells)..fillRange(0, cells, -1);
+      obj.wAvoid ??= Float64List(cells);
+      for (final i in cellsIn(z)) { obj.avoidColour![i] = anchor; obj.wAvoid![i] = av.weight; }
+    }
+    final one = rules?.oneCloth, lr = rules?.l;
+    if (one != null && lr is LFromT) {
+      final t = fieldCells(lr.t, size);
+      final links = [for (final i in cellsIn(z)) if (t[i] == 0) i];
+      final mid = (s.lmin + s.lmax) / 2;
+      var best = -1;
+      for (final i in members) {
+        if (stock[i] < links.length || input.pool.lightness[i] > mid) continue;
+        if (best < 0 || input.pool.lightness[i] < input.pool.lightness[best]) best = i;
+      }
+      if (best < 0) {
+        refuse(Unfillable.noChainCloth);
+      } else {
+        anchors[z] = best;
+        obj.pin ??= Int32List(cells)..fillRange(0, cells, -1);
+        obj.pinWeight = one.weight;
+        for (final i in links) { obj.pin![i] = best; }
+      }
     }
   }
 

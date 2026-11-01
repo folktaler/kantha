@@ -220,11 +220,13 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
   });
 
-  // The Sample box fills every pattern, so a box of three greys (36 pieces) stands in: it has no red for the heart.
+  // The Sample box fills every pattern but Chain, so a box of three greys (36 pieces) stands in: it has no red for the
+  // heart.
   testWidgets('on a phone a pattern the box cannot fill stays in the strip at 35 %; a tap says why and changes nothing',
       (tester) async {
     final c = await pumpOnSample(tester, size: phone);
-    expect(c.feasible.values.every((f) => f.fills), isTrue, reason: 'the Sample box fills every pattern');
+    expect([for (final e in c.feasible.entries) if (!e.value.fills) e.key], [LayoutKey.chain],
+        reason: 'the Sample box fills every pattern but Chain');
     await tester.runAsync(() async {
       final greys = await c.shelf.makeBox();
       for (final l in [25.0, 50.0, 75.0]) {

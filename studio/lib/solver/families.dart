@@ -41,15 +41,3 @@ Families? colourFamilies(List<Lab> lab, List<int> members, int k, double minChro
   }
   return Families([for (final p in best) items[p]], family);
 }
-
-int tileableCells(List<int> members, List<double> l, List<int> stock, double gap) {
-  var best = 0;
-  for (final i in members) {
-    final cut = l[i];
-    var dark = 0, light = 0;
-    for (final j in members) { if (l[j] <= cut) dark += stock[j]; }
-    for (final j in members) { if (l[j] >= cut + gap) light += stock[j]; }
-    if (dark != 0 && light != 0) { final t = 2 * (dark < light ? dark : light); if (t > best) best = t; }
-  }
-  return best;
-}

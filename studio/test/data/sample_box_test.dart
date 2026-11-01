@@ -12,6 +12,7 @@ import 'package:kantha_studio/data/sample_box.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
 import 'package:kantha_studio/measure/measure.dart';
+import 'package:kantha_studio/solver/compile.dart' show Unfillable;
 import 'package:kantha_studio/solver/geometry.dart' show cells;
 import 'package:kantha_studio/solver/layouts.dart';
 import '../support/db.dart';
@@ -99,15 +100,17 @@ void main() {
     expect({for (final b in await shelf.db.select(shelf.db.boxes).get()) b.id: b.name}, before);
   });
 
-  test('every pattern fills from the Sample box', () async {
+  test('every pattern but Chain fills from the Sample box; Chain says it has no dark cloth for every link', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     final c = (await studio(on: shelf, seeded: false)).c;
     expect(c.box, isNotNull);
     expect(c.piecesIn(c.box!), 10 * 7);
     for (final k in LayoutKey.values) {
-      expect(c.feasible[k]?.fills, isTrue, reason: '${k.name} fills from the Sample box');
+      // Chain's 13 links on 7 × 5 are one cloth (owner, 1 November 2026); the Sample box has 7 pieces of each.
+      expect(c.feasible[k]?.fills, k != LayoutKey.chain, reason: '${k.name} from the Sample box');
     }
+    expect(c.feasible[LayoutKey.chain]?.why, Unfillable.noChainCloth);
     expect(c.starting, isFalse);
   });
 

@@ -21,8 +21,13 @@ class LFromT extends LRule { const LFromT(this.t, super.weight); final CellFn t;
 class LAt extends LRule { const LAt(this.at, super.weight); final double Function(int r, int c, BoardSize g, PoolStats s) at; }
 
 class ZoneRules {
-  const ZoneRules({this.l, this.edge, this.hue, this.family, this.colour, this.orient});
+  const ZoneRules({this.l, this.edge, this.hue, this.family, this.colour, this.orient, this.avoid, this.oneCloth});
   final LRule? l;
+  /* Stay away from the colour another zone's `colour` rule anchors (Heart's ground from the heart). */
+  final ({double weight})? avoid;
+  /* The squares whose lightness target is the darkest (t = 0) all take one cloth: the darkest cloth in the darker half
+     of the box with a piece for each of them (Chain's links, owner 1 November 2026). */
+  final ({double weight})? oneCloth;
   final ({CellFn t, double weight})? edge;
   final ({CellFn angle, double weight})? hue;
   final ({double weight})? family;
@@ -114,6 +119,8 @@ abstract final class Ramps {
     final cr = (g.rows - 1) / 2, cc = (g.cols - 1) / 2;
     return 1 - jsHypot2(r - cr, c - cc) / jsHypot2(cr, cc);
   }
+  /* A chessboard, the top-left square light. */
+  static double chess(int r, int c, BoardSize g) => (r + c).isEven ? 1 : 0;
   static double spectrumHue(int r, int c, BoardSize g) => 200 - 180 * (c / (g.cols - 1));
   /* Dark rows and light rows in turn, the top row dark, so the rows along the edge stand off the mount. */
   static double stripes(int r, int c, BoardSize g) => r.isEven ? 0 : 1;

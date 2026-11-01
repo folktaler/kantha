@@ -55,9 +55,16 @@ class Objective {
   final Distance distance;
   final Float64List seamLTarget, seamL, seamDE, seamFrame;
   final Uint8List boundary;
-  Float64List? targetL, wL, targetHue, wHue, wColour, targetOrient, wOrient;
+  Float64List? targetL, wL, targetHue, wHue, wColour, targetOrient, wOrient, wAvoid;
   List<bool>? hueExclude;
+  /* Hue measured along the cool-to-warm line (warmthAxis) instead of round the circle. */
+  bool hueOnAxis = false;
   Int32List? targetColour;
+  /* A colour a square stays away from (Heart's ground from the heart's cloth): within deTarget of it costs. */
+  Int32List? avoidColour;
+  /* The one cloth a square must take (Chain's links), -1 for none; any other costs pinWeight. */
+  Int32List? pin;
+  double pinWeight = 0;
   Perimeter? perimeter;
 }
 
@@ -162,9 +169,15 @@ Breakdown score(List<int> grid, Objective obj, Prepared prep, [List<int>? rot]) 
     wsum += prep.vw[f]; wr += prep.vw[f] * r; wc += prep.vw[f] * c;
     if (obj.targetL != null) fit += (prep.l[f] - obj.targetL![i]).abs() * obj.wL![i];
     if (obj.targetHue != null) {
-      hueFit += ((obj.hueExclude?[f] ?? false) ? 180 : angleGap(prep.hue[f], obj.targetHue![i])) * obj.wHue![i];
+      final gap = obj.hueOnAxis ? (warmthAxis(prep.hue[f]) - obj.targetHue![i]).abs() : angleGap(prep.hue[f], obj.targetHue![i]);
+      hueFit += ((obj.hueExclude?[f] ?? false) ? 180 : gap) * obj.wHue![i];
     }
     if (obj.targetColour != null) block += prep.dc[f * n + obj.targetColour![i]] * obj.wColour![i];
+    // Avoiding a colour and taking a pinned cloth are colour terms too, so they count in `block`.
+    if (obj.avoidColour != null && obj.avoidColour![i] >= 0) {
+      block += math.max(0.0, w.deTarget - prep.dc[f * n + obj.avoidColour![i]]) * obj.wAvoid![i];
+    }
+    if (obj.pin != null && obj.pin![i] >= 0 && f != obj.pin![i]) block += obj.pinWeight;
     if (obj.targetOrient != null && obj.wOrient![i] > 0 && prep.coherence[f] > 0) {
       final t = obj.targetOrient![i];
       final gapAt = rot != null
