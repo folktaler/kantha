@@ -53,17 +53,19 @@ void main() {
         // This platform's maths dealt a different arrangement (controller ruling, 6 Oct): it passes only
         // if it is whole, from this box, within stock, and a local minimum of the solver's own moves
         // (the start fixture records no total to re-score against).
+        // Chain is dealt from the stock layoutsFrom raised for its links (owner, 1 November 2026).
+        final stock = got[k].key == LayoutKey.chain ? chainStartStock(p.pool, members, p.stock) : p.stock;
         final m = modelFor(got[k].key, ObjectiveInput(pool: p.pool, edge: p.edge, members: members,
-            mount: Mount.none, stock: p.stock));
+            mount: Mount.none, stock: stock));
         final prep = prepare(m.pool);
         final gotGrid = [for (final c in got[k].cells) c.fabric];
         final wantGrid = [for (final h in wantHex) hexByIndex.indexOf(h)];
         expect(gotGrid, hasLength(a4.rows * a4.cols));
-        expect(withinStock(gotGrid, p.stock), isTrue, reason: '${got[k].key.name}: within stock');
+        expect(withinStock(gotGrid, stock), isTrue, reason: '${got[k].key.name}: within stock');
         final gotTotal = score(gotGrid, m.obj, prep).total, wantTotal = score(wantGrid, m.obj, prep).total;
         // ignore: avoid_print
         print('${kIsWeb ? 'WEB' : 'VM'}: start ${got[k].key.name} differs; score $gotTotal against $wantTotal');
-        expect(isLocalMinimum(gotGrid, m.obj, prep, p.stock, members), isTrue,
+        expect(isLocalMinimum(gotGrid, m.obj, prep, stock, members), isTrue,
             reason: '${got[k].key.name}: no single move of the solver improves it');
         continue;
       }

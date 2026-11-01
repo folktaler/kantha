@@ -78,6 +78,24 @@ int anchorFor(Pool pool, List<int> members, double hue) {
   return best;
 }
 
+/* A zone made of one cloth (Chain's links): its squares on `size`, those where its lightness field is 0, and the cloth
+   that takes them, the darkest member at or below the middle of the box's lightness with a piece for each square (-1
+   when none has). With no `stock`, the cloth it would take given the pieces (the start page, start.dart). */
+({List<int> squares, int cloth}) oneClothOf(LayoutSpec spec, int zone, Pool pool, List<int> members, BoardSize size,
+    {List<int>? stock}) {
+  final zones = spec.zonesOn(size), t = fieldCells((spec.rules[zone]!.l! as LFromT).t, size);
+  final squares = [for (var i = 0; i < zones.length; i++) if (zones[i] == zone && t[i] == 0) i];
+  var lmin = double.infinity, lmax = double.negativeInfinity;
+  for (final i in members) { lmin = math.min(lmin, pool.lightness[i]); lmax = math.max(lmax, pool.lightness[i]); }
+  final mid = (lmin + lmax) / 2;
+  var cloth = -1;
+  for (final i in members) {
+    if ((stock != null && stock[i] < squares.length) || pool.lightness[i] > mid) continue;
+    if (cloth < 0 || pool.lightness[i] < pool.lightness[cloth]) cloth = i;
+  }
+  return (squares: squares, cloth: cloth);
+}
+
 Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   final size = input.size ?? level1, rows = size.rows, cols = size.cols, cells = rows * cols;
   if (rows < 2 || cols < 2) throw ArgumentError('a board is at least 2 × 2 squares, not $rows × $cols');
@@ -226,14 +244,8 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     }
     final one = rules?.oneCloth, lr = rules?.l;
     if (one != null && lr is LFromT) {
-      final t = fieldCells(lr.t, size);
-      final links = [for (final i in cellsIn(z)) if (t[i] == 0) i];
-      final mid = (s.lmin + s.lmax) / 2;
-      var best = -1;
-      for (final i in members) {
-        if (stock[i] < links.length || input.pool.lightness[i] > mid) continue;
-        if (best < 0 || input.pool.lightness[i] < input.pool.lightness[best]) best = i;
-      }
+      final (squares: links, :cloth) = oneClothOf(spec, z, input.pool, members, size, stock: stock);
+      final best = cloth;
       if (best < 0) {
         refuse(Unfillable.noChainCloth);
       } else {

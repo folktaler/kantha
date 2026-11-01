@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 import 'package:drift/drift.dart' show ApplyInterceptor, Value, QueryExecutor, QueryInterceptor, TransactionExecutor, driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/data/backup.dart';
 import 'package:kantha_studio/data/database.dart';
@@ -11,11 +12,14 @@ import 'package:kantha_studio/data/numbers.dart';
 import 'package:kantha_studio/data/sample_box.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
+import 'package:kantha_studio/l10n/app_localizations.dart' show lookupL;
 import 'package:kantha_studio/measure/measure.dart';
 import 'package:kantha_studio/platform/solver_runner.dart' show SizedSolverRunner;
 import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart' show Base, LayoutSolve;
+import 'package:kantha_studio/studio/controller.dart';
+import 'package:kantha_studio/studio/shelf_feed.dart' show shelfNow;
 import '../support/db.dart';
 import '../support/files_fixture.dart' show testSideDb;
 import '../solver/pattern_rules.dart' show samplePiecesHere;
@@ -145,7 +149,7 @@ void main() {
       expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
     });
 
-    test('in a backup from before 22 October, is swapped, then topped up, before the studio re-opens', () async {
+    test('in a backup from before 22 October, is topped up and swapped, and the board dealt again from the real cloth', () async {
       final drawn = Shelf(memoryDb());
       await _oldSample(drawn);
       await (drawn.db.delete(drawn.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
@@ -159,9 +163,39 @@ void main() {
       await pumpEventQueue();
       expect((await shelf.db.select(shelf.db.cloths).get()).map((x) => x.name), _names);
       expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
-      // The drawn swatches had 7 pieces each: no arrangement was asked of them, nor of the real cloth at 7.
+      // Once swapped and topped up, the board was dealt again from the real cloth at 12.
       expect(solver.solved.length, greaterThan(from));
-      expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
+      expect(solver.solved.last.where((k) => k > 0).toSet(), {samplePieces});
+    });
+
+    test('in a backup from before 22 October, has its designs pictured in the backup\'s cloth, though this device has '
+        'cloth of the same ids', () async {
+      // Device A made the backup, then its cloth changed colour: the same ids, now in other colours.
+      final shelf = Shelf(memoryDb());
+      await _oldSample(shelf);
+      final swatches = (await shelf.db.select(shelf.db.cloths).get()).toList();
+      await _design(shelf, 'Swatches', [for (final x in swatches.take(5)) x.id]);
+      final backup = await exportBackup(shelf.db, testSideDb);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(l: Value(95), a: Value(0), b: Value(0)));
+      // A studio whose feed has not caught up with the import (none here): what it holds is read only when it asks.
+      final c = StudioController(shelf: shelf, solver: QuickSolver(), words: lookupL(const Locale('en')), side: testSideDb);
+      c.restock(await shelfNow(shelf));
+      c.start();
+      expect(c.cloth.where((x) => x.id == swatches.first.id).single.lab.l, closeTo(95, 1e-9));
+      final seen = <({double l, double a, double b})>[];
+      c.drawPicture = (d) async {
+        for (final id in d.grid.toSet()) {
+          seen.add(c.cloth.where((x) => x.id == id).single.lab);
+        }
+        return (png: fixtureJpeg, thumb: fixtureJpeg);
+      };
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect(seen, hasLength(5), reason: 'the design was pictured before its swatches went');
+      expect(seen.toSet(), {for (final x in swatches.take(5)) (l: x.l, a: x.a, b: x.b)}, reason: "the backup's colours");
+      final pictures = await shelf.db.select(shelf.db.pictures).get();
+      expect({for (final p in pictures) p.name: p.design}, {'Swatches': null}, reason: 'Picture only');
+      expect((await shelf.db.select(shelf.db.cloths).get()).map((x) => x.name), _names);
     });
 
     test('emptied or deleted, stays as she left it', () async {
