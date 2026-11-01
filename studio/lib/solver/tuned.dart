@@ -6,6 +6,8 @@ abstract final class Tuned {
   static const double colourWeight = 2;    // heart: flat over 1, 2, 4
   static const double boundaryWeight = 2;  // heart: flat over 1–8
   static const double avoidWeight = 16;    // heart: the ground away from the heart's colour; 4 too weak, 40 cost same-cloth neighbours
+  // 1 November 2026, later: Heart's colour and avoid terms became steps at sameColour, where its rule draws the line (a cloth
+  // within it is the heart's colour, free in the heart, 19.4 × avoidWeight in the ground); the weights were not re-tuned.
   static const double pinWeight = 500;     // chain: a link of any other cloth
   static const double ringWeight = 1;      // diamond: a ring's family; with each level's lightness its family's (1 Nov 2026), 0.5, 1, 2, 4 and 8 passed 375, 377, 376, 376 and 354 of the tuning units; 4 and 8 left same-cloth neighbours
   // The lightness fit's weight per pattern, chosen on 1 November 2026 on the tuning boxes only, over 0.05, 0.1 and 0.2:

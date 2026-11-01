@@ -74,7 +74,7 @@ void main(List<String> args) {
         'seamLTarget': list(o.seamLTarget), 'seamL': list(o.seamL), 'seamDE': list(o.seamDE), 'seamFrame': list(o.seamFrame),
         'boundary': list(o.boundary), 'targetL': list(o.targetL), 'wL': list(o.wL), 'targetHue': list(o.targetHue),
         'wHue': list(o.wHue), 'hueExclude': o.hueExclude?.toList(), 'targetColour': list(o.targetColour),
-        'wColour': list(o.wColour), 'hueCut': o.hueCut, 'hueExcludeGap': o.hueExcludeGap, 'avoidColour': list(o.avoidColour), 'wAvoid': list(o.wAvoid),
+        'wColour': list(o.wColour), 'colourFree': list(o.colourFree), 'hueCut': o.hueCut, 'hueExcludeGap': o.hueExcludeGap, 'avoidColour': list(o.avoidColour), 'wAvoid': list(o.wAvoid),
         'pin': list(o.pin), 'pinWeight': o.pinWeight,
         'perimeter': o.perimeter == null ? null : {'groundL': o.perimeter!.groundL, 'clearance': o.perimeter!.clearance,
             'weight': o.perimeter!.weight, 'cells': o.perimeter!.cells.toList()},
