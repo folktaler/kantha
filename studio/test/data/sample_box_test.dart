@@ -14,7 +14,6 @@ import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
 import 'package:kantha_studio/l10n/app_localizations.dart' show lookupL;
 import 'package:kantha_studio/measure/measure.dart';
-import 'package:kantha_studio/platform/solver_runner.dart' show SizedSolverRunner;
 import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart' show Base, LayoutSolve;
@@ -473,21 +472,15 @@ class _RefusesPool extends QuickSolver {
   void setPool(Base base) { if (refuse) throw StateError('the solver refused the pool'); }
 }
 
-class _PoolsSeen extends QuickSolver implements SizedSolverRunner {
+class _PoolsSeen extends QuickSolver {
   var _stock = const <int>[];
   final solved = <List<int>>[];
   @override
   void setPool(Base base) => _stock = List.of(base.stock);
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) {
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) {
     solved.add(_stock);
-    return super.solve(layout, members, mount, seed);
-  }
-  @override
-  Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed) async {
-    solved.add(_stock);
-    final n = size.rows * size.cols;
-    return LayoutSolve(true, [for (var i = 0; i < n; i++) members[(i + seed) % members.length]],
-        [for (var i = 0; i < n; i++) (i + seed) % 4]);
+    return super.solve(size, layout, members, mount, seed, onStep: onStep);
   }
 }

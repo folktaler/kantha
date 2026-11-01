@@ -6,7 +6,6 @@ import 'package:image/image.dart' as img;
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/downloads/caption.dart';
 import 'package:kantha_studio/downloads/photo_png.dart';
-import 'package:kantha_studio/platform/solver_runner.dart';
 import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart';
@@ -20,14 +19,13 @@ import '../support/pump.dart';
 import '../support/studio_fixture.dart';
 
 /* QuickSolver on a board of any size: each seed deals the members in a different turn. */
-class SizedQuickSolver extends QuickSolver implements SizedSolverRunner {
+class SizedQuickSolver extends QuickSolver {
   final asked = <BoardSize>[];
   @override
-  Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed) async {
-    asked.add(size);
-    final n = size.rows * size.cols;
-    return LayoutSolve(true, [for (var i = 0; i < n; i++) members[(i + seed) % members.length]],
-        [for (var i = 0; i < n; i++) (i + seed) % 4]);
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) {
+    if (size != null) asked.add(size);
+    return super.solve(size, layout, members, mount, seed, onStep: onStep);
   }
 }
 

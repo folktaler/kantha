@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kantha_studio/solver/geometry.dart' show Mount, cells;
+import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart' show LayoutKey;
 import 'package:kantha_studio/solver/solve_layout.dart';
 import 'package:kantha_studio/studio/phone/phone_theme.dart';
@@ -19,7 +19,9 @@ final addSheet = find.descendant(of: find.byType(BottomSheet), matching: find.by
 /* A solver that arranges nothing, full box or not: the box cannot be arranged. */
 class NoGridSolver extends QuickSolver {
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) async => const LayoutSolve(false, null, null);
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) async =>
+      const LayoutSolve(false, null, null);
 }
 
 void main() {
