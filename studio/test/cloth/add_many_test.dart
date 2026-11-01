@@ -64,6 +64,9 @@ class FakeFinder implements PieceFinder {
 
   @override
   void forget() => forgot++;
+  var stops = 0;
+  @override
+  void stop() => stops++;
 }
 
 /* A square of `side` with its top left at x, y, turned by `turn` radians about that corner. */
@@ -504,6 +507,7 @@ void main() {
       await turns();
       expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'a stop is not an error');
+      expect(finder.stops, 1, reason: 'the finder lets go of the find, so the next photo does not wait behind it');
       finder.findHeld!.complete(three);
       await turns();
       expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);

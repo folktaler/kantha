@@ -232,6 +232,8 @@ class _AddClothState extends State<AddCloth> {
     } catch (e, s) {
       reportClothError(e, s, 'while the pieces in a photo were found');
     }
+    // Stopped: the finder lets go of this find, so the next photo is not kept waiting behind it.
+    if (stop.isCompleted) _finder!.stop();
     if (!mounted || !identical(_photo, photo)) return;
     final route = found == null ? FoundRoute.crop : routeOf(found, Size(photo.width.toDouble(), photo.height.toDouble()));
     setState(() {

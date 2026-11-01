@@ -33,6 +33,8 @@ abstract interface class PieceFinder {
   Future<List<Uint8List>> cut(List<Float32List> squares);
   /* The kept photo let go. */
   void forget();
+  /* What it is doing let go too: a find under way answers no more, and the next find does not wait for it. */
+  void stop();
 }
 
 /* The finder this platform has, or null (a phone). Started when the sheet opens, not with the studio. A test sets

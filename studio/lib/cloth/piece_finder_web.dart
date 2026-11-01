@@ -1,7 +1,6 @@
 /* The finder's worker (web/finder_worker.js), one for the page, started the first time the Add a piece sheet opens. It
    is handed the picture the sheet already read, as RGBA pixels, so its squares are in that picture's pixels. */
 import 'dart:async';
-import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
@@ -10,6 +9,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:web/web.dart' as web;
 import '../platform/canvas_web.dart';
 import '../platform/release.dart' show pageBase, releaseFile;
+import '../platform/worker_web.dart';
 import 'piece_finder.dart';
 import 'prepare.dart' show PickedPhoto;
 
@@ -20,68 +20,25 @@ PieceFinder? create() => _one ??= _WorkerFinder(releaseFile('finder_worker.js', 
 @visibleForTesting
 PieceFinder finderAt(String url, {Duration wait = finderWait}) => _WorkerFinder(url, wait: wait);
 
-@JS('Worker')
-extension type _Worker._(JSObject _) implements JSObject {
-  external _Worker(JSString url);
-  external void postMessage(JSAny? message, [JSArray<JSAny>? transfer]);
-  external set onmessage(JSFunction f);
-  external set onerror(JSFunction f);
-}
-
-extension type _Message._(JSObject _) implements JSObject {
-  external JSAny? get data;
-}
-
 class _WorkerFinder implements PieceFinder {
-  _WorkerFinder(String url, {this.wait = finderWait}) : _worker = _Worker(url.toJS) {
-    _worker.onmessage = ((_Message e) {
-      final data = e.data;
-      if (data.isA<JSString>()) {
-        final m = jsonDecode((data! as JSString).toDart) as Map<String, dynamic>;
-        if (m['type'] == 'ready') return;
-        final w = _waiting.remove(m['id']);
-        if (m['error'] != null) {
-          w?.completeError(StateError('finder: ${m['error']}'));
-        } else {
-          w?.complete(m);
-        }
-      } else {
-        final o = data! as JSObject;
-        _waiting.remove((o['id']! as JSNumber).toDartInt)?.complete(o);
-      }
-    }).toJS;
-    // A worker that did not load (offline, the file gone) or broke: whatever it held fails, and so does every later
-    // ask; the sheet falls back to the crop.
-    _worker.onerror = ((JSObject _) {
-      _dead = true;
-      final out = _waiting.values.toList();
-      _waiting.clear();
-      for (final w in out) {
-        w.completeError(StateError('finder worker failed'));
-      }
-    }).toJS;
+  _WorkerFinder(String url, {this.wait = finderWait}) : _worker = PageWorker(url) {
+    _worker.warm();
   }
 
-  final _Worker _worker;
+  /* A worker that did not load (offline, the file gone) or broke: whatever it held fails, and the sheet falls back to
+     the crop; the next ask starts another (worker_web.dart). */
+  final PageWorker _worker;
   final Duration wait;
-  final _waiting = <int, Completer<Object?>>{};
-  var _next = 0;
-  var _dead = false;
   /* The working picture's size over the picture's, of the photo the worker keeps. */
   double _scale = 1;
 
-  Future<Object?> _ask(JSObject message, [List<JSArrayBuffer> transfer = const []]) {
-    if (_dead) return Future.error(StateError('finder worker failed'));
-    final id = ++_next, done = Completer<Object?>();
-    _waiting[id] = done;
-    message['id'] = id.toJS;
-    _worker.postMessage(message, transfer.toJS);
-    // A worker that never answers (OpenCV.js still loading on a slow line, or stuck) does not hold the sheet. The
-    // worker carries on: what it is loading or keeps (OpenCV.js, the photo) serves the asks after.
-    return done.future.timeout(wait, onTimeout: () {
-      _waiting.remove(id);
-      throw TimeoutException('the finder did not answer', wait);
-    });
+  /* A worker that never answers (OpenCV.js still loading on a slow line, or stuck) does not hold the sheet. The worker
+     carries on: what it is loading or keeps (OpenCV.js, the photo) serves the asks after. An answer with an error
+     fails. */
+  Future<Object?> _ask(JSObject message, [List<JSArrayBuffer> transfer = const []]) async {
+    final a = await _worker.ask((id) => message..['id'] = id.toJS, transfer: transfer, wait: wait);
+    if (a case {'error': final Object error}) throw StateError('finder: $error');
+    return a;
   }
 
   @override
@@ -133,9 +90,14 @@ class _WorkerFinder implements PieceFinder {
 
   @override
   void forget() {
-    if (_dead) return;
-    _worker.postMessage(JSObject()
+    if (!_worker.running) return;
+    _worker.post(JSObject()
       ..['id'] = 0.toJS
       ..['forget'] = true.toJS);
   }
+
+  /* A find runs to its end in the worker once begun, so the worker goes, with the photo it keeps, and another starts
+     (OpenCV.js loads again, from the browser's cache). */
+  @override
+  void stop() => _worker.restart();
 }
