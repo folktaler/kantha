@@ -106,6 +106,7 @@ int anchorFor(Pool pool, List<int> members, double hue) {
    apart, and heart_terms_test.dart holds the two to the same answer. */
 double? darkestMean(List<double> l, List<int> stock, List<int> members, int size, {int need = 0, bool Function(int f)? first}) {
   if (need > 0 && first == null) throw ArgumentError('darkestMean: need $need with no `first` to take them from');
+  if (need > size) throw ArgumentError('darkestMean: need $need of $size squares');
   final order = [...members]..sort((a, b) => l[a].compareTo(l[b]));
   final left = {for (final f in members) f: stock[f]};
   var sum = 0.0, placed = 0;
@@ -221,7 +222,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     final fr = rules.family;
     if (fr != null && medoidOf[z] != null) {
       ensureColour();
-      for (final i in zone) { obj.targetColour![i] = medoidOf[z]!; obj.wColour![i] = input.blockWeight ?? fr.weight; obj.colourFree?[i] = 0; }
+      for (final i in zone) { obj.targetColour![i] = medoidOf[z]!; obj.wColour![i] = input.blockWeight ?? fr.weight; }
     }
     final cr = rules.colour;
     if (cr != null) {
@@ -240,7 +241,9 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
         final near = nearTo(anchor);
         final mean = darkestMean(input.pool.lightness, stock, members, zone.length,
             need: (heartColourShare * zone.length).ceil(), first: near.contains);
-        if (mean != null) {
+        if (mean == null) {
+          refuse(Unfillable.fewPieces);
+        } else {
           ensureL();
           for (final i in zone) { obj.targetL![i] = mean; obj.wL![i] = Tuned.fitHeart; }
         }
@@ -348,12 +351,5 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     }
     if (dark < touching.length) refuse(Unfillable.noDarkEnough);
   }
-  // A colour zone whose pieces cannot give it a lightness target (darkestMean null) must have been refused above
-  // (fewPieces): a compile that fills always has one. Moving that refusal after this point would leave the heart
-  // with no target, so fail loudly instead.
-  assert(why != null || [
-    for (final z in zoneIds)
-      if (spec.rules[z]?.colour != null && (anchors[z] ?? -1) >= 0) ...cellsIn(z)
-  ].every((i) => (obj.wL?[i] ?? 0) > 0), 'a colour zone that fills has no lightness target');
   return Compiled(obj, pool, why == null, why, anchors);
 }

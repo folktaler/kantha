@@ -96,8 +96,9 @@ void main() {
     expect(compared, greaterThan(500));
   });
 
-  test('darkestMean asked for pieces from nowhere is an error, not a guess', () {
+  test('darkestMean asked for pieces from nowhere, or for more than its squares, is an error, not a guess', () {
     expect(() => darkestMean(const [10, 20], const [1, 1], const [0, 1], 1, need: 1), throwsArgumentError);
+    expect(() => darkestMean(const [10, 20], const [1, 1], const [0, 1], 1, need: 2, first: (_) => true), throwsArgumentError);
   });
 
   test('a box with too few pieces of the heart\'s colour is refused (fewPieces), not given a heart with no target', () {
