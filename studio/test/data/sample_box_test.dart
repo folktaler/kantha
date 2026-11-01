@@ -4,7 +4,7 @@ library;
 import 'dart:io';
 import 'package:drift/drift.dart' show ApplyInterceptor, Value, QueryExecutor, QueryInterceptor, TransactionExecutor, driftRuntimeOptions;
 import 'package:drift/native.dart';
-import 'package:flutter/widgets.dart' show Locale;
+import 'package:flutter/widgets.dart' show FlutterError, Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/data/backup.dart';
 import 'package:kantha_studio/data/database.dart';
@@ -166,6 +166,33 @@ void main() {
       // Once swapped and topped up, the board was dealt again from the real cloth at 12.
       expect(solver.solved.length, greaterThan(from));
       expect(solver.solved.last.where((k) => k > 0).toSet(), {samplePieces});
+    });
+
+    test('in a backup from before 22 October, is not swapped when the studio could not re-open on it: no picture is '
+        'drawn from this device\'s cloth, and the next open swaps it', () async {
+      final shelf = Shelf(memoryDb());
+      await _oldSample(shelf);
+      final swatches = (await shelf.db.select(shelf.db.cloths).get()).toList();
+      await _design(shelf, 'Swatches', [for (final x in swatches.take(5)) x.id]);
+      final backup = await exportBackup(shelf.db, testSideDb);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(l: Value(95), a: Value(0), b: Value(0)));
+      final solver = _RefusesPool();
+      final c = StudioController(shelf: shelf, solver: solver, words: lookupL(const Locale('en')), side: testSideDb);
+      c.restock(await shelfNow(shelf));
+      c.start();
+      var drawn = 0;
+      c.drawPicture = (d) async { drawn++; return (png: fixtureJpeg, thumb: fixtureJpeg); };
+      final reported = <Object>[];
+      final was = FlutterError.onError;
+      FlutterError.onError = (d) => reported.add(d.exception);
+      addTearDown(() => FlutterError.onError = was);
+      solver.refuse = true;
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect(drawn, 0);
+      expect(await shelf.db.select(shelf.db.pictures).get(), isEmpty);
+      expect(reported, [isA<StateError>()], reason: 'the re-open failed and was reported');
+      expect(await shelf.swatchesToReplace(drawnSwatches), isNotEmpty, reason: 'left for the next open');
     });
 
     test('in a backup from before 22 October, has its designs pictured in the backup\'s cloth, though this device has '
@@ -439,6 +466,13 @@ class _Writes extends QueryInterceptor {
 }
 
 /* The pool, as stock per cloth, that each arrangement was asked of, at any board size. */
+/* A solver that, once `refuse` is set, refuses the pool it is given: the studio cannot re-open. */
+class _RefusesPool extends QuickSolver {
+  var refuse = false;
+  @override
+  void setPool(Base base) { if (refuse) throw StateError('the solver refused the pool'); }
+}
+
 class _PoolsSeen extends QuickSolver implements SizedSolverRunner {
   var _stock = const <int>[];
   final solved = <List<int>>[];

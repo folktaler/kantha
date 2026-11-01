@@ -3,6 +3,7 @@ import 'fabrics.dart';
 import 'geometry.dart';
 import 'layouts.dart';
 import 'solve_layout.dart';
+import 'spec.dart';
 import 'compile.dart';
 import 'score.dart' show Pool;
 
@@ -44,7 +45,7 @@ List<StartLayout> layoutsFrom(List<Fabric> fabrics, {int seed = 20260929}) {
 List<int> chainStartStock(Pool pool, List<int> members, List<int> stock) {
   final spec = layouts[LayoutKey.chain]!, out = [...stock];
   for (final MapEntry(key: z, value: r) in spec.rules.entries) {
-    if (r.oneCloth == null) continue;
+    if (r.oneCloth == null || r.l is! LFromT) continue; // as compile asks it
     final (:squares, :cloth) = oneClothOf(spec, z, pool, members, level1);
     if (cloth >= 0) out[cloth] = math.max(out[cloth], squares.length);
   }
