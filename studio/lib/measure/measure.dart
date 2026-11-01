@@ -104,15 +104,14 @@ Measured measureImage(img.Image picture, {bool centre = true}) {
   // The colour is the mean of every pixel in linear light, taken before any resizing: a resize filters the
   // gamma-encoded values, which darkens fine light-and-dark texture (a 1-pixel black-and-white check 3000 pixels
   // square measured L* 59.9 instead of 76.1).
-  var x = 0.0, y = 0.0, z = 0.0, n = 0;
-  final whole = _box(full, centre);
+  var x = 0.0, y = 0.0, z = 0.0;
+  final whole = _box(full, centre), n = whole.width * whole.height;
   // The region's pixels, read in place.
   for (final it = full.getRange(whole.left, whole.top, whole.width, whole.height); it.moveNext();) {
     final p = it.current, r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
     x += _xyzR[r][0] + _xyzG[g][0] + _xyzB[b][0];
     y += _xyzR[r][1] + _xyzG[g][1] + _xyzB[b][1];
     z += _xyzR[r][2] + _xyzG[g][2] + _xyzB[b][2];
-    n++;
   }
   // The spread of lightness, a measure of texture whose busy and edge cut-offs were set on pictures of at most
   // maxLongSide, is read as before from the picture brought down to that size.

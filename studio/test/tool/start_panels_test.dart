@@ -31,6 +31,12 @@ void main() {
     }
   });
 
+  test('the home page panels, from the workshop\'s 47 photos, hold all 15 patterns, Chain included', () {
+    final out = startPanels(File('tool/start_cloth.json').readAsStringSync());
+    final keys = [for (final l in (out['layouts']! as List).cast<Map<String, Object?>>()) l['key']];
+    expect(keys, [for (final k in LayoutKey.values) k.name]);
+  });
+
   test('every photo the start cloth names is in test/fixtures/start-cloth', () {
     final cloth = (jsonDecode(File('tool/start_cloth.json').readAsStringSync()) as Map<String, dynamic>)['cloth'] as List;
     expect(cloth, hasLength(47));

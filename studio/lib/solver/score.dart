@@ -60,8 +60,8 @@ class Objective {
   List<bool>? hueExclude;
   /* Where Spectrum's hue line cuts the CAM16 hue circle (purpleCut); targetHue is a position on that line. */
   double hueCut = 0;
-  /* What a square costs, in degrees on the hue line, for an uncoloured cloth (hueExclude): just past the box's own run
-     from its warmest coloured cloth to its coolest, the farthest any coloured cloth can be from a target in it. */
+  /* What a square costs, in degrees on the hue line, for an uncoloured cloth (hueExclude): never less than the farthest
+     a coloured cloth can be from a target, the box's run from its warmest coloured cloth to its coolest (compile). */
   double hueExcludeGap = 0;
   Int32List? targetColour;
   /* A colour a square stays away from (Heart's ground from the heart's cloth): within sameColour of it costs. */

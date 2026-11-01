@@ -23,8 +23,9 @@ Weights baseWeightsWith(double lightness) => Weights(clump: 100, contrast: 1, li
    pattern_sweep.dart's held-out boxes untouched; 36 board sizes, seed 1), against the clump weight of 100: of 0.05,
    0.1, 0.2, 0.4 and 0.8, the rules passed 94.1, 94.8, 94.6, 94.4 and 94.1% of cases and no same-cloth neighbours held
    in 99.8, 98.7, 95.4, 86.2 and 77.3%. 0.05 keeps the owner's no-neighbours rule best for 0.7 points of passes.
-   wHue weighs Spectrum's squared hue error (degrees²), tuned the same way: every weight from 0.001 to 0.5 passed all
-   288 cases; no same-cloth neighbours held in 100, 94, 82 and 72% at 0.001, 0.0025, 0.005 and 0.01. */
+   wHue weighs Spectrum's squared hue error (degrees²), 0.001. With an uncoloured cloth costing max(the box's run, 180)
+   on the hue line (1 November 2026), the pattern sweep passed 800 of 800 tuning units and 400 of 400 held-out, with no
+   same-cloth neighbours on 100% of boards. */
 const double wFit = 0.05, wHue = 0.001;
 const double _canvasClearance = 25, _wPerimeter = 20;
 
@@ -162,7 +163,9 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
       for (final i in zone) { obj.targetHue![i] = warm + (t[i] - 20) / 180 * (cool - warm); obj.wHue![i] = hr.weight; }
       obj.hueExclude ??= [for (final l in input.pool.lab) !coloured(l)];
       obj.hueCut = cut;
-      obj.hueExcludeGap = cool - warm + 1;
+      // An uncoloured cloth costs at least as much as the farthest a coloured one can be: 180, as it always was, or the
+      // box's own run from warm to cool where that is wider.
+      obj.hueExcludeGap = math.max(cool - warm, 180);
     }
     final fr = rules.family;
     if (fr != null && medoidOf[z] != null) {

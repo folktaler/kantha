@@ -3,6 +3,8 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/solver/compile.dart';
+import 'package:kantha_studio/solver/fabrics.dart';
+import 'package:kantha_studio/solver/hue.dart' show Lab;
 import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'pattern_rules.dart';
@@ -68,6 +70,22 @@ void main() {
     expect([for (var r = 0; r < 7; r++) row(r)], ['X.....X', '.X...X.', '..X.X..', '...X...', '..X.X..', '.X...X.', 'X.....X']);
     final big = targetMap(LayoutKey.chain, level1);
     expect(big.where((v) => v == 0).length, 9, reason: 'the start board has 9 links');
+  });
+
+  test('Spectrum puts the one coloured cloth wherever its pieces reach, before any grey', () {
+    Fabric f(String id, Lab lab) => Fabric(id: id, name: id, lab: lab, busy: false, edge: null, grain: null, stock: 10);
+    final box = Box('One red', [
+      f('red', (l: 45, a: 60, b: 40)),
+      for (var k = 0; k < 4; k++) f('grey$k', (l: 30.0 + 15 * k, a: 0, b: 0)),
+    ]);
+    final c = runCase(LayoutKey.spectrum, box, (rows: 7, cols: 5), 1);
+    expect(c.fills, isTrue, reason: c.why);
+    expect(c.grid!.where((x) => x == 0).length, 10, reason: 'all 10 red pieces');
+    // With one hue the run from warm to cool is 0, and a grey still costs 180 on the hue line, as it always did.
+    final b = box.forBoard(35);
+    final m = modelFor(LayoutKey.spectrum, ObjectiveInput(pool: b.pool, edge: b.edge, members: b.members,
+        mount: Mount.none, stock: b.stock, size: (rows: 7, cols: 5)));
+    expect(m.obj.hueExcludeGap, 180);
   });
 
   test('the bounds from the pieces: one cloth with no neighbour, the extreme mean, and the seams a box can make', () {

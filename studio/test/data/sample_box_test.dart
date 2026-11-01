@@ -12,7 +12,8 @@ import 'package:kantha_studio/data/sample_box.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
 import 'package:kantha_studio/measure/measure.dart';
-import 'package:kantha_studio/solver/geometry.dart' show Mount, cells;
+import 'package:kantha_studio/platform/solver_runner.dart' show SizedSolverRunner;
+import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart' show Base, LayoutSolve;
 import '../support/db.dart';
@@ -140,6 +141,25 @@ void main() {
       expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
       expect(c.piecesIn(c.box!), samplePieces * sampleCloth.length, reason: 'the studio re-opened on the 12');
       // Topped up before the studio re-opened: no arrangement was asked of the box at 7.
+      expect(solver.solved.length, greaterThan(from));
+      expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
+    });
+
+    test('in a backup from before 22 October, is swapped, then topped up, before the studio re-opens', () async {
+      final drawn = Shelf(memoryDb());
+      await _oldSample(drawn);
+      await (drawn.db.delete(drawn.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
+      final backup = await exportBackup(drawn.db, testSideDb);
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      final solver = _PoolsSeen();
+      final (:c, shelf: _) = await studio(on: shelf, seeded: false, solver: solver);
+      final from = solver.solved.length;
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect((await shelf.db.select(shelf.db.cloths).get()).map((x) => x.name), _names);
+      expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
+      // The drawn swatches had 7 pieces each: no arrangement was asked of them, nor of the real cloth at 7.
       expect(solver.solved.length, greaterThan(from));
       expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
     });
@@ -384,8 +404,8 @@ class _Writes extends QueryInterceptor {
   }
 }
 
-/* The pool, as stock per cloth, that each arrangement was asked of. */
-class _PoolsSeen extends QuickSolver {
+/* The pool, as stock per cloth, that each arrangement was asked of, at any board size. */
+class _PoolsSeen extends QuickSolver implements SizedSolverRunner {
   var _stock = const <int>[];
   final solved = <List<int>>[];
   @override
@@ -394,5 +414,12 @@ class _PoolsSeen extends QuickSolver {
   Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) {
     solved.add(_stock);
     return super.solve(layout, members, mount, seed);
+  }
+  @override
+  Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed) async {
+    solved.add(_stock);
+    final n = size.rows * size.cols;
+    return LayoutSolve(true, [for (var i = 0; i < n; i++) members[(i + seed) % members.length]],
+        [for (var i = 0; i < n; i++) (i + seed) % 4]);
   }
 }
