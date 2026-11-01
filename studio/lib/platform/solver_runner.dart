@@ -17,4 +17,13 @@ abstract interface class SizedSolverRunner implements SolverRunner {
   Future<LayoutSolve> solveOn(BoardSize size, LayoutKey layout, List<int> members, Mount mount, int seed);
 }
 
+/* A runner that says how far a solve has got, each of the solver's starts as it ends, and can stop the solves it
+   holds; a solve stopped answers no arrangement. A wait past 10 s shows a bar and Stop (owner, 1 November 2026). */
+abstract interface class SteppedSolverRunner implements SizedSolverRunner {
+  /* `size` null is Level 1's 5 × 7, as `solve`. */
+  Future<LayoutSolve> solveStepped(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      void Function(int done, int of) onStep);
+  void stop();
+}
+
 SolverRunner createSolverRunner() => impl.create();

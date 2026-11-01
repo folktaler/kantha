@@ -343,6 +343,9 @@ void main() {
     }
     expect(find.text('Measuring…'), findsWidgets);
     read.completeError(RemoteError('Out of Memory', ''));
+    // Two frames: the read waits for two painted frames (paintedFirst), and the busy ring no longer asks for frames of
+    // its own in its first second.
+    await tester.pump();
     await tester.pump();
     expect(tester.takeException(), isA<RemoteError>(), reason: 'reported');
     expect(find.text('piece.png could not be read as a picture.'), findsOneWidget);

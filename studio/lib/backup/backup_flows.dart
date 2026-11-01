@@ -2,7 +2,7 @@
    or a file opened to replace what is on this device — after she is asked, with the offer to save a backup of this
    device first. The Back up sheet runs them (redesign decision 13).
    What happened is said through `say` (`failed` when it went wrong; '' clears what was said); `busy`, when given,
-   is told as the work starts. */
+   is told as the work starts, with the words for it ("Saving a backup…", "Opening the backup…"). */
 import 'package:flutter/material.dart';
 import '../data/backup.dart';
 import '../downloads/delivery.dart';
@@ -12,6 +12,7 @@ import 'files.dart';
 import '../platform/report.dart';
 
 typedef Say = void Function(String text, {bool failed});
+typedef Busy = void Function(String doing);
 
 enum _Answer { saveFirst, replace, cancel }
 
@@ -20,8 +21,8 @@ enum _Answer { saveFirst, replace, cancel }
 enum BackupSaved { kept, notKept, failed }
 
 Future<BackupSaved> exportBackupNow({required StudioController c, required Delivery delivery, Rect? origin,
-    required Say say, required L words, VoidCallback? busy}) async {
-  busy?.call();
+    required Say say, required L words, Busy? busy}) async {
+  busy?.call(words.deviceSavingBackup);
   try {
     final bytes = await exportBackup(c.shelf.db, c.side);
     final name = backupFileName(DateTime.now());
@@ -41,7 +42,7 @@ Future<BackupSaved> exportBackupNow({required StudioController c, required Deliv
 
 /* The file is picked, then she is asked over `context` until she answers replace or cancel. */
 Future<void> openBackupNow({required BuildContext context, required StudioController c, required Delivery delivery,
-    required Files files, Rect? origin, required Say say, required L words, VoidCallback? busy}) async {
+    required Files files, Rect? origin, required Say say, required L words, Busy? busy}) async {
   final picked = await files.pickBackup();
   if (picked == null || !context.mounted) return; // she cancelled
   while (true) {
@@ -57,7 +58,7 @@ Future<void> openBackupNow({required BuildContext context, required StudioContro
       continue;
     }
     if (answer != _Answer.replace) return;
-    busy?.call();
+    busy?.call(words.deviceOpeningBackup);
     try {
       await c.importFile(picked.bytes);
       say(words.deviceImportDone(picked.name));

@@ -1,6 +1,6 @@
 /* The Back up or move sheet (redesign handover, Bottom sheets; decision 13): the two rows run the save and open
    flows (backup_flows.dart), with their questions. A row closes the sheet first, so what happened is said in a toast on the
-   studio, where it can be read. */
+   studio, where it can be read; while it works, past a second, a toast with a ring says what it is doing. */
 import 'package:flutter/widgets.dart';
 import '../../backup/backup_flows.dart';
 import '../../backup/files.dart';
@@ -14,6 +14,7 @@ Future<void> showBackupSheet(BuildContext context, {required StudioController c,
     required Files files, required Toaster toaster}) {
   final words = L.of(context);
   void say(String text, {bool failed = false}) => text.isEmpty ? toaster.clear() : toaster.say(text);
+  void busy(String doing) => toaster.wait(doing);
   // Where an iPad's share sheet points: the row that asked, measured before the sheet goes.
   Rect? rectOf(BuildContext row) {
     final box = row.findRenderObject();
@@ -27,14 +28,15 @@ Future<void> showBackupSheet(BuildContext context, {required StudioController c,
       Builder(builder: (row) => SheetRow(name: words.deviceExportButton, onPressed: () {
         final origin = rectOf(row);
         Navigator.of(sheet).pop();
-        exportBackupNow(c: c, delivery: delivery, origin: origin, say: say, words: words);
+        exportBackupNow(c: c, delivery: delivery, origin: origin, say: say, words: words, busy: busy);
       })),
       Builder(builder: (row) => SheetRow(name: words.deviceImportButton, note: words.deviceImportNote, onPressed: () {
         final origin = rectOf(row);
         Navigator.of(sheet).pop();
         // Asked over the studio, which stays when the sheet has gone.
         if (context.mounted) {
-          openBackupNow(context: context, c: c, delivery: delivery, files: files, origin: origin, say: say, words: words);
+          openBackupNow(context: context, c: c, delivery: delivery, files: files, origin: origin, say: say, words: words,
+              busy: busy);
         }
       })),
     ]),

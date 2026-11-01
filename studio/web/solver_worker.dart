@@ -5,8 +5,8 @@ import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart';
 import 'package:kantha_studio/solver/wire.dart';
 
-/* The solver's Web Worker: the pool once, then one solve per message. Compiled to
-   web/solver_worker.js by tool/prepare_web.sh. */
+/* The solver's Web Worker: the pool once, then one solve per message, saying each of its starts as it ends when the
+   message asks (steps). Compiled to web/solver_worker.js by tool/prepare_web.sh. */
 @JS('self')
 external _Scope get _self;
 
@@ -26,9 +26,14 @@ void main() {
     if (m['type'] == 'pool') { base = baseFromJson(m['base'] as Map<String, dynamic>); return; }
     final b = base;
     if (b == null) return;
+    final id = m['id'];
     final s = solveLayout(LayoutKey.values.byName(m['layout'] as String), b, (m['members'] as List).cast<int>(),
         Mount.values.byName(m['mount'] as String), m['seed'] as int,
-        size: m['rows'] == null ? null : (rows: m['rows'] as int, cols: m['cols'] as int));
+        size: m['rows'] == null ? null : (rows: m['rows'] as int, cols: m['cols'] as int),
+        // Each of the solver's starts as it ends, when asked: the studio's bar for a long wait.
+        onStep: m['steps'] == true
+            ? (done, of) => _self.postMessage(jsonEncode({'type': 'step', 'id': id, 'done': done, 'of': of}).toJS)
+            : null);
     _self.postMessage(jsonEncode({'id': m['id'], 'fills': s.fills, 'grid': s.grid, 'rot': s.rot}).toJS);
   }).toJS;
   // Loaded and listening: the studio knows from this that a later error is a solve's, not a missing worker.

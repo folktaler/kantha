@@ -23,6 +23,7 @@ import '../l10n/app_localizations.dart';
 import '../measure/measure.dart';
 import '../studio/phone/phone_sheet.dart' show PhoneButton, PhoneButtonKind, phoneTextInset;
 import '../studio/phone/phone_theme.dart';
+import '../studio/phone/waiting.dart';
 import '../studio/pressable.dart';
 import 'crop_step.dart';
 import 'many_pieces.dart';
@@ -101,6 +102,8 @@ class _AddClothState extends State<AddCloth> {
   Rect? _cropStart;
   /* Pieces she added, each its own cloth. */
   int _tapped = 0;
+  /* Stop, on a find past 10 s: she is not kept waiting on the finder; the photo goes to the crop. */
+  Completer<void>? _stopFinding;
 
   /* The picture let go of (replaced, reset, saved, or the card closed): on the web its decoded bitmap is closed now,
      not left for the garbage collector. Called inside setState, or from dispose. */
@@ -216,12 +219,16 @@ class _AddClothState extends State<AddCloth> {
   void _reset() => setState(() { _picture = null; _letGo(); _ready = false; _reading = false; _error = ''; _toldToWait = false; });
 
   /* The finder looks at the photo; what it finds says which step comes next. One it cannot run (its worker did not
-     load) is the crop, as before. */
+     load), or one she stops, is the crop, as before. */
   Future<void> _find(PickedPhoto photo) async {
+    final stop = _stopFinding = Completer<void>();
     setState(() => _step = _Step.finding);
     FinderAnswer? found;
     try {
-      found = await _finder!.find(photo).timeout(finderWait); // any finder, however it is made
+      found = await Future.any<FinderAnswer?>([
+        _finder!.find(photo).timeout(finderWait), // any finder, however it is made
+        stop.future.then((_) => null),
+      ]);
     } catch (e, s) {
       reportClothError(e, s, 'while the pieces in a photo were found');
     }
@@ -527,7 +534,7 @@ class _AddClothState extends State<AddCloth> {
         return [if (last != null) _addedNote(last), ..._photoField(), _howToBlock(), ...error, _buttons(find)];
       case _Step.pick || _Step.finding:
         // Read, then looked at: the photo, and what is happening.
-        return [_photoStage(finding: true), ...error,
+        return [_photoStage(finding: true, stop: _step == _Step.finding ? _stopFinding : null), ...error,
           _buttons(PhoneButton(text: words.clothManyFindingShort, busy: true, onPressed: null))];
       case _Step.tooSmall:
         return [_photoStage(), cardError(words.clothManyTooSmall), onePiece, retake, _buttons(find)];
@@ -554,8 +561,9 @@ class _AddClothState extends State<AddCloth> {
     }
   }
 
-  /* The photo in the crop's 300 px stage; while the finder looks, a note over it. */
-  Widget _photoStage({bool finding = false}) {
+  /* The photo in the crop's 300 px stage; while the photo is read and the finder looks, past a second, a note over it
+     (waiting.dart), with Stop once the wait is long. */
+  Widget _photoStage({bool finding = false, Completer<void>? stop}) {
     final shown = _photo?.bytes ?? _picture;
     return Container(
       key: const ValueKey('photo-stage'),
@@ -564,17 +572,11 @@ class _AddClothState extends State<AddCloth> {
       decoration: BoxDecoration(color: PhonePalette.canvas, border: Border.all(color: PhonePalette.border)),
       child: Stack(fit: StackFit.expand, children: [
         if (shown != null) Image.memory(shown, fit: BoxFit.contain, gaplessPlayback: true),
-        if (finding)
-          ColoredBox(color: const Color(0x8CFCFBF8), child: Center(child: Semantics(liveRegion: true, child: Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(color: PhonePalette.white, border: Border.all(color: PhonePalette.border)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: PhonePalette.blue)),
-              const SizedBox(width: 10),
-              Flexible(child: Text(words.clothManyFinding, style: pText(PType.cardLabel))),
-            ]),
-          )))),
+        if (finding) ...[
+          const ShowAfter(child: ColoredBox(color: Color(0x8CFCFBF8))),
+          Center(child: WaitNote(key: ObjectKey(_picture), words: words.clothManyFinding, stopWords: words.canvasWaitStop,
+              onStop: stop == null ? null : () { if (!stop.isCompleted) stop.complete(); })),
+        ],
       ]),
     );
   }

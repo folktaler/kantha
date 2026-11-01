@@ -22,7 +22,7 @@ void main() {
     final d = CaptureDelivery();
     final said = <String>[];
     var busy = 0;
-    final out = await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) => said.add(t), words: words, busy: () => busy++);
+    final out = await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) => said.add(t), words: words, busy: (_) => busy++);
     final name = backupFileName(DateTime.now());
     expect(out, BackupSaved.kept);
     expect(d.backups.keys, [name]);

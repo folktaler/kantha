@@ -53,3 +53,4 @@ web/*_worker.js
 web/*_worker.js.deps
 web/*_worker.js.map
 test/data/sqlite3.wasm
+test/cloth/measure_worker.js

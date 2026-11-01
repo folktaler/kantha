@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/platform/solver_runner.dart';
@@ -55,5 +56,34 @@ void main() {
     expect(s.grid, direct.grid);
     expect(s.rot, direct.rot);
     expect(s.grid, hasLength(cells));
+  }, testOn: 'vm');
+
+  test('on a phone a stepped solve says each of its starts and answers as solveLayout does; the steps change nothing',
+      () async {
+    final b = fixtureBase(), runner = createSolverRunner() as SteppedSolverRunner..setPool(b);
+    addTearDown(runner.dispose);
+    final members = [for (var i = 0; i < b.stock.length; i++) i];
+    final steps = <(int, int)>[];
+    final s = await runner.solveStepped(null, LayoutKey.wave, members, Mount.frame, 11, (d, of) => steps.add((d, of)));
+    final direct = solveLayout(LayoutKey.wave, b, members, Mount.frame, 11);
+    expect(s.grid, direct.grid);
+    expect(s.rot, direct.rot);
+    expect(steps, [for (var k = 1; k <= 4; k++) (k, 4)]);
+  }, testOn: 'vm');
+
+  test('on a phone Stop ends a solve at once: it answers no arrangement', () async {
+    final b = fixtureBase(), runner = createSolverRunner() as SteppedSolverRunner..setPool(b);
+    addTearDown(runner.dispose);
+    final members = [for (var i = 0; i < b.stock.length; i++) i];
+    final first = Completer<void>();
+    final out = runner.solveStepped((rows: 9, cols: 9), LayoutKey.gradient, members, Mount.none, 3, (d, of) {
+      if (!first.isCompleted) first.complete();
+    });
+    await first.future.timeout(const Duration(seconds: 30)); // it is solving
+    final watch = Stopwatch()..start();
+    runner.stop();
+    final s = await out;
+    expect(s.grid, isNull);
+    expect(watch.elapsedMilliseconds, lessThan(500));
   }, testOn: 'vm');
 }

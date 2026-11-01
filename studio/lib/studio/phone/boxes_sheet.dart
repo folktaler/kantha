@@ -9,8 +9,8 @@ import '../../data/sample_box.dart';
 import '../../l10n/app_localizations.dart';
 import '../controller.dart';
 import 'phone_sheet.dart';
-import 'phone_theme.dart';
 import 'phone_toast.dart';
+import 'waiting.dart';
 import '../../platform/report.dart';
 
 /* Delete box: asked first, in the Sample box's own words when it is that one (decision 17), and saying its pieces
@@ -125,8 +125,7 @@ class _BoxesState extends State<_Boxes> {
           if (_busy)
             const Padding(
               padding: EdgeInsets.only(top: 14),
-              child: Center(child: SizedBox.square(dimension: 18,
-                  child: CircularProgressIndicator(key: ValueKey('boxes-busy'), strokeWidth: 2, color: PhonePalette.blue))),
+              child: Center(child: WaitRing(key: ValueKey('boxes-busy'), size: 18)),
             ),
         ]);
       },

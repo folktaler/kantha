@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/cloth/add_cloth.dart';
+import 'package:kantha_studio/studio/phone/waiting.dart' show waitIsLong, waitShows;
 import 'package:kantha_studio/cloth/many_pieces.dart' show CheckPieces, smallestSide;
 import 'package:kantha_studio/cloth/piece_finder.dart';
 import 'package:kantha_studio/cloth/prepare.dart' show PickedPhoto, readPhoto;
@@ -462,6 +463,8 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
       await tester.pump(const Duration(milliseconds: 1));
     }
+    // Its note shows once the wait has passed a second (waiting.dart).
+    await tester.pump(waitShows);
     expect(find.text('Finding the pieces…'), findsOneWidget);
   }
 
@@ -481,6 +484,30 @@ void main() {
         expect(inBox2(c), isEmpty);
       });
     }
+
+    testWidgets('a find past 10 s shows Stop; Stop takes the photo to the crop, and a late answer changes nothing',
+        (tester) async {
+      finder.findHeld = Completer();
+      await openAdd(tester);
+      await tester.tap(find.text('Photo of the pieces'));
+      await untilFinding(tester);
+      expect(find.text('Stop'), findsNothing);
+      await tester.pump(waitIsLong);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      Future<void> turns() async {
+        for (var i = 0; i < 60; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+          await tester.pump(const Duration(milliseconds: 1));
+        }
+      }
+      await tester.tap(find.text('Stop'));
+      await turns();
+      expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'a stop is not an error');
+      finder.findHeld!.complete(three);
+      await turns();
+      expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+    });
 
     testWidgets('a finder that never answers: after finderWait, the crop, and Done adds the photo as one piece',
         (tester) async {

@@ -6,6 +6,7 @@ import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../l10n/app_localizations.dart';
 import '../pressable.dart';
 import 'phone_theme.dart';
+import 'waiting.dart';
 
 /* A bottom sheet: the scrim (a tap closes it), paper, its top corners 2 px, at most 76 % of the screen and as wide as the studio's
    column, centred, scrolling, 24 px under its last row; a header that stays as the rest scrolls, with `title` and a 48 × 48 Close; `intro` under it. `builder`
@@ -201,7 +202,8 @@ class PhoneButton extends StatelessWidget {
           PhoneButtonKind.text => (h ? PhonePalette.hover : const Color(0x00000000), PhonePalette.blue, null),
           PhoneButtonKind.redText => (h ? PhonePalette.redTint : const Color(0x00000000), PhonePalette.red, null),
         };
-        final after = busy ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: words)) : null;
+        // The ring only past a second (waiting.dart); the words say it at once.
+        final after = busy ? WaitRing(color: words) : null;
         return focusRing(st.focused, Container(
           height: 48,
           padding: EdgeInsets.symmetric(horizontal: bare ? phoneTextInset : 16),
