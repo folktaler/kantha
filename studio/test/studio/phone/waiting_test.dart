@@ -101,9 +101,9 @@ void main() {
       return toaster;
     }
 
-    testWidgets('shows past a second, with a ring, and stays until it is answered', (tester) async {
+    testWidgets('shows past a second, with a ring, and stays until its work ends; then what it said', (tester) async {
       final toaster = await pumpToast(tester);
-      toaster.wait('Saving a backup…');
+      final end = toaster.wait('Saving a backup…');
       await tester.pump(const Duration(milliseconds: 900));
       expect(find.text('Saving a backup…'), findsNothing);
       await tester.pump(const Duration(milliseconds: 100));
@@ -113,28 +113,52 @@ void main() {
       expect(find.text('Saving a backup…'), findsOneWidget);
       toaster.say('Saved kantha.zip.');
       await tester.pump();
+      expect(find.text('Saving a backup…'), findsOneWidget, reason: 'said while it works: after');
+      end();
+      await tester.pump();
       expect(find.text('Saving a backup…'), findsNothing);
       expect(find.text('Saved kantha.zip.'), findsOneWidget);
       expect(ring, findsNothing);
       toaster.clear();
     });
 
-    testWidgets('answered inside a second, only the answer shows', (tester) async {
+    testWidgets('something else said while it works does not end it: it is said after, and then the answer',
+        (tester) async {
       final toaster = await pumpToast(tester);
-      toaster.wait('Saving a backup…');
+      final end = toaster.wait('Opening the backup…');
+      await tester.pump(waitShows);
+      toaster.say('Saved to My designs.');
+      toaster.clear(); // as a flow with nothing to say clears
+      toaster.say('Saved to My designs.');
+      await tester.pump();
+      expect(find.text('Opening the backup…'), findsOneWidget);
+      toaster.say('This device now holds kantha.zip.');
+      end();
+      await tester.pump();
+      expect(find.text('Saved to My designs.'), findsOneWidget);
+      await tester.pump(Toaster.showFor);
+      expect(find.text('This device now holds kantha.zip.'), findsOneWidget);
+      await tester.pump(Toaster.showFor);
+      expect(toaster.text, isNull);
+    });
+
+    testWidgets('ended inside a second, only what it said shows', (tester) async {
+      final toaster = await pumpToast(tester);
+      final end = toaster.wait('Saving a backup…');
       await tester.pump(const Duration(milliseconds: 500));
       toaster.say('Saved kantha.zip.');
+      end();
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('Saving a backup…'), findsNothing);
       expect(find.text('Saved kantha.zip.'), findsOneWidget);
       toaster.clear();
     });
 
-    testWidgets('cleared inside a second, nothing shows', (tester) async {
+    testWidgets('ended inside a second with nothing said, nothing shows', (tester) async {
       final toaster = await pumpToast(tester);
-      toaster.wait('Saving a backup…');
+      final end = toaster.wait('Saving a backup…');
       await tester.pump(const Duration(milliseconds: 500));
-      toaster.clear();
+      end();
       await tester.pump(const Duration(seconds: 2));
       expect(find.text('Saving a backup…'), findsNothing);
       expect(toaster.text, isNull);

@@ -14,7 +14,7 @@ Future<void> showBackupSheet(BuildContext context, {required StudioController c,
     required Files files, required Toaster toaster}) {
   final words = L.of(context);
   void say(String text, {bool failed = false}) => text.isEmpty ? toaster.clear() : toaster.say(text);
-  void busy(String doing) => toaster.wait(doing);
+  VoidCallback busy(String doing) => toaster.wait(doing);
   // Where an iPad's share sheet points: the row that asked, measured before the sheet goes.
   Rect? rectOf(BuildContext row) {
     final box = row.findRenderObject();
