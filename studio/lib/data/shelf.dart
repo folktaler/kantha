@@ -281,18 +281,22 @@ class Shelf {
   }
 
   /* A name made from its colour ("C-3 Brown") follows the new measurement; a name it was given ("Madder", a Sample
-     cloth's) is kept. */
-  Future<ClothRow> recrop(String id, Uint8List photo, Measured measured) => _write(() async {
-        final was = await (db.select(db.cloths)..where((c) => c.id.equals(id))).getSingleOrNull();
-        if (was == null) throw const ShelfError('noSuchCloth');
-        final name = was.name.startsWith('$id ') ? '$id ${_capitalised(measured.name)}' : was.name;
-        await (db.update(db.cloths)..where((c) => c.id.equals(id))).write(ClothsCompanion(
-          name: Value(name), photo: Value(photo), l: Value(measured.lab.l),
-          a: Value(measured.lab.a), b: Value(measured.lab.b), spread: Value(measured.spread),
-          colour: Value(measured.name), version: Value(was.version + 1), photoNumber: Value(await _next('photo')),
-        ));
-        return (db.select(db.cloths)..where((c) => c.id.equals(id))).getSingle();
-      });
+     cloth's) is kept. `pieces`, when given, is stored in the same write: both go in, or neither. */
+  Future<ClothRow> recrop(String id, Uint8List photo, Measured measured, {int? pieces}) async {
+    if (pieces != null) _check(pieces);
+    return _write(() async {
+      final was = await (db.select(db.cloths)..where((c) => c.id.equals(id))).getSingleOrNull();
+      if (was == null) throw const ShelfError('noSuchCloth');
+      final name = was.name.startsWith('$id ') ? '$id ${_capitalised(measured.name)}' : was.name;
+      await (db.update(db.cloths)..where((c) => c.id.equals(id))).write(ClothsCompanion(
+        name: Value(name), photo: Value(photo), l: Value(measured.lab.l),
+        a: Value(measured.lab.a), b: Value(measured.lab.b), spread: Value(measured.spread),
+        colour: Value(measured.name), version: Value(was.version + 1), photoNumber: Value(await _next('photo')),
+        pieces: pieces == null ? const Value.absent() : Value(pieces),
+      ));
+      return (db.select(db.cloths)..where((c) => c.id.equals(id))).getSingle();
+    });
+  }
 
   Future<void> editCloth(String id, {required String fabric, required int pieces}) async {
     _check(pieces);

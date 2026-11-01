@@ -81,6 +81,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Delete box'), findsOneWidget, reason: 'under the swatches, on a box that holds pieces (owner, 20 Oct)');
     expect(tester.getRect(find.text('Delete box')).left, 16, reason: 'its words on the picker\'s and the swatches\' line');
+    expect(tester.getRect(find.byKey(const ValueKey('delete-box'))).left, 4,
+        reason: 'its hover ground and focus ring, and what takes a tap, start 12 px before its words');
     expect(find.text(startHere), findsNothing);
     expect(tester.takeException(), isNull);
   });

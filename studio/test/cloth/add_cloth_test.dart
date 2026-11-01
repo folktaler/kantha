@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:crop_your_image/crop_your_image.dart' show CropFailure;
+import 'package:crop_your_image/crop_your_image.dart' show Crop, CropFailure, CropStatus;
 import 'package:kantha_studio/cloth/crop_step.dart';
 import 'package:kantha_studio/cloth/add_cloth.dart';
 import 'package:kantha_studio/cloth/photo_source.dart';
@@ -355,7 +355,9 @@ void main() {
     await openAdd(tester, FixturePhotos());
     await tester.tap(find.text('Photo of the piece'));
     await letWork(tester, turns: 10);
+    // As crop_your_image does: the result, then the cropper ready again.
     tester.widget<CropStep>(find.byType(CropStep)).onCropped(CropFailure(Exception('the crop failed')));
+    tester.widget<Crop>(find.byType(Crop)).onStatusChanged!(CropStatus.ready);
     await tester.pump();
     expect(tester.takeException(), isException, reason: 'it is reported');
     expect(inSheet(find.text('The studio could not read that picture.')), findsOneWidget);

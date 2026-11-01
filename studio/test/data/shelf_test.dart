@@ -63,6 +63,16 @@ void main() {
     expect((await shelf.watchCloth().first).map((c) => c.id), ['C-1', 'C-2', 'C-3']);
   });
 
+  test('a re-crop given a count stores it in the same write; one without keeps the count it had', () async {
+    final shelf = Shelf(memoryDb());
+    final box = await shelf.makeBox();
+    await shelf.addCloth(box: box, photo: photo, measured: measured, fabric: 'Cotton', pieces: 3);
+    expect((await shelf.recrop('C-1', photo, measured, pieces: 5)).pieces, 5);
+    expect((await shelf.recrop('C-1', photo, measured)).pieces, 5);
+    await expectLater(shelf.recrop('C-1', photo, measured, pieces: 0), throwsA(isA<ShelfError>()));
+    expect((await shelf.clothById('C-1'))!.version, 3, reason: 'a count refused stores no crop either');
+  });
+
   test('My designs: the newest saved first, and within one millisecond P-2 before P-1', () async {
     final shelf = Shelf(memoryDb());
     final box = await shelf.makeBox();

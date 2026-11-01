@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/theme.dart' show PhonePalette;
 import 'pump.dart' show sheet;
 
-/* Every row divider in the open sheet (the top one, sheet.last) (1 px lines in the border colour) runs 16 px in from each side of the sheet. A
-   row with a ⋯ draws its line in two pieces (the row's and the ⋯'s): they must meet, end to start, with no gap and no
-   overlap. */
+/* Every row divider in the open sheet runs 16 px in from each side of that sheet. The open sheet is the one on top,
+   sheet.last, when one sheet is open over another. A row divider is a 1 px line in the border colour. A row with a ⋯
+   draws its line in two pieces, the row's and the ⋯'s: they must meet, end to start, with no gap and no overlap. */
 void expectDividersInset(WidgetTester tester) {
   final open = sheet.last, box = tester.getRect(open);
   final lines = find.descendant(of: open, matching: find.byWidgetPredicate((w) => w is ColoredBox && w.color == PhonePalette.border));

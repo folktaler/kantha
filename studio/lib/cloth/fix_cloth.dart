@@ -84,16 +84,19 @@ class _FixClothState extends State<FixCloth> {
     }
   }
 
-  /* The count first, when it changed; then the crop, when she moved it. */
+  /* The count alone, when only it changed. When she moved the crop: the crop first, then the new photo and the count
+     in one write (_recrop), so a crop that fails saves nothing. */
   Future<void> _save() async {
     if (_touched && !_ready) return setState(() => _error = words.clothErrorsNotReady);
     setState(() { _busy = true; _error = ''; });
-    try {
-      if (_fieldsChanged) await widget.shelf.editCloth(cloth.id, fabric: cloth.fabric, pieces: _count);
-    } catch (e, s) {
-      return _fail(e, s, 'while a cloth was changed');
+    if (!_touched) {
+      try {
+        await widget.shelf.editCloth(cloth.id, fabric: cloth.fabric, pieces: _count);
+      } catch (e, s) {
+        return _fail(e, s, 'while a cloth was changed');
+      }
+      return widget.onDone(FixDone.saved);
     }
-    if (!_touched) return widget.onDone(FixDone.saved);
     // Drawn as busy first: the crop and the measure can hold the page still.
     await paintedFirst();
     if (mounted) _crop.crop();
@@ -112,7 +115,7 @@ class _FixClothState extends State<FixCloth> {
   Future<void> _recrop(Uint8List square) async {
     try {
       final out = await preparePhoto(square);
-      await widget.shelf.recrop(cloth.id, out.jpeg, out.measured);
+      await widget.shelf.recrop(cloth.id, out.jpeg, out.measured, pieces: _fieldsChanged ? _count : null);
       widget.onDone(FixDone.recropped);
     } catch (e, s) {
       _fail(e, s, 'while a cloth was measured again');

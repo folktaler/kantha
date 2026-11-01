@@ -75,8 +75,10 @@ Future<void> _show(BuildContext context, ClothOpen open, StudioController c, Pho
     // the board's note, which keeps what it says (a warning, say).
     void manyAdded(int cloths, int pieces, int box) => toaster.say(words.clothManyAdded(cloths, pieces, boxName(box)));
     return showPhoneSheet<void>(context, title: words.clothTitle, titleOf: title, drag: false, locked: held,
-        builder: (context) => body(add.AddCloth(box: box, shelf: c.shelf, photos: photos, words: words,
-            cropHeld: held, title: title, onManyAdded: manyAdded, boxName: boxName, onClose: () => close(context))));
+        // Set out phoneTextInset before the content line: the room Add a piece's quiet buttons draw in (add_cloth.dart).
+        builder: (context) => Padding(padding: const EdgeInsetsDirectional.only(start: 16 - phoneTextInset, end: 16),
+            child: add.AddCloth(box: box, shelf: c.shelf, photos: photos, words: words, cropHeld: held, title: title,
+                onManyAdded: manyAdded, boxName: boxName, onClose: () => close(context))));
   }
   // The cloth as stored, read first: its name is the sheet's title.
   ClothRow? row;

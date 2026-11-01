@@ -59,18 +59,18 @@ class DockCloth extends StatelessWidget {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            // flush: its words on the 16 px line of the picker and swatches.
+            // Its words on the 16 px line of the picker and swatches, its ground and ring 12 px before them.
+            padding: const EdgeInsetsDirectional.only(start: 16 - phoneTextInset, end: 16),
             child: Align(alignment: AlignmentDirectional.centerStart, child: KeyedSubtree(key: const ValueKey('delete-box'),
-                child: PhoneButton(text: words.boxesDelete, kind: PhoneButtonKind.redText, busy: c.deleting, flush: true,
+                child: PhoneButton(text: words.boxesDelete, kind: PhoneButtonKind.redText, busy: c.deleting,
                     onPressed: () => actions.deleteBox(box!)))),
           ),
         ] else
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsetsDirectional.only(start: 16 - phoneTextInset, end: 16),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (mine)
-                PhoneButton(text: words.boxesDelete, kind: PhoneButtonKind.redText, busy: c.deleting, flush: true,
+                PhoneButton(text: words.boxesDelete, kind: PhoneButtonKind.redText, busy: c.deleting,
                     onPressed: () => actions.deleteBox(box)),
               Expanded(child: Align(alignment: Alignment.topRight, child: _StartHere(words.boxesStartHere))),
             ]),
