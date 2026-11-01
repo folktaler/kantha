@@ -246,6 +246,8 @@ void main() {
     await openAdd(tester, photos);
     await tester.tap(find.text('Photo of the piece'));
     await letWork(tester, turns: 10);
+    expect(tester.getRect(find.text('Choose a different picture')).left, tester.getRect(find.text('fill the square with the piece')).left,
+        reason: 'its words on the content line, with the hint above');
     await tapShown(tester, find.text('Choose a different picture'));
     await tester.pumpAndSettle();
     await tapShown(tester, find.text('Choose a picture'));

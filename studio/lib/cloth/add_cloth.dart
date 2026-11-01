@@ -457,10 +457,12 @@ class _AddClothState extends State<AddCloth> {
     return held == null ? crop : CropHold(held: held, child: crop);
   }
 
-  /* A quiet button: a 48 px text button, as tall as a finger needs. */
+  /* A quiet button: a 48 px text button, as tall as a finger needs. Its words are 12 in from its edge, so it sits 12
+     out, putting them on the content line with everything above them. */
   Widget _quietButton(String text, VoidCallback? onPressed) => Align(
         alignment: AlignmentDirectional.centerStart,
-        child: PhoneButton(text: text, kind: PhoneButtonKind.text, onPressed: onPressed),
+        child: Transform.translate(offset: const Offset(-12, 0),
+            child: PhoneButton(text: text, kind: PhoneButtonKind.text, onPressed: onPressed)),
       );
 
   String get _submitText => _busy || _reading ? words.clothBusy : _count == 1 ? words.clothAddOne : words.clothAddMany('$_count');
