@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:kantha_studio/measure/measure.dart';
+import 'package:kantha_studio/studio/phone/menu_panel.dart' show menuTurn;
 import 'package:kantha_studio/studio/phone/phone_theme.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 import 'package:kantha_studio/studio/phone/phone_toast.dart';
@@ -121,6 +122,19 @@ void main() {
     await tester.pumpAndSettle();
     final open = tester.widget<Pressable>(menu);
     expect((open.label, open.tooltip, open.expanded), ('Close', null, true));
+  });
+
+  testWidgets('≡ turns into × over the menu\'s 300 ms, not at once, though its title goes as it opens', (tester) async {
+    await pumpStudio(tester, size: desk);
+    await tester.tap(menu);
+    await tester.pump();
+    await tester.pump(menuTurn ~/ 2);
+    // The × fades in as ≡ turns away: half way through, it is neither gone nor all there.
+    final x = find.ancestor(of: find.byType(tabler.X), matching: find.byType(FadeTransition)).first;
+    final mid = tester.widget<FadeTransition>(x).opacity.value;
+    expect(mid, inExclusiveRange(0.05, 0.95));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FadeTransition>(x).opacity.value, 1);
   });
 
   testWidgets('on a desk Enter on Save while the menu is open shuts it and leaves focus on Save', (tester) async {

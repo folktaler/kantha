@@ -457,12 +457,10 @@ class _AddClothState extends State<AddCloth> {
     return held == null ? crop : CropHold(held: held, child: crop);
   }
 
-  /* A quiet button: a 48 px text button, as tall as a finger needs. Its words are 12 in from its edge, so it sits 12
-     out, putting them on the content line with everything above them. */
+  /* A quiet button: a 48 px text button, as tall as a finger needs, its words on the content line (flush). */
   Widget _quietButton(String text, VoidCallback? onPressed) => Align(
         alignment: AlignmentDirectional.centerStart,
-        child: Transform.translate(offset: const Offset(-12, 0),
-            child: PhoneButton(text: text, kind: PhoneButtonKind.text, onPressed: onPressed)),
+        child: PhoneButton(text: text, kind: PhoneButtonKind.text, onPressed: onPressed, flush: true),
       );
 
   String get _submitText => _busy || _reading ? words.clothBusy : _count == 1 ? words.clothAddOne : words.clothAddMany('$_count');
@@ -620,7 +618,7 @@ class _AddClothState extends State<AddCloth> {
               final row = Row(mainAxisSize: MainAxisSize.min, children: [
                 // The triangle on the sheet's content edge, as the lines under it: Material's arrow glyphs sit 5 to 7
                 // px inside their box.
-                CustomPaint(size: const Size(12, 16), painter: _Caret(open: _howTo)),
+                CustomPaint(size: const Size(12, 16), painter: _DisclosureCaret(open: _howTo)),
                 Text(words.clothHowTo, style: pText(PType.cardLabel)),
               ]);
               // The toggle is a finger's 48 px tall.
@@ -645,8 +643,8 @@ class _AddClothState extends State<AddCloth> {
 
 /* <details>' marker, from its left edge: ▸ shut (Material's arrow_right, 3.3 by 6.7 at 16 px), ▾ open (arrow_drop_down,
    6.7 by 3.3), centred on the box's height. */
-class _Caret extends CustomPainter {
-  const _Caret({required this.open});
+class _DisclosureCaret extends CustomPainter {
+  const _DisclosureCaret({required this.open});
   final bool open;
 
   @override
@@ -660,7 +658,7 @@ class _Caret extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_Caret old) => old.open != open;
+  bool shouldRepaint(_DisclosureCaret old) => old.open != open;
 }
 
 enum _Step { pick, finding, tooSmall, crop, check, cloths }

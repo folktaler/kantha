@@ -323,7 +323,7 @@ void main() {
       inter(line, 15.81, PhonePalette.text2);
     }
     // The disclosure triangle starts on the content edge, as the numbered lines do (it is drawn from its box's left).
-    final caret = inSheet(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_Caret'));
+    final caret = inSheet(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_DisclosureCaret'));
     expect(tester.getRect(caret).left, tester.getRect(inSheet(find.text('1.'))).left);
 
     // Add with no photo: the error, in the body-small role, in the phone's red.
