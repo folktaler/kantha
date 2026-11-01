@@ -456,7 +456,7 @@ abstract class L {
   /// No description provided for @canvasLayoutsDiamondName.
   ///
   /// In en, this message translates to:
-  /// **'Rings of dark, middle and light, spreading out from the centre.'**
+  /// **'Rings of colour, dark, middle and light, spreading out from the centre.'**
   String get canvasLayoutsDiamondName;
 
   /// No description provided for @canvasMountsNoneName.

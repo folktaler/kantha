@@ -221,7 +221,7 @@ class LEn extends L {
 
   @override
   String get canvasLayoutsDiamondName =>
-      'Rings of dark, middle and light, spreading out from the centre.';
+      'Rings of colour, dark, middle and light, spreading out from the centre.';
 
   @override
   String get canvasMountsNoneName => 'Panel';

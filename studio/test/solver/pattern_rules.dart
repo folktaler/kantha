@@ -185,6 +185,55 @@ double onCheckLine(double h, double cut) => h > cut ? h - 360 : h;
 
 double ab(Lab p, Lab q) => chromaUcs(ucsOf(p), ucsOf(q));
 
+// ---- Bounds from the box's own pieces. ----
+
+/* The most squares of `region` one cloth can take with none of them beside another (the no-same-neighbour rule): an
+   independent set of the region's neighbour pairs, so at most the region's size less a largest matching of them (each
+   matched pair holds at most one square of the set). The matching is over the orthogonal pairs alone, a bipartite
+   graph, by Kuhn's augmenting paths; a matching of fewer pairs only loosens the bound. */
+int apartCap(List<int> region, Objective obj) {
+  final inRegion = region.toSet(), cols = obj.cols;
+  final next = <int, List<int>>{};
+  for (final (a, b) in obj.pairs) {
+    if (!inRegion.contains(a) || !inRegion.contains(b)) continue;
+    if ((a ~/ cols - b ~/ cols).abs() + (a % cols - b % cols).abs() != 1) continue;
+    final even = ((a ~/ cols) + (a % cols)).isEven ? a : b, odd = even == a ? b : a;
+    (next[even] ??= []).add(odd);
+  }
+  final partner = <int, int>{};
+  bool augment(int u, Set<int> seen) {
+    for (final v in next[u] ?? const <int>[]) {
+      if (!seen.add(v)) continue;
+      final w = partner[v];
+      if (w == null || augment(w, seen)) { partner[v] = u; return true; }
+    }
+    return false;
+  }
+  var matched = 0;
+  for (final u in next.keys) { if (augment(u, <int>{})) matched++; }
+  return region.length - matched;
+}
+
+/* The least (`darkest`) or the greatest mean lightness `size` squares can have from the box's pieces, at least `need`
+   of them from the cloths `first` allows, each cloth at most `cap` squares: the extreme `need` of `first`'s pieces,
+   then the extreme of what is left. Null when the pieces cannot fill them. */
+double? extremeMean(List<double> l, List<int> stock, List<int> members, int size,
+    {required bool darkest, int need = 0, bool Function(int f)? first, int? cap}) {
+  final order = [...members]..sort((a, b) => darkest ? l[a].compareTo(l[b]) : l[b].compareTo(l[a]));
+  final left = {for (final f in members) f: cap == null ? stock[f] : math.min(stock[f], cap)};
+  var sum = 0.0, placed = 0;
+  void take(Iterable<int> from, int upTo) {
+    for (final f in from) {
+      if (placed >= upTo) return;
+      final k = math.min(left[f]!, upTo - placed);
+      sum += k * l[f]; placed += k; left[f] = left[f]! - k;
+    }
+  }
+  if (need > 0) { take(order.where(first!), need); if (placed < need) return null; }
+  take(order, size);
+  return placed < size ? null : sum / size;
+}
+
 // ---- The verdict on one board. ----
 
 enum Outcome { pass, fail, cannot }
@@ -218,7 +267,7 @@ Map<double, int> _byValue(List<double> v, List<int> stock, List<int> members) {
 }
 
 /* A lightness pattern: Somers' d of lightness given the target, and the light-third-against-dark-third separation. */
-Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members) {
+Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members, {bool apart = false}) {
   final t = m.obj.targetL!, w = m.obj.wL!, l = m.pool.lightness;
   final idx = [for (var i = 0; i < grid.length; i++) if (w[i] > 0) i];
   final lt = [for (final i in idx) t[i]], ll = [for (final i in idx) l[grid[i]]];
@@ -234,6 +283,17 @@ Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members) {
   final maxD = maxSomersD(lt, _byValue(l, stock, members));
   if (can < separationShare * want) {
     return _cannot('at most ${can.toStringAsFixed(1)} of separation from its pieces, needs ${(separationShare * want).toStringAsFixed(1)}');
+  }
+  // With the no-same-neighbour rule, a cloth takes at most an independent set of each third.
+  if (apart) {
+    final topSquares = [for (final k in top) idx[k]], bottomSquares = [for (final k in bottom) idx[k]];
+    final hiMean = extremeMean(l, stock, members, top.length, darkest: false, cap: apartCap(topSquares, m.obj));
+    final loMean = extremeMean(l, stock, members, bottom.length, darkest: true, cap: apartCap(bottomSquares, m.obj));
+    final apartCan = hiMean == null || loMean == null ? double.negativeInfinity : hiMean - loMean;
+    if (apartCan < separationShare * want) {
+      return _cannot('at most ${apartCan.toStringAsFixed(1)} of separation with no cloth beside itself, needs '
+          '${(separationShare * want).toStringAsFixed(1)}');
+    }
   }
   if (maxD < minSomersD) return _cannot('at most d ${maxD.toStringAsFixed(2)} from its pieces');
   final d = somersD(ll, lt);
@@ -252,6 +312,21 @@ Verdict _seamRule(Compiled m, List<int> grid, List<int> stock, List<int> members
   final open = partnered.fold(0, (a, i) => a + stock[i]);
   final lonely = math.max(0, grid.length - open);
   if (lonely > pairs.length / 2) return _cannot('$lonely squares must take cloth with no partner ${seamL.round()} L* away');
+  // The median reaches seamL only if half the seams do. A seam that far apart has, for any lightness t, an end below t
+  // or an end at least t + seamL (if its darker end is not below t, its lighter end is at least t + seamL). So the
+  // squares holding those pieces touch every such seam, and those seams number at most the seams of that many
+  // squares, the best-placed ones counted; the bound is the least over t.
+  final degree = List<int>.filled(grid.length, 0);
+  for (final (a, b) in pairs) { degree[a]++; degree[b]++; }
+  degree.sort((a, b) => b.compareTo(a));
+  final have = [for (final i in members) if (stock[i] > 0) i];
+  var most = pairs.length;
+  for (final t in [for (final i in have) ...[l[i], l[i] - seamL + 1e-9]]) {
+    final k = math.min(grid.length, have.where((i) => l[i] < t || l[i] >= t + seamL).fold(0, (a, i) => a + stock[i]));
+    most = math.min(most, degree.take(k).fold(0, (a, b) => a + b));
+  }
+  final need = (pairs.length / 2).ceil();
+  if (most < need) return _cannot('at most $most seams ${seamL.round()} L* apart from its pieces, needs $need');
   final gaps = <double>[];
   var pos = 0, neg = 0;
   for (final (a, b) in pairs) {
@@ -315,6 +390,18 @@ Verdict _heart(Compiled m, List<int> grid, List<int> stock, List<int> members, B
   final pieces = [for (final i in piecesOf(stock, members)) l[i]]..sort();
   final can = _mean(pieces.sublist(pieces.length - ground.length)) - _mean(pieces.sublist(0, heart.length));
   if (can < seamL) return _cannot('at most ${can.toStringAsFixed(1)} L* between ground and heart');
+  // The same, with the heart's share of its colour and the ground's share of others, each cloth at most an
+  // independent set of its zone where the no-same-neighbour rule applies.
+  final apart = members.length >= apartFrom;
+  final heartLeast = extremeMean(l, stock, members, heart.length, darkest: true, need: (heartShare * heart.length).ceil(),
+      first: near, cap: apart ? apartCap(heart, m.obj) : null);
+  final groundMost = extremeMean(l, stock, members, ground.length, darkest: false,
+      need: ((1 - groundShare) * ground.length).ceil(), first: (f) => !near(f), cap: apart ? apartCap(ground, m.obj) : null);
+  if (heartLeast == null || groundMost == null) return _cannot('its pieces cannot fill the heart and the ground with no cloth beside itself');
+  if (groundMost - heartLeast < seamL) {
+    return _cannot('at most ${(groundMost - heartLeast).toStringAsFixed(1)} L* between ground and heart with the colours '
+        'and no cloth beside itself');
+  }
   final inHeart = heart.where((i) => near(grid[i])).length / heart.length;
   final inGround = ground.isEmpty ? 0.0 : ground.where((i) => near(grid[i])).length / ground.length;
   final contrast = _mean(ground.map((i) => l[grid[i]])) - _mean(heart.map((i) => l[grid[i]]));
@@ -342,7 +429,7 @@ Verdict _chain(Compiled m, List<int> grid, List<int> stock, List<int> members, B
    bound: as Blocks', over the rings. */
 Verdict _diamond(Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) {
   final t = m.obj.targetColour, lab = m.pool.lab;
-  final v = _map(m, grid, stock, members);
+  final v = _map(m, grid, stock, members, apart: members.length >= apartFrom);
   if (v.outcome == Outcome.cannot) return v;
   if (t == null) return Verdict(Outcome.fail, 0, '${v.detail}, no colour family per ring');
   final targets = t.toSet().toList();
@@ -377,8 +464,8 @@ Verdict ruleFor(LayoutKey key, Compiled m, List<int> grid, List<int> stock, List
     case LayoutKey.medallionPrint:
       final kinds = {for (final i in members) m.pool.lightness[i]}.length;
       if (kinds < rippleKinds) return _cannot('$kinds kinds of busy');
-      return _map(m, grid, stock, members);
-    default: return _map(m, grid, stock, members);
+      return _map(m, grid, stock, members, apart: members.length >= apartFrom);
+    default: return _map(m, grid, stock, members, apart: members.length >= apartFrom);
   }
 }
 

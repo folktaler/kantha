@@ -6,7 +6,8 @@
    With --sheet, also draws a contact sheet for the Sample, Any 12 and Narrow 8 boxes (every pattern at 7 × 5, 8 × 8,
    3 × 12 and 12 × 12, seed 1, flat colours) into that folder, and writes there grids.json, those panels' colours, for
    a before-and-after sheet. Run in studio/:
-     dart run tool/pattern_sweep.dart <table.md> [--seeds 3] [--sheet <folder>] [--only tuning|held-out] */
+     dart run tool/pattern_sweep.dart <table.md> [--seeds 3] [--sheet <folder>] [--only tuning|held-out]
+     [--patterns diamond,heart] */
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -21,17 +22,22 @@ typedef Job = ({LayoutKey key, int box, BoardSize size, int seed});
 const _sheetSizes = [(rows: 7, cols: 5), (rows: 8, cols: 8), (rows: 3, cols: 12), (rows: 12, cols: 12)];
 const _sheetBoxes = ['Sample', 'Any 12', 'Narrow 8'];
 
+/* The patterns swept: every one, or those --patterns names. */
+List<LayoutKey> keys = layoutKeys;
+
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {
-    stderr.writeln('usage: dart run tool/pattern_sweep.dart <table.md> [--seeds 3] [--sheet <folder>] [--only tuning|held-out]');
+    stderr.writeln('usage: dart run tool/pattern_sweep.dart <table.md> [--seeds 3] [--sheet <folder>] [--only tuning|held-out] [--patterns diamond,heart]');
     exit(64);
   }
   String? opt(String name) { final i = args.indexOf(name); return i >= 0 && i + 1 < args.length ? args[i + 1] : null; }
   final seeds = int.parse(opt('--seeds') ?? '3'), sheet = opt('--sheet'), only = opt('--only');
   List<Box> boxesNow() => switch (only) { 'tuning' => tuningBoxes(), 'held-out' => heldOutBoxes(), _ => allBoxes() };
   final boxes = boxesNow();
+  final named = opt('--patterns');
+  if (named != null) keys = [for (final n in named.split(',')) LayoutKey.values.byName(n)];
   final jobs = <Job>[
-    for (final key in layoutKeys)
+    for (final key in keys)
       for (var b = 0; b < boxes.length; b++)
         for (var r = boardMin; r <= boardMax; r++)
           for (var c = boardMin; c <= boardMax; c++)
@@ -107,7 +113,7 @@ String _summary(String title, List<Unit> all) {
     ..writeln('| Pattern | Units | Pass | Fail | Cannot (refused + rule) | Pass % of makeable [95% CI] | Random pass % | Sorted pass % | '
         'Margin over sorted (points) | Apart % | Sorted apart % | Steady over seeds % |')
     ..writeln('|---|---|---|---|---|---|---|---|---|---|---|---|');
-  for (final key in layoutKeys) {
+  for (final key in keys) {
     final u = [for (final x in all) if (x.cases.first.key == key) x];
     final judged = u.where((x) => x.solved != Outcome.cannot).toList();
     final pass = judged.where((x) => x.solved == Outcome.pass).length;
@@ -146,7 +152,7 @@ String table(List<Case> cases, List<Box> boxes, int seeds) {
     ..writeln()
     ..writeln('| Pattern | ${boxes.map((b) => b.name).join(' | ')} |')
     ..writeln('|---|${boxes.map((_) => '---').join('|')}|');
-  for (final key in layoutKeys) {
+  for (final key in keys) {
     final cells = <String>[];
     for (final b in boxes) {
       final u = [for (final x in units.values) if (x.cases.first.key == key && x.cases.first.box == b.name) x];
@@ -155,7 +161,7 @@ String table(List<Case> cases, List<Box> boxes, int seeds) {
     }
     out.writeln('| ${_name(key)} | ${cells.join(' | ')} |');
   }
-  for (final key in layoutKeys) {
+  for (final key in keys) {
     final fails = [for (final c in cases) if (c.key == key && c.outcome == Outcome.fail) c];
     final cannot = [for (final c in cases) if (c.key == key && c.fills && c.outcome == Outcome.cannot) c];
     final rep = [for (final c in cases) if (c.key == key && c.fills && c.solved!.apartApplies && !c.solved!.apart) c];

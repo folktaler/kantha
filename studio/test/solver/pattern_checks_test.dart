@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantha_studio/solver/compile.dart';
 import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'pattern_rules.dart';
@@ -15,11 +16,13 @@ const _sizes = [(rows: 7, cols: 5), (rows: 3, cols: 12), (rows: 12, cols: 3), (r
 /* Cases whose outcome is not a pass, each reported to the owner (1 November 2026) and left until he decides; a case not
    listed must pass. Keyed '<pattern> <box> <rows>x<cols>'; the comment is what the rule measured then. */
 const Map<String, Outcome> _known = {
-  // Heart on the Sample box: the heart holds its colour, but the ground is not 25 L* lighter.
-  'heart Sample 3x12': Outcome.fail, // ground lighter by 23.4
-  'heart Sample 12x3': Outcome.fail, // ground lighter by 23.2
-  'heart Sample 8x8': Outcome.fail, // heart 96%, ground lighter by 19.7
-  'heart Sample 12x12': Outcome.fail, // heart 96%, ground lighter by 15.8
+  // Heart on the Sample box. Three cannot be made: with the heart in its colour, the ground in others and no cloth
+  // beside itself, the box's pieces give the ground at most 23.0, 23.2 and 21.5 L* over the heart. One the box could
+  // make, and the solver falls short: the ground is not 25 L* lighter.
+  'heart Sample 3x12': Outcome.cannot,
+  'heart Sample 12x3': Outcome.cannot,
+  'heart Sample 8x8': Outcome.fail, // heart 96%, ground 29% its colour, lighter by 19.7
+  'heart Sample 12x12': Outcome.cannot,
   // Chain needs one dark cloth with a piece for every link; 12 pieces cover 7 x 5 but not these boards.
   'chain Sample 8x8': Outcome.cannot, // noChainCloth
   'chain Sample 12x12': Outcome.cannot, // noChainCloth
@@ -65,6 +68,25 @@ void main() {
     expect([for (var r = 0; r < 7; r++) row(r)], ['X.....X', '.X...X.', '..X.X..', '...X...', '..X.X..', '.X...X.', 'X.....X']);
     final big = targetMap(LayoutKey.chain, level1);
     expect(big.where((v) => v == 0).length, 9, reason: 'the start board has 9 links');
+  });
+
+  test('the bounds from the pieces: one cloth with no neighbour, the extreme mean, and the seams a box can make', () {
+    final obj = modelFor(LayoutKey.contrast, ObjectiveInput(pool: sampleBox().forBoard(9).pool,
+        edge: sampleBox().forBoard(9).edge, members: sampleBox().forBoard(9).members, mount: Mount.none,
+        stock: sampleBox().forBoard(9).stock, size: (rows: 3, cols: 3))).obj;
+    // A 3 x 3 board holds one cloth on at most its 5 corner-and-centre squares; a row of 3 on at most 2.
+    expect(apartCap([for (var i = 0; i < 9; i++) i], obj), 5);
+    expect(apartCap([0, 1, 2], obj), 2);
+    // Lightness 10 (2 pieces), 50 (5) and 90 (1); the darkest 3 squares average (10 + 10 + 50) / 3, and at most one
+    // piece each gives (10 + 50 + 90) / 3; with 2 of them from the 90 cloth, there are not enough.
+    final l = [10.0, 50.0, 90.0], stock = [2, 5, 1], members = [0, 1, 2];
+    expect(extremeMean(l, stock, members, 3, darkest: true), closeTo(70 / 3, 1e-9));
+    expect(extremeMean(l, stock, members, 3, darkest: true, cap: 1), closeTo(50, 1e-9));
+    expect(extremeMean(l, stock, members, 3, darkest: true, need: 2, first: (f) => f == 2), isNull);
+    // Held Any 8 at 5 x 7: only its 4 pieces at L* 7.8 and 2 at 90.5 have a partner 25 L* away on every seam, so at
+    // most 24 seams of 58 can be that far apart and the median cannot reach 25.
+    final c = runCase(LayoutKey.contrast, heldOutBoxes().firstWhere((b) => b.name == 'Held Any 8'), (rows: 5, cols: 7), 1);
+    expect(c.outcome, Outcome.cannot, reason: c.solved!.rule.detail);
   });
 
   test('the statistics: Somers’ d, its bound from the pieces, and the Wilson interval', () {

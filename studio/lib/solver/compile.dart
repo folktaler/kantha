@@ -236,10 +236,12 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     final order = [for (var q = 0; q < families.medoids.length; q++) q]
       ..sort((a, b) { final c = meanL(a).compareTo(meanL(b)); return c != 0 ? c : a.compareTo(b); });
     ensureColour();
+    // Each level's lightness target is its own family's mean L*, so the lightness fit asks for the family's pieces
+    // rather than pulling the ring towards other families' lightness.
     for (var k = 0; k < levels.length; k++) {
       final q = order[k], at = [for (final i in zone) if (t[i] == levels[k]) i];
       if (pieces(q) < at.length) refuse(Unfillable.noRingFamily);
-      for (final i in at) { obj.targetColour![i] = families.medoids[q]; obj.wColour![i] = rf.weight; }
+      for (final i in at) { obj.targetColour![i] = families.medoids[q]; obj.wColour![i] = rf.weight; obj.targetL![i] = meanL(q); }
     }
   }
 
