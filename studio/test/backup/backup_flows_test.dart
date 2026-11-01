@@ -22,12 +22,12 @@ void main() {
     final d = CaptureDelivery();
     final said = <String>[];
     var busy = 0;
-    final out = await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) => said.add(t), words: words, busy: (_) => busy++);
+    final out = await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) => said.add(t), words: words, busy: (_) { busy++; return () => busy++; });
     final name = backupFileName(DateTime.now());
     expect(out, BackupSaved.kept);
     expect(d.backups.keys, [name]);
     expect(said, ['Saved $name.']);
-    expect(busy, 1);
+    expect(busy, 2, reason: 'told as the work starts, and as it ends');
   });
 
   test('a share sheet she dismissed is notKept, and nothing is said', () async {

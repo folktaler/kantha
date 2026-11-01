@@ -12,7 +12,8 @@ import 'files.dart';
 import '../platform/report.dart';
 
 typedef Say = void Function(String text, {bool failed});
-typedef Busy = void Function(String doing);
+/* Told as work starts, with its words; what it returns is called as the work ends. */
+typedef Busy = VoidCallback Function(String doing);
 
 enum _Answer { saveFirst, replace, cancel }
 
@@ -22,7 +23,7 @@ enum BackupSaved { kept, notKept, failed }
 
 Future<BackupSaved> exportBackupNow({required StudioController c, required Delivery delivery, Rect? origin,
     required Say say, required L words, Busy? busy}) async {
-  busy?.call(words.deviceSavingBackup);
+  final done = busy?.call(words.deviceSavingBackup);
   try {
     final bytes = await exportBackup(c.shelf.db, c.side);
     final name = backupFileName(DateTime.now());
@@ -37,6 +38,8 @@ Future<BackupSaved> exportBackupNow({required StudioController c, required Deliv
     // The zip code would not load (offline, or the release gone): the words an import says then.
     say(e is BackupError && e.key == 'notLoaded' ? words.clothErrorsPieceFailed : words.deviceBackupFailed, failed: true);
     return BackupSaved.failed;
+  } finally {
+    done?.call();
   }
 }
 
@@ -58,7 +61,7 @@ Future<void> openBackupNow({required BuildContext context, required StudioContro
       continue;
     }
     if (answer != _Answer.replace) return;
-    busy?.call(words.deviceOpeningBackup);
+    final done = busy?.call(words.deviceOpeningBackup);
     try {
       await c.importFile(picked.bytes);
       say(words.deviceImportDone(picked.name));
@@ -73,6 +76,8 @@ Future<void> openBackupNow({required BuildContext context, required StudioContro
     } catch (e, s) {
       reportError(e, s, 'while a backup replaced this device');
       say(words.canvasSaveFailed(words.deviceStorageFailed), failed: true);
+    } finally {
+      done?.call();
     }
     return;
   }
