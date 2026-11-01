@@ -21,13 +21,17 @@ class LFromT extends LRule { const LFromT(this.t, super.weight); final CellFn t;
 class LAt extends LRule { const LAt(this.at, super.weight); final double Function(int r, int c, BoardSize g, PoolStats s) at; }
 
 class ZoneRules {
-  const ZoneRules({this.l, this.edge, this.hue, this.family, this.colour, this.orient, this.avoid, this.oneCloth});
+  const ZoneRules({this.l, this.edge, this.hue, this.family, this.colour, this.orient, this.avoid, this.oneCloth, this.ringFamilies});
   final LRule? l;
   /* Stay away from the colour another zone's `colour` rule anchors (Heart's ground from the heart). */
   final ({double weight})? avoid;
   /* The squares whose lightness target is the darkest (t = 0) all take one cloth: the darkest cloth in the darker half
      of the box with a piece for each of them (Chain's links, owner 1 November 2026). */
   final ({double weight})? oneCloth;
+  /* Each level of the lightness target (Diamond's rings: dark, middle, light) takes one colour family (owner,
+     1 November 2026: "each ring one colour"), each family one colour at one lightness (grouped by CAM16-UCS ΔE′, as
+     rings of one colour in Sunshine and Shadow keep to light or dark), given to the levels darkest first. */
+  final ({double weight})? ringFamilies;
   final ({CellFn t, double weight})? edge;
   final ({CellFn angle, double weight})? hue;
   final ({double weight})? family;
@@ -127,14 +131,17 @@ abstract final class Ramps {
   /* The quilters' Chevron: light, mid and dark bands two squares deep, dipping to a V in the middle column(s). */
   static double zigzag(int r, int c, BoardSize g) =>
       const [1.0, 0.5, 0.0][((r + (c - (g.cols - 1) / 2).abs().floor()) % 6) ~/ 2];
-  /* The quilters' Irish Chain: dark squares on the diagonals every fourth square both ways, crossing at the middle
-     square (the upper-left of the middle ones on an even side), the rest light ground. No two chain squares share a
-     side, so one dark cloth can make every link. */
+  /* The Single Irish Chain (owner, 1 November 2026): nine-patch blocks of five dark squares (an X: the centre and the
+     four corners) set between plain light blocks, so the dark squares run in diagonal chains six squares apart both
+     ways and cross as a five-square X every third square along each chain. The middle square (the upper-left of the
+     middle ones on an even side) is a crossing. No two chain squares share a side, so one dark cloth can make every
+     link. */
   static double chain(int r, int c, BoardSize g) {
     final dr = r - (g.rows - 1) ~/ 2, dc = c - (g.cols - 1) ~/ 2;
-    return (dr + dc) % 4 == 0 || (dr - dc) % 4 == 0 ? 0 : 1;
+    return (dr + dc) % 6 == 0 || (dr - dc) % 6 == 0 ? 0 : 1;
   }
-  /* The Amish Sunshine and Shadow: diamond rings out from the middle, dark, mid and light in turn. */
+  /* The Amish Sunshine and Shadow: diamond rings out from the middle, dark, mid and light in turn, each ring one colour
+     family (ZoneRules.ringFamilies). */
   static double diamond(int r, int c, BoardSize g) =>
       const [0.0, 0.5, 1.0][((r - (g.rows - 1) / 2).abs().floor() + (c - (g.cols - 1) / 2).abs().floor()) % 3];
 }

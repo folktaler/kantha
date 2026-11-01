@@ -11,7 +11,7 @@ void main() {
     final all = [for (var i = 0; i < labs.length; i++) i];
     for (final f in recorded['families'] as List) {
       final members = f['case'] == 'pool' ? all : all.sublist(0, 12);
-      final got = colourFamilies(labs, members, 3, 10);
+      final got = colourFamilies(labs, members, 3);
       if (f['result'] == null) { expect(got, isNull); continue; }
       expect(got!.medoids, ints(f['result']['medoids']));
       expect(got.family, ints(f['result']['family']));

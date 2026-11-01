@@ -253,6 +253,10 @@ class LEn extends L {
       'this box has no dark cloth with enough pieces for every link';
 
   @override
+  String get canvasNotFillableNoRingFamily =>
+      'this box has too few pieces of one colour for each ring';
+
+  @override
   String canvasLayoutCannot(String title, String why) {
     return '$title — $why';
   }

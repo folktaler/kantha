@@ -1,16 +1,16 @@
-/* Re-records the named templates in test/fixtures/solver/recorded.json from this Dart solver, when a template's
-   objective changes by the owner's decision (Chess, Spectrum, Blocks and Heart, 1 November 2026). Every other
-   template's record, from the TypeScript solver, is left as it is. A run's objective, fill and anchors are written as
-   compile gives them; its solves are dealt with Node's recorded colour differences (the file's 'ciede') in place of
-   this platform's, as solve_parity_test.dart's gate deals them, so the record does not hang on platform maths
-   (Spectrum's hue angles excepted, as there). The start panels of those templates are dealt again too. Run in studio/,
-   then tool/fixtures_to_dart.dart:
-     dart run tool/rerecord_solver.dart contrast spectrum blocks heart */
+/* Re-records the named templates (or `all`) in test/fixtures/solver/recorded.json from this Dart solver, when a
+   template's objective changes (Chess, Spectrum, Blocks and Heart, 1 November 2026; every template the same day, when
+   the colour difference became CAM16-UCS and the lightness fit squared). Run on the Dart VM, it also writes the
+   colour tables the solves read ('cam16': each pair's ΔE′ and a′b′ distance; 'cam16Hue': each cloth's hue), so
+   solve_parity_test.dart's gate can deal them in place of another platform's maths (Spectrum excepted, whose targets
+   compile computes from hue itself). The start panels of those templates are dealt again too. Run in studio/, then
+   tool/fixtures_to_dart.dart:
+     dart run tool/rerecord_solver.dart all */
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:kantha_studio/solver/compile.dart';
 import 'package:kantha_studio/solver/fabrics.dart';
+import 'package:kantha_studio/solver/families.dart';
 import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/hue.dart';
 import 'package:kantha_studio/solver/layouts.dart';
@@ -28,7 +28,7 @@ void main(List<String> args) {
     stderr.writeln('usage: dart run tool/rerecord_solver.dart <template> …');
     exit(64);
   }
-  final keys = {for (final a in args) LayoutKey.values.byName(a).name};
+  final keys = args.contains('all') ? {for (final k in LayoutKey.values) k.name} : {for (final a in args) LayoutKey.values.byName(a).name};
   const path = 'test/fixtures/solver/recorded.json';
   final rec = jsonDecode(File(path).readAsStringSync()) as Map<String, dynamic>;
   final poolJson = jsonDecode(File('test/fixtures/solver/pool-2026-09-11.json').readAsStringSync()) as Map<String, dynamic>;
@@ -37,11 +37,14 @@ void main(List<String> args) {
       busy: [for (final b in poolJson['busy'] as List) b as bool]);
   final edge = [for (final e in poolJson['edge'] as List) e == null ? null : _d(e)];
   final n = labs.length;
-  final dc = Float64List(n * n), dh = Float64List(n * n);
-  for (final e in rec['ciede'] as List) {
-    final k = (e['p'] as int) * n + (e['q'] as int);
-    dc[k] = _d(e['dEChroma']);
-    dh[k] = _d(e['dH']).abs();
+  final tables = prepare(pool, Distance.cam16Ucs);
+  rec['cam16'] = [for (var p = 0; p < n; p++) for (var q = 0; q < n; q++) {'p': p, 'q': q, 'de': tables.de[p * n + q], 'dc': tables.dc[p * n + q]}];
+  rec['cam16Hue'] = tables.hue;
+  // The colour families (families_test.dart), by the same CAM16 measure.
+  for (final f in (rec['families'] as List).cast<Map<String, dynamic>>()) {
+    final all = [for (var i = 0; i < n; i++) i];
+    final got = colourFamilies(labs, f['case'] == 'pool' ? all : all.sublist(0, 12), 3);
+    f['result'] = got == null ? null : {'medoids': got.medoids, 'family': got.family};
   }
   List<num>? list(List<num>? v) => v?.toList();
   var runs = 0;
@@ -59,14 +62,12 @@ void main(List<String> args) {
         'seamLTarget': list(o.seamLTarget), 'seamL': list(o.seamL), 'seamDE': list(o.seamDE), 'seamFrame': list(o.seamFrame),
         'boundary': list(o.boundary), 'targetL': list(o.targetL), 'wL': list(o.wL), 'targetHue': list(o.targetHue),
         'wHue': list(o.wHue), 'hueExclude': o.hueExclude?.toList(), 'targetColour': list(o.targetColour),
-        'wColour': list(o.wColour),
+        'wColour': list(o.wColour), 'hueCut': o.hueCut,
         'perimeter': o.perimeter == null ? null : {'groundL': o.perimeter!.groundL, 'clearance': o.perimeter!.clearance,
             'weight': o.perimeter!.weight, 'cells': o.perimeter!.cells.toList()},
       };
       run['poolLightness'] = m.pool.lightness;
-      final p = prepare(m.pool, o.distance);
-      final prep = run['layout'] == 'spectrum' ? p
-          : Prepared(p.n, p.de, p.dl, dh, dc, p.l, p.vw, p.busy, p.hue, p.grain, p.coherence);
+      final prep = prepare(m.pool, o.distance);
       for (final s in (run['solves'] as List).cast<Map<String, dynamic>>()) {
         final got = solve(o, prep, input.stock, input.members, SolveOptions(seed: s['seed'] as int));
         if (got == null) {

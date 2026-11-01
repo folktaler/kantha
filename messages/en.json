@@ -111,7 +111,8 @@
       "fewPieces": "this box has too few pieces near that colour to fill the shape",
       "noDarkEnough": "this box has no cloth of that colour dark enough to stand against the ground",
       "noFamilies": "this box has too few coloured cloths to make its colour families",
-      "noChainCloth": "this box has no dark cloth with enough pieces for every link"
+      "noChainCloth": "this box has no dark cloth with enough pieces for every link",
+      "noRingFamily": "this box has too few pieces of one colour for each ring"
     },
     "layoutCannot": "{title} — {why}",
     "cantFill": "This box cannot fill this layout: {why}.",

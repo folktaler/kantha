@@ -27,8 +27,8 @@ void expectClose(Object? got, Object? want, String what) {
 
 void main() {
   final pool = fixturePool(), edge = fixtureEdge();
-  // Chrome's Math.atan2/sin/cos/exp/pow are not bit-identical to the Node 22 that recorded the
-  // fixtures (Task 4 measured 932 of 10000 inputs; the Dart VM 988), so on either platform a
+  // Chrome's Math.atan2/sin/cos/exp/pow are not bit-identical to the Dart VM that recorded the
+  // fixtures (Task 4 measured 932 of 10000 inputs against Node), so on the web a
   // different arrangement may come back: annealing from last-bit-different tables lands in another
   // local minimum, better or worse. One that differs passes only if it is whole, from the box's own
   // cloth, within stock, a local minimum of the solver's own moves, and the recorded arrangement still
@@ -82,18 +82,19 @@ void main() {
     });
   }
 
-  // The gate that proves the port: the same solves with the colour differences Node computed
-  // (recorded.json 'ciede') in place of this platform's, so the search is free of platform maths and
-  // must deal exactly what the TypeScript dealt, on every platform. Spectrum is left out: its score
-  // reads hue angles (hueOf, atan2), which the fixtures do not record.
-  group("with Node's colour tables the solver deals every recorded arrangement", () {
+  // The gate that proves the solver is the same on every platform: the same solves with the colour tables the Dart VM
+  // computed when the fixtures were recorded (recorded.json 'cam16' and 'cam16Hue') in place of this platform's, so
+  // the search is free of platform maths and must deal exactly what was recorded. Spectrum is left out: compile sets
+  // its hue targets from hue itself, on this platform.
+  group('with the recorded colour tables the solver deals every recorded arrangement', () {
     final n = pool.lab.length;
-    final dc = Float64List(n * n), dh = Float64List(n * n);
-    for (final e in recorded['ciede'] as List) {
+    final de = Float64List(n * n), dc = Float64List(n * n);
+    for (final e in recorded['cam16'] as List) {
       final k = (e['p'] as int) * n + (e['q'] as int);
-      dc[k] = d(e['dEChroma']);
-      dh[k] = d(e['dH']).abs();
+      de[k] = d(e['de']);
+      dc[k] = d(e['dc']);
     }
+    final hue = ds(recorded['cam16Hue']);
     for (final c in recorded['cases'] as List) {
       for (final run in c['runs'] as List) {
         if (run['layout'] == 'spectrum') continue;
@@ -105,8 +106,7 @@ void main() {
             final key = LayoutKey.values.byName(run['layout'] as String);
             final m = modelFor(key, input);
             final p = prepare(m.pool, m.obj.distance);
-            // de here is cie76 (jsHypot3, exact on every platform); only the CIEDE2000 tables are swapped.
-            final prep = Prepared(p.n, p.de, p.dl, dh, dc, p.l, p.vw, p.busy, p.hue, p.grain, p.coherence);
+            final prep = Prepared(p.n, de, p.dl, dc, p.l, p.vw, p.busy, hue, p.grain, p.coherence);
             final got = solve(m.obj, prep, input.stock, input.members, SolveOptions(seed: s['seed'] as int))!;
             expect(got.grid, ints(s['grid']), reason: 'grid');
             expect((got.total - d(s['total'])).abs(), lessThanOrEqualTo(1e-9), reason: 'total');

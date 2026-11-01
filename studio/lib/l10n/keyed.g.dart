@@ -65,6 +65,7 @@ String? plainByKey(L l, String key) => switch (key) {
       'canvas.notFillable.noDarkEnough' => l.canvasNotFillableNoDarkEnough,
       'canvas.notFillable.noFamilies' => l.canvasNotFillableNoFamilies,
       'canvas.notFillable.noChainCloth' => l.canvasNotFillableNoChainCloth,
+      'canvas.notFillable.noRingFamily' => l.canvasNotFillableNoRingFamily,
       'canvas.yourBoxes' => l.canvasYourBoxes,
       'canvas.share' => l.canvasShare,
       'canvas.savePhoto' => l.canvasSavePhoto,

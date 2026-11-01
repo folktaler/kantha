@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'cam16.dart';
 import 'hue.dart';
 
 class Families {
@@ -6,13 +7,15 @@ class Families {
   final List<int> medoids, family;
 }
 
-Families? colourFamilies(List<Lab> lab, List<int> members, int k, double minChroma) {
-  final items = [for (final i in members) if (chroma(lab[i]) >= minChroma) i];
+/* k colour families among the coloured cloths (k-medoids, every choice of medoids tried), by CAM16-UCS a′b′ distance, or
+   with `lightness` by ΔE′ (J′a′b′), so a family is one colour at one lightness. */
+Families? colourFamilies(List<Lab> lab, List<int> members, int k, {bool lightness = false}) {
+  final items = [for (final i in members) if (coloured(lab[i])) i];
   if (items.length < k) return null;
   final m = items.length;
-  final d = Float64List(m * m);
+  final d = Float64List(m * m), ucs = [for (final i in items) ucsOf(lab[i])];
   for (var a = 0; a < m; a++) {
-    for (var b = 0; b < m; b++) { d[a * m + b] = ciede2000(lab[items[a]], lab[items[b]]).dEChroma; }
+    for (var b = 0; b < m; b++) { d[a * m + b] = lightness ? deUcs(ucs[a], ucs[b]) : chromaUcs(ucs[a], ucs[b]); }
   }
 
   var best = <int>[];

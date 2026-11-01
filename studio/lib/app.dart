@@ -141,6 +141,11 @@ class _KanthaAppState extends State<KanthaApp> with WidgetsBindingObserver {
     } catch (e, st) {
       reportError(e, st, 'while the Sample box was given its real cloth');
     }
+    try {
+      await topUpSample(widget.shelf);
+    } catch (e, st) {
+      reportError(e, st, 'while the Sample box was given more pieces');
+    }
     // Her board's size, before the first solve (it never throws).
     await c.loadBoard();
     if (!mounted) return; // dispose ran during the await: subscribing now would leak

@@ -7,4 +7,5 @@ abstract final class Tuned {
   static const double boundaryWeight = 2;  // heart: flat over 1–8
   static const double avoidWeight = 16;    // heart: the ground away from the heart's colour; 4 too weak, 40 cost same-cloth neighbours
   static const double pinWeight = 500;     // chain: a link of any other cloth
+  static const double ringWeight = 2;      // diamond: a ring's family; on the tuning boxes 0.25, 0.5, 1, 2, 8 and 32 passed 63, 76, 76, 77, 47 and 26%
 }

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantha_studio/solver/cam16.dart';
 import 'package:kantha_studio/solver/hue.dart';
+import 'package:material_color_utilities/material_color_utilities.dart';
 import '../fixtures/fixtures.g.dart' as g;
 import 'recorded.dart';
 
@@ -43,5 +45,39 @@ void main() {
     expect(angleGap(52.5, 332.8), 79.69999999999999);
     expect(angleGap(-121.1, 153.1), 85.80000000000001);
     expect(angleGap(-31, 123.7), 154.7);
+  });
+
+  group('CAM16 (cam16.dart)', () {
+    Lab sRgb(int r, int g, int b) {
+      final l = ColorUtils.labFromArgb(ColorUtils.argbFromRgb(r, g, b));
+      return (l: l[0], a: l[1], b: l[2]);
+    }
+
+    test('a CIELAB colour gets the hue material_color_utilities gives its sRGB value', () {
+      for (final (r, g, b) in [(0, 0, 255), (0, 0, 128), (255, 0, 0), (255, 165, 0), (0, 128, 128)]) {
+        expect(ucsOf(sRgb(r, g, b)).hue, closeTo(Cam16.fromInt(ColorUtils.argbFromRgb(r, g, b)).hue, 1e-6));
+      }
+    });
+
+    test('blue and navy sit with the cool hues, not past red as CIELAB unwrapped at 290° put them', () {
+      final cut = purpleCut([for (final c in [sRgb(0, 0, 255), sRgb(0, 0, 128), sRgb(255, 0, 0), sRgb(255, 165, 0)]) ucsOf(c).hue]);
+      double line(Lab c) => hueOnLine(ucsOf(c).hue, cut);
+      expect(line(sRgb(0, 0, 255)), greaterThan(line(sRgb(0, 128, 128))));
+      expect(line(sRgb(0, 0, 128)), greaterThan(line(sRgb(255, 165, 0))));
+      expect(line(sRgb(255, 0, 0)), lessThan(line(sRgb(255, 165, 0))));
+    });
+
+    test('the cut falls in the purples, in the middle of the widest stretch with no hue of the box', () {
+      expect(purpleCut([]), closeTo((331.8 + 379.3) / 2, 1e-9));
+      expect(purpleCut([340, 350, 100]), closeTo((350 + 379.3) / 2 - 360, 1e-9));
+      expect(purpleCut([335, 375]), closeTo(355, 1e-9));
+    });
+
+    test('ΔE′ is the Euclidean distance in J′a′b′, and a′b′ leaves lightness out', () {
+      final p = ucsOf(sRgb(255, 0, 0)), q = ucsOf(sRgb(255, 165, 0));
+      expect(deUcs(p, q), closeTo(38.88, 0.01));
+      expect(chromaUcs(p, q), closeTo(33.91, 0.01));
+      expect(chromaUcs(ucsOf((l: 30, a: 0, b: 0)), ucsOf((l: 80, a: 0, b: 0))), lessThan(1));
+    });
   });
 }

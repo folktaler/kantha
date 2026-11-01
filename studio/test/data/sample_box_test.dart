@@ -2,7 +2,7 @@
 library;
 
 import 'dart:io';
-import 'package:drift/drift.dart' show ApplyInterceptor, QueryExecutor, QueryInterceptor, TransactionExecutor, driftRuntimeOptions;
+import 'package:drift/drift.dart' show ApplyInterceptor, Value, QueryExecutor, QueryInterceptor, TransactionExecutor, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/data/backup.dart';
@@ -12,11 +12,11 @@ import 'package:kantha_studio/data/sample_box.dart';
 import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
 import 'package:kantha_studio/measure/measure.dart';
-import 'package:kantha_studio/solver/compile.dart' show Unfillable;
 import 'package:kantha_studio/solver/geometry.dart' show cells;
 import 'package:kantha_studio/solver/layouts.dart';
 import '../support/db.dart';
 import '../support/files_fixture.dart' show testSideDb;
+import '../solver/pattern_rules.dart' show samplePiecesHere;
 import '../support/studio_fixture.dart';
 
 final _names = [for (final s in sampleCloth) s.name];
@@ -28,7 +28,7 @@ void main() {
     expect(m.map((x) => x.name).toSet().length, 10, reason: 'ten colour names');
   });
 
-  test('a fresh install gets the Sample box once, with the 10 cloths of 7, named as the owner named them', () async {
+  test('a fresh install gets the Sample box once, with the 10 cloths of 12, named as the owner named them', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     await ensureSampleBox(shelf);
@@ -36,7 +36,8 @@ void main() {
     expect(boxes.map((b) => b.name), ['sample']);
     final cloth = await shelf.db.select(shelf.db.cloths).get();
     expect(cloth.map((c) => c.name), _names);
-    expect(cloth.every((c) => c.pieces == 7 && c.fabric == ''), isTrue);
+    expect(cloth.every((c) => c.pieces == 12 && c.fabric == ''), isTrue);
+    expect(samplePiecesHere, List.filled(10, samplePieces), reason: 'pattern_rules.dart copies the count');
     expect(await shelf.swatchesToReplace(drawnSwatches), isNull, reason: 'a Sample box made now needs no swap');
   });
 
@@ -100,17 +101,59 @@ void main() {
     expect({for (final b in await shelf.db.select(shelf.db.boxes).get()) b.id: b.name}, before);
   });
 
-  test('every pattern but Chain fills from the Sample box; Chain says it has no dark cloth for every link', () async {
+  group('a Sample box made with 7 pieces of each cloth', () {
+    // As one made before 1 November 2026: 7 of each, and no top-up marker.
+    Future<Shelf> old() async {
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(pieces: Value(7)));
+      await (shelf.db.delete(shelf.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
+      return shelf;
+    }
+
+    test('gets 12 of each cloth she has not changed, once; a cloth she changed stays as she left it', () async {
+      final shelf = await old();
+      final cloth = await shelf.db.select(shelf.db.cloths).get();
+      await shelf.editCloth(cloth[0].id, fabric: '', pieces: 5);
+      await shelf.editCloth(cloth[1].id, fabric: 'Cotton', pieces: 7);
+      await topUpSample(shelf);
+      final after = {for (final c in await shelf.db.select(shelf.db.cloths).get()) c.id: c.pieces};
+      expect(after[cloth[0].id], 5);
+      expect(after[cloth[1].id], 7);
+      expect([for (final c in cloth.skip(2)) after[c.id]], List.filled(8, 12));
+      // Once: a cloth set back to 7 later is hers, and is not topped up again.
+      await shelf.editCloth(cloth[2].id, fabric: '', pieces: 7);
+      await topUpSample(shelf);
+      expect((await (shelf.db.select(shelf.db.cloths)..where((c) => c.id.equals(cloth[2].id))).getSingle()).pieces, 7);
+    });
+
+    test('emptied or deleted, stays as she left it', () async {
+      final shelf = await old();
+      final box = (await shelf.db.select(shelf.db.boxes).get()).single;
+      final ids = await shelf.clothIn(box.id);
+      await shelf.deleteBox(box.id, cloth: ids);
+      await topUpSample(shelf);
+      expect(await shelf.db.select(shelf.db.cloths).get(), isEmpty);
+      expect(await shelf.counterAt('samplePieces'), 2);
+    });
+
+    test('a Sample box made now needs no top-up', () async {
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      expect(await shelf.counterAt('samplePieces'), 2);
+    });
+  });
+
+  test('every pattern fills from the Sample box at the start size', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     final c = (await studio(on: shelf, seeded: false)).c;
     expect(c.box, isNotNull);
-    expect(c.piecesIn(c.box!), 10 * 7);
+    expect(c.piecesIn(c.box!), 10 * 12);
     for (final k in LayoutKey.values) {
-      // Chain's 13 links on 7 × 5 are one cloth (owner, 1 November 2026); the Sample box has 7 pieces of each.
-      expect(c.feasible[k]?.fills, k != LayoutKey.chain, reason: '${k.name} from the Sample box');
+      // Chain's 9 links on 7 × 5 are one cloth, and Diamond's light rings one family (owner, 1 November 2026).
+      expect(c.feasible[k]?.fills, isTrue, reason: '${k.name} from the Sample box');
     }
-    expect(c.feasible[LayoutKey.chain]?.why, Unfillable.noChainCloth);
     expect(c.starting, isFalse);
   });
 
@@ -139,7 +182,7 @@ void main() {
       final cloth = await shelf.db.select(shelf.db.cloths).get();
       expect(cloth.map((x) => x.name), [own.name, ..._names]);
       expect(cloth.every((x) => x.box == box), isTrue);
-      expect(cloth.where((x) => x.id != own.id).every((x) => x.pieces == 7), isTrue);
+      expect(cloth.where((x) => x.id != own.id).every((x) => x.pieces == samplePieces), isTrue);
       expect((await shelf.db.select(shelf.db.designs).get()).map((d) => d.id), [hers]);
       final pictures = await shelf.db.select(shelf.db.pictures).get();
       expect({for (final p in pictures) p.name: p.design}, {'Swatches': null, 'Mixed': null}, reason: 'Picture only');

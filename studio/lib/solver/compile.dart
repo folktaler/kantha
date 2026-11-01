@@ -3,6 +3,7 @@
    JavaScript's stable sort did. */
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'cam16.dart';
 import 'families.dart';
 import 'geometry.dart';
 import 'hue.dart';
@@ -10,10 +11,21 @@ import 'score.dart';
 import 'spec.dart';
 import 'tuned.dart';
 
-const double hueMinChroma = 10;
+/* The thresholds, each on its own measure. lTarget 25 L* (a seam's lightness gap) and frameLTarget 30 L* are design
+   choices with no published source. deTarget, a seam's colour difference, is 15.8 CAM16-UCS ΔE′, and sameColour, the
+   distance within which a cloth is "that colour", 19.4 in CAM16-UCS a′b′: each keeps, over the 90 cloths of the Sample
+   box, the tuning pool and the 47 factory cloths, the same share of pairs on its side as the 20 it replaces did (20 in
+   CIE76 ΔE*ab for seams, 9.3% of pairs under it; 20 in CIEDE2000's hue-and-chroma part, 44.3%). That 20 had no
+   published source either. */
 Weights baseWeightsWith(double lightness) => Weights(clump: 100, contrast: 1, lightness: lightness, printClash: 60,
-    printFrame: 4, balance: 50, deTarget: 20, lTarget: 25, frameLTarget: 30);
-const double wFit = 4, wHue = 0.5;
+    printFrame: 4, balance: 50, deTarget: 15.8, sameColour: 19.4, lTarget: 25, frameLTarget: 30);
+/* wFit weighs the squared lightness error (L*²). 0.05, tuned on 1 November 2026 on the tuning boxes only (tool/
+   pattern_sweep.dart's held-out boxes untouched; 36 board sizes, seed 1), against the clump weight of 100: of 0.05,
+   0.1, 0.2, 0.4 and 0.8, the rules passed 94.1, 94.8, 94.6, 94.4 and 94.1% of cases and no same-cloth neighbours held
+   in 99.8, 98.7, 95.4, 86.2 and 77.3%. 0.05 keeps the owner's no-neighbours rule best for 0.7 points of passes.
+   wHue weighs Spectrum's squared hue error (degrees²), tuned the same way: every weight from 0.001 to 0.5 passed all
+   288 cases; no same-cloth neighbours held in 100, 94, 82 and 72% at 0.001, 0.0025, 0.005 and 0.01. */
+const double wFit = 0.05, wHue = 0.001;
 const double _canvasClearance = 25, _wPerimeter = 20;
 
 PoolStats _statsOf(Pool pool, List<double?> edge, List<int> members) {
@@ -42,7 +54,7 @@ class ObjectiveInput {
   final SeamRule? seamOverride;
 }
 
-enum Unfillable { noColour, fewPieces, noDarkEnough, noFamilies, noChainCloth }
+enum Unfillable { noColour, fewPieces, noDarkEnough, noFamilies, noChainCloth, noRingFamily }
 
 class Compiled {
   const Compiled(this.obj, this.pool, this.fills, this.why, this.anchors);
@@ -57,9 +69,9 @@ int anchorFor(Pool pool, List<int> members, double hue) {
   var best = -1;
   var bestGap = double.infinity, bestC = -1.0;
   for (final i in members) {
-    final c = chroma(pool.lab[i]);
-    if (c < hueMinChroma) continue;
-    final gap = angleGap(hueOf(pool.lab[i]), hue);
+    final u = ucsOf(pool.lab[i]), c = u.c;
+    if (c < minChroma) continue;
+    final gap = angleGap(u.hue, hue);
     if (gap < bestGap - 1e-9 || ((gap - bestGap).abs() <= 1e-9 && c > bestC)) { best = i; bestGap = gap; bestC = c; }
   }
   return best;
@@ -73,7 +85,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   final s = _statsOf(input.pool, input.edge, members);
   final weights = baseWeightsWith(input.lightnessWeight ?? Tuned.lightness);
   final pairs = pairsFor(rows, cols, edgeOffsets);
-  final obj = newObjective(rows: rows, cols: cols, pairs: pairs, weights: weights, balance: spec.balance, distance: Distance.cie76);
+  final obj = newObjective(rows: rows, cols: cols, pairs: pairs, weights: weights, balance: spec.balance, distance: Distance.cam16Ucs);
   var pool = input.pool;
   final anchors = <int, int>{};
   Unfillable? why;
@@ -94,7 +106,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
   final familyZones = [for (final z in zoneIds) if (spec.rules[z]?.family != null) z];
   final medoidOf = <int, int>{};
   if (familyZones.isNotEmpty) {
-    final families = colourFamilies(input.pool.lab, members, familyZones.length, hueMinChroma);
+    final families = colourFamilies(input.pool.lab, members, familyZones.length);
     if (families == null) {
       refuse(Unfillable.noFamilies);
     } else {
@@ -138,13 +150,15 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     if (hr != null) {
       ensureHue();
       final t = fieldCells(hr.angle, size);
-      // Spectrum runs from the box's coolest coloured cloth to its warmest, on the cool-to-warm line, as Gradient runs
-      // from its lightest to its darkest: the drawn 200° to 20° is stretched onto the box's own run.
-      final axis = [for (final i in members) if (chroma(input.pool.lab[i]) >= hueMinChroma) warmthAxis(hueOf(input.pool.lab[i]))];
-      final cool = axis.isEmpty ? 200.0 : axis.reduce(math.max), warm = axis.isEmpty ? 20.0 : axis.reduce(math.min);
+      // Spectrum runs from the box's coolest coloured cloth to its warmest, as Gradient runs from its lightest to its
+      // darkest: CAM16 hue, the circle cut in the purples where the box has no hue (purpleCut), and the drawn 200° to 20°
+      // stretched onto the box's own run along that line.
+      final hues = [for (final i in members) if (coloured(input.pool.lab[i])) ucsOf(input.pool.lab[i]).hue];
+      final cut = purpleCut(hues), line = [for (final h in hues) hueOnLine(h, cut)];
+      final cool = line.isEmpty ? 0.0 : line.reduce(math.max), warm = line.isEmpty ? 0.0 : line.reduce(math.min);
       for (final i in zone) { obj.targetHue![i] = warm + (t[i] - 20) / 180 * (cool - warm); obj.wHue![i] = hr.weight; }
-      obj.hueExclude ??= [for (final l in input.pool.lab) chroma(l) < hueMinChroma];
-      obj.hueOnAxis = true;
+      obj.hueExclude ??= [for (final l in input.pool.lab) !coloured(l)];
+      obj.hueCut = cut;
     }
     final fr = rules.family;
     if (fr != null && medoidOf[z] != null) {
@@ -177,7 +191,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     // Only where the box can: as many pieces away from that colour as the zone has squares. Otherwise the ground has
     // to take the colour, and pushing against it buys only same-cloth neighbours.
     final away = anchor == null ? 0 : [for (final i in members)
-        if (chromaDistance(input.pool.lab[i], input.pool.lab[anchor]) > weights.deTarget) stock[i]].fold(0, (a, b) => a + b);
+        if (chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) > weights.sameColour) stock[i]].fold(0, (a, b) => a + b);
     if (av != null && anchor != null && away >= cellsIn(z).length) {
       obj.avoidColour ??= Int32List(cells)..fillRange(0, cells, -1);
       obj.wAvoid ??= Float64List(cells);
@@ -204,6 +218,31 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     }
   }
 
+  for (final z in zoneIds) {
+    final rf = spec.rules[z]?.ringFamilies, lr = spec.rules[z]?.l;
+    if (rf == null || lr is! LFromT) continue;
+    final t = fieldCells(lr.t, size), zone = cellsIn(z);
+    final levels = {for (final i in zone) t[i]}.toList()..sort();
+    final families = colourFamilies(input.pool.lab, members, levels.length, lightness: true);
+    if (families == null) { refuse(Unfillable.noRingFamily); continue; }
+    // The families darkest first (their pieces' mean L*), to the levels darkest first; each needs a piece for every
+    // square of its level.
+    double meanL(int q) {
+      var sum = 0.0, count = 0;
+      for (final i in members) { if (families.family[i] == q) { sum += stock[i] * input.pool.lightness[i]; count += stock[i]; } }
+      return count == 0 ? double.infinity : sum / count;
+    }
+    int pieces(int q) => [for (final i in members) if (families.family[i] == q) stock[i]].fold(0, (a, b) => a + b);
+    final order = [for (var q = 0; q < families.medoids.length; q++) q]
+      ..sort((a, b) { final c = meanL(a).compareTo(meanL(b)); return c != 0 ? c : a.compareTo(b); });
+    ensureColour();
+    for (var k = 0; k < levels.length; k++) {
+      final q = order[k], at = [for (final i in zone) if (t[i] == levels[k]) i];
+      if (pieces(q) < at.length) refuse(Unfillable.noRingFamily);
+      for (final i in at) { obj.targetColour![i] = families.medoids[q]; obj.wColour![i] = rf.weight; }
+    }
+  }
+
   if (spec.perimeter) {
     final edgeCells = Uint8List(cells);
     for (var i = 0; i < cells; i++) {
@@ -219,7 +258,7 @@ Compiled compile(LayoutSpec spec, ObjectiveInput input) {
     final half = (zone.length / 2).ceil();
     final candidates = [
       for (final i in members)
-        if (stock[i] > 0 && chromaDistance(input.pool.lab[i], input.pool.lab[anchor]) <= weights.deTarget) i,
+        if (stock[i] > 0 && chromaUcs(ucsOf(input.pool.lab[i]), ucsOf(input.pool.lab[anchor])) <= weights.sameColour) i,
     ];
     var reach = 0;
     for (final i in candidates) { reach += math.min(stock[i], half); }

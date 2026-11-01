@@ -130,6 +130,7 @@
   "canvasNotFillableNoDarkEnough": "this box has no cloth of that colour dark enough to stand against the ground",
   "canvasNotFillableNoFamilies": "this box has too few coloured cloths to make its colour families",
   "canvasNotFillableNoChainCloth": "this box has no dark cloth with enough pieces for every link",
+  "canvasNotFillableNoRingFamily": "this box has too few pieces of one colour for each ring",
   "canvasLayoutCannot": "{title} — {why}",
   "@canvasLayoutCannot": {
     "placeholders": {

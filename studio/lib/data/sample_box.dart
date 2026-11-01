@@ -29,7 +29,17 @@ const sampleCloth = [
   SampleCloth('Teal flower print', 'teal-flower-print.jpg'), // KF-4
 ];
 
-const samplePieces = 7;
+/* 12 pieces of each cloth (owner, 1 November 2026: "we can give more cloth in the sample box since its a sample box"):
+   the fewest of each that let all 15 patterns fill the start board, 7 × 5. Chain needs 9 of its darkest cloth for its
+   9 links; Diamond needs 12 of White, the one cloth of its light family, for its light rings. Every cloth gets 12, so
+   the box stays even (9 of each and 12 of White would also do). */
+const samplePieces = 12;
+
+/* A Sample box made with 7 pieces of each cloth gets samplePieces of each cloth she has not changed, once (owner, 1 November 2026;
+   Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that swap puts in is topped
+   up too. */
+Future<void> topUpSample(Shelf shelf) =>
+    shelf.topUpSample({for (final s in sampleCloth) s.name}, from: 7, to: samplePieces);
 
 /* The eight swatches drawn in code that a Sample box held before 22 Oct, by name. They are replaced by the ten cloths
    once (replaceDrawnSample); a cloth she photographed into the Sample box has its own C-n name and is never among them. */

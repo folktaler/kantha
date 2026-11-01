@@ -85,8 +85,3 @@ Ciede2000 ciede2000(Lab lab1, Lab lab2) {
 double hueOf(Lab lab) => math.atan2(lab.b, lab.a) * 180 / math.pi;
 double chroma(Lab lab) => jsHypot2(lab.a, lab.b);
 double angleGap(double p, double q) => ((((p - q).remainder(360)) + 540).remainder(360) - 180).abs();
-double chromaDistance(Lab a, Lab b) => ciede2000(a, b).dEChroma;
-
-/* A hue on the cool-to-warm line Spectrum runs along (200° cool to 20° warm), unwrapped about 290°, the angle opposite
-   the middle of that run: blues past 200 stay cool, pinks and magentas past 360 count as warmer than red. */
-double warmthAxis(double h) { final x = ((h % 360) + 360) % 360; return x > 290 ? x - 360 : x; }

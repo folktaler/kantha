@@ -95,7 +95,8 @@ void main() {
       'heart': [228, 228, 228, 228, 228, 228, 88, 228, 88, 228, 88, 88, 88, 88, 88, 88, 88, 88, 88, 88, 228, 88, 88, 88, 228, 228, 228, 88, 228, 228, 228, 228, 228, 228, 228],
       'stripes': [28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28, 228, 228, 228, 228, 228, 28, 28, 28, 28, 28],
       'zigzag': [128, 228, 228, 228, 128, 128, 128, 228, 128, 128, 28, 128, 128, 128, 28, 28, 28, 128, 28, 28, 228, 28, 28, 28, 228, 228, 228, 28, 228, 228, 128, 228, 228, 228, 128],
-      'chain': [228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228],
+      // The Single Irish Chain, links six squares apart (1 November 2026): Dart, not the TypeScript.
+      'chain': [228, 228, 228, 228, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 228, 228, 28, 228, 28, 228, 28, 228, 228, 228, 28, 228, 228, 228, 228, 228],
       'diamond': [228, 128, 28, 128, 228, 128, 28, 228, 28, 128, 28, 228, 128, 228, 28, 228, 128, 28, 128, 228, 28, 228, 128, 228, 28, 128, 28, 228, 28, 128, 228, 128, 28, 128, 228],
     };
     expect(want.keys, [for (final k in layoutKeys) k.name]);
@@ -111,18 +112,18 @@ void main() {
     final pool = fixturePool(), edge = fixtureEdge(), stock = ints(poolFixture['stock']);
     final base = Base(pool, edge, stock);
     for (final (members, why, anchor) in [([0, 1, 2], Unfillable.fewPieces, 1), ([3, 4, 5, 6], Unfillable.noDarkEnough, 5)]) {
-      test('members $members: the heart and the chain give their reasons, and no template deals a grid', () {
+      test('members $members: the heart and the diamond give their reasons, and no template deals a grid', () {
         final heart = modelFor(LayoutKey.heart, ObjectiveInput(pool: pool, edge: edge, members: members,
             mount: Mount.none, stock: stock));
         expect(heart.fills, isFalse);
         expect(heart.why, why);
         expect(heart.anchors, {1: anchor});
-        final chain = modelFor(LayoutKey.chain, ObjectiveInput(pool: pool, edge: edge, members: members,
+        final diamond = modelFor(LayoutKey.diamond, ObjectiveInput(pool: pool, edge: edge, members: members,
             mount: Mount.none, stock: stock));
-        expect(chain.why, Unfillable.noChainCloth);
+        expect(diamond.why, Unfillable.noRingFamily);
         for (final key in layoutKeys) {
           final s = solveLayout(key, base, members, Mount.none, 7);
-          expect(s.fills, key != LayoutKey.heart && key != LayoutKey.chain, reason: key.name);
+          expect(s.fills, key != LayoutKey.heart && key != LayoutKey.diamond, reason: key.name);
           expect(s.grid, isNull, reason: key.name);
           expect(s.rot, isNull, reason: key.name);
         }

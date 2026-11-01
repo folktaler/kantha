@@ -4,7 +4,6 @@ import 'package:integration_test/integration_test.dart';
 import 'package:kantha_studio/l10n/app_localizations.dart';
 import 'package:kantha_studio/l10n/words.dart';
 import 'package:kantha_studio/main.dart';
-import 'package:kantha_studio/solver/compile.dart' show Unfillable;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/studio/phone/phone_studio.dart';
 import 'package:kantha_studio/studio/pressable.dart';
@@ -21,19 +20,16 @@ void main() {
     // A fresh install opens on the Sample box, arranged.
     await startFromSample(t);
 
-    // Every template, from the Sample box, in the Design tab's strip. None but Chain is faded: each tile is named by its
-    // title alone, not by why the box cannot fill it.
+    // Every template, from the Sample box, in the Design tab's strip. None is faded: each tile is named by its title
+    // alone, not by why the box cannot fill it.
     final words = L.of(t.element(find.byType(PhoneStudio)));
     Finder tile(LayoutKey k) => find.byKey(ValueKey('tile-${k.name}'));
     bool chosen(LayoutKey k) => t.widget<Pressable>(tile(k)).selected ?? false;
     for (final k in layoutKeys) {
-      // The chosen tile also says to press it again (owner, 31 Oct 2026). Chain's links are one cloth (owner,
-      // 1 Nov 2026), more than the Sample box has of any one, so its tile says why.
+      // The chosen tile also says to press it again (owner, 31 Oct 2026).
       final title = words.layoutTitle(k);
-      expect(t.widget<Pressable>(tile(k)).label,
-          k == LayoutKey.chain ? words.canvasLayoutCannot(title, words.notFillable(Unfillable.noChainCloth))
-              : chosen(k) ? '$title\n${words.canvasPatternAgain(title)}' : title,
-          reason: '$title from the Sample box');
+      expect(t.widget<Pressable>(tile(k)).label, chosen(k) ? '$title\n${words.canvasPatternAgain(title)}' : title,
+          reason: '$title: the Sample box fills it');
     }
     final board = find.bySemanticsLabel(RegExp(r'^Row 1, column 1 — '));
     bool arranged() => board.evaluate().isNotEmpty && find.text(words.canvasSolving).evaluate().isEmpty;
@@ -43,7 +39,7 @@ void main() {
       await tapIt(t, tile(k));
       await waitUntil(t, () => chosen(k) && arranged(), seconds: 60);
     }
-    for (final k in layoutKeys.where((k) => k != LayoutKey.chain)) {
+    for (final k in layoutKeys) {
       await chooseTile(t, k);
       await settle(t);
       cellNames(t); // all 35 cells

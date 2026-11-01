@@ -8,7 +8,9 @@ import 'tuned.dart';
 
 enum LayoutKey { contrast, gradient, medallion, wave, framed, cross, spectrum, boro, blocks, medallionPrint, heart, stripes, zigzag, chain, diamond }
 const layoutKeys = LayoutKey.values;
-const double heartHue = 30;
+/* The heart's colour: the cloth nearest this CAM16 hue, red (CIELAB 30° until 1 November 2026, which is CAM16 21–25°
+   over L* 30–70 and chroma 20–50). */
+const double heartHue = 23;
 
 final Uint8List _plain = Uint8List(cells);
 final Uint8List _blockZones = zoneMap(['00011', '00011', '00011', '22222', '22222', '22222', '22222']);
@@ -42,7 +44,7 @@ final Map<LayoutKey, LayoutSpec> layouts = {
   LayoutKey.stripes: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.stripes, wFit))}, within: const SeamNone(), perimeter: true, balance: false),
   LayoutKey.zigzag: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.zigzag, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
   LayoutKey.chain: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.chain, wFit), oneCloth: (weight: Tuned.pinWeight))}, within: const SeamNone(), perimeter: false, balance: false),
-  LayoutKey.diamond: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.diamond, wFit))}, within: const SeamNone(), perimeter: false, balance: false),
+  LayoutKey.diamond: LayoutSpec(zones: _plain, rules: {0: const ZoneRules(l: LFromT(Ramps.diamond, wFit), ringFamilies: (weight: Tuned.ringWeight))}, within: const SeamNone(), perimeter: false, balance: false),
 };
 
 Compiled modelFor(LayoutKey key, ObjectiveInput input) => compile(layouts[key]!, input);

@@ -8,6 +8,8 @@ import 'database.dart';
 
 const clothsPerBox = 200;
 const _sampleSwap = 'sample';
+/* The done-once marker of the Sample box's top-up to more pieces (owner, 1 November 2026): the counter at 2. */
+const _sampleTopUp = 'samplePieces';
 
 class ShelfError implements Exception {
   const ShelfError(this.key, [this.values = const {}]);
@@ -107,7 +109,7 @@ class Shelf {
     final number = sample ? null : await _next('boxNumber');
     await db.into(db.boxes).insert(BoxesCompanion.insert(
         id: Value(id), made: _stamp(), number: Value(number), name: Value(sample ? sampleBoxName : null)));
-    if (sample) await _markSampleReplaced();
+    if (sample) { await _markSampleReplaced(); await _markSampleToppedUp(); }
     return (id: id, number: number);
   }
 
@@ -115,6 +117,26 @@ class Shelf {
      and an old backup imported later is swapped on its next open. */
   Future<void> _markSampleReplaced() =>
       db.into(db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: _sampleSwap, next: 2));
+
+  Future<void> _markSampleToppedUp() =>
+      db.into(db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: 2));
+
+  /* The Sample box's top-up (owner, 1 November 2026), once, in one transaction with its done-once marker: each of its
+     cloth named in `names` that she has not changed (still `from` pieces, no fabric, never re-cropped) gets `to`
+     pieces. A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only
+     the marker is written. A Sample box made since holds `to` already and is marked when made. */
+  Future<void> topUpSample(Set<String> names, {required int from, required int to}) => _write(() async {
+        if (await counterAt(_sampleTopUp) >= 2) return;
+        _check(to);
+        final box = await _sampleBox();
+        if (box != null) {
+          await (db.update(db.cloths)
+                ..where((c) => c.box.equals(box) & c.name.isIn(names) & c.pieces.equals(from) & c.fabric.equals('') &
+                    c.version.equals(1)))
+              .write(ClothsCompanion(pieces: Value(to)));
+        }
+        await _markSampleToppedUp();
+      });
 
   Future<Set<String>> _swatchesIn(int box, Set<String> names) async =>
       (await (db.selectOnly(db.cloths)..addColumns([db.cloths.id])

@@ -1,16 +1,24 @@
-/* Does each pattern look like its name? (plan: pattern checks, owner 31 October 2026.) One rule or a few per pattern,
-   each read from what the pattern's own objective asks for (layouts.dart, compile.dart), with its threshold written
-   here before any run. Plus, for every pattern: no two edge-adjacent squares of one cloth, when the box holds at least
-   [apartFrom] cloths. A random arrangement of the same pieces is scored by the same rules, as the baseline.
+/* Does each pattern look like its name? (plan: pattern checks, owner 31 October 2026; rewritten 1 November 2026 after an
+   independent audit of the statistics.) One rule or a few per pattern, read from what the pattern is meant to look
+   like, each threshold fixed here before any run. Plus, for every pattern: no two edge-adjacent squares of one cloth,
+   when the box holds at least [apartFrom] cloths.
+
+   Each case has one of three outcomes: it passes, it fails, or the box cannot make the pattern at all (the studio
+   refuses to fill it, or no arrangement of the box's pieces could meet the rule: a bound from the pieces alone, worked
+   out below rule by rule). The bar is never lowered to what a box can give.
+
+   Two baselines are judged by the same rules: a random arrangement of the same pieces, and a sorted one (the pieces
+   sorted by lightness, or hue, dealt in the pattern's target order, no search). The solver must beat both.
 
    No Flutter here: test/solver/pattern_checks_test.dart (the quick subset, every run) and tool/pattern_sweep.dart (every
-   size, every box, the table) both use it. */
+   size, every box, the tables) both use it. */
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:kantha_studio/data/numbers.dart' show busyOf, edgeOf;
 import 'package:kantha_studio/measure/measure.dart';
+import 'package:kantha_studio/solver/cam16.dart';
 import 'package:kantha_studio/solver/compile.dart';
 import 'package:kantha_studio/solver/fabrics.dart';
 import 'package:kantha_studio/solver/geometry.dart';
@@ -19,42 +27,44 @@ import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/score.dart';
 import 'package:kantha_studio/solver/solve.dart';
 import 'package:kantha_studio/solver/spec.dart';
+import 'package:material_color_utilities/material_color_utilities.dart';
 
-// ---- The thresholds, fixed on 31 October 2026 before the first run. ----
+// ---- The thresholds, fixed on 1 November 2026 before any run of these rules. ----
 
-/* A Spearman rank correlation this strong or stronger is "strong" by the usual convention (|ρ| ≥ 0.7). The patterns
-   that set each square a lightness target (Gradient, Centre, Wave, Border, Cross, Ripple, Stripes, Zigzag, Chain,
-   Diamond) need ρ(the square's lightness, its target) ≥ this; Spectrum needs it of hue against its hue target. Each ρ
-   is taken as a share of the most a board could reach on that target ([relativeRho]). */
-const double strongRho = 0.7;
+/* Somers' d of the squares' lightness given their target (Somers 1962): over every pair of squares the target puts at
+   different levels, the share ordered as the target orders them minus the share ordered against it. Pairs the target
+   ties are left out, so a board that follows its target exactly scores 1 whatever the target's ties; ties in lightness
+   (two pieces of one cloth) count as neither. The bar, 0.5, is the Kendall-scale value of the usual "strong" Spearman
+   correlation, 0.7: under a bivariate normal, Spearman 0.7 is Pearson 2 sin(0.7π/6) = 0.717 and Kendall
+   (2/π) arcsin(0.717) = 0.51 (Greiner's relation). At d = 0.5, pairs in the target's order outnumber pairs against it
+   three to one. */
+const double minSomersD = 0.5;
 
-/* The same patterns' second rule: the squares the target puts in its lightest third are lighter on average than the
-   squares it puts in its darkest third, by at least this share of the gap the target itself asks for there, or of the
-   most the box's pieces can give those squares if that is less (its lightest pieces in the one, its darkest in the
-   other), as Chess and Mixed have from the start. (The piece cap was added after the first run of 31 October 2026:
-   boxes with one or two pieces at each extreme failed on stock, not on the pattern.) */
+/* The lightness patterns' second rule: the squares the target puts in its lightest third are lighter on average than
+   those it puts in its darkest third, by at least this share of the gap the target itself asks for there. A design
+   choice with no published source. */
 const double separationShare = 0.5;
 
-/* Chess and Mixed ask every seam for a lightness gap of the objective's lTarget (25 L*). A box that cannot give it
-   everywhere is not the pattern's fault, so the median seam must reach the lesser of 25 and half of [splitContrast]
-   (the most a board can get from its box: its lightest half of pieces against its darkest half). */
-const double seamShare = 0.5;
+/* Chess and Mixed: the median seam's lightness gap, at least the objective's lTarget, 25 L*. A design choice with no
+   published source (about a quarter of the L* scale). */
+const double seamL = 25;
 
 /* Chess: the light and the dark squares keep to their own colour of the chessboard: of all seams, |light-on-even minus
-   light-on-odd| / seams at least this. A true chessboard is 1; a random board is near 0. */
+   light-on-odd| / seams at least this. A true chessboard is 1; a random board is near 0. A design choice. */
 const double checkerConsistency = 0.8;
 
-/* Blocks: the share of squares whose cloth is nearer (CIEDE2000 chroma distance) to its own block's colour than to any
-   other block's. */
+/* Blocks: the share of squares whose cloth is nearer (CAM16-UCS a′b′) to its own block's colour than to any other
+   block's. Diamond: the share of each ring's squares that are one colour family. A design choice. */
 const double blockShare = 0.7;
 
-/* Heart: the share of the heart's squares within the objective's deTarget (20) of the heart's colour, at least
-   [heartShare]; the share of the ground's squares that close, at most [groundShare]; and the ground lighter than the
-   heart on average by at least half the gap between the box's lightest cloth (the ground's target) and the heart's
-   colour cloth. */
-const double heartShare = 0.8, groundShare = 0.2, heartContrastShare = 0.5;
+/* "That colour": within this CAM16-UCS a′b′ distance (ΔE′, lightness left out). 19.4 keeps, over the 90 cloths of the
+   Sample box, the tuning pool and the 47 factory cloths (4,005 pairs), the same share of pairs "the same colour"
+   (44.3%) as the CIEDE2000 hue-and-chroma distance of 20 it replaces; that 20 had no published source either. */
+const double sameColour = 19.4;
 
-/* Chain (owner, 1 November 2026) also needs every link, the squares its target makes darkest, in one cloth. */
+/* Heart: at least [heartShare] of the heart's squares that colour, at most [groundShare] of the ground's, and the
+   ground lighter than the heart on average by at least [seamL]. Design choices. */
+const double heartShare = 0.8, groundShare = 0.2;
 
 /* The no-same-neighbour rule applies when the box holds at least this many cloths. */
 const int apartFrom = 6;
@@ -62,11 +72,59 @@ const int apartFrom = 6;
 /* Ripple needs some spread of busy cloth to rank: at least this many distinct edge values among the box's cloth. */
 const int rippleKinds = 3;
 
-/* Spectrum ranks only coloured squares (chroma ≥ hueMinChroma); fewer than this and it says nothing. */
+/* Spectrum ranks only coloured squares (CAM16 chroma ≥ minChroma, 11.5, a design choice); fewer than this and the
+   box cannot make it. */
 const int spectrumMinSquares = 6;
 
 // ---- Statistics. ----
 
+/* Somers' d of y given x (Somers 1962): (concordant − discordant) / pairs not tied on x. NaN when x is constant. */
+double somersD(List<double> y, List<double> x) {
+  var s = 0, untied = 0;
+  for (var i = 0; i < x.length; i++) {
+    for (var j = i + 1; j < x.length; j++) {
+      final dx = x[j] - x[i];
+      if (dx == 0) continue;
+      untied++;
+      final dy = y[j] - y[i];
+      if (dy != 0) s += (dx > 0) == (dy > 0) ? 1 : -1;
+    }
+  }
+  return untied == 0 ? double.nan : s / untied;
+}
+
+/* The highest Somers' d any arrangement of these pieces can reach against target x: two squares holding pieces of one
+   lightness tie, and only pairs the target also ties can hide those ties. So d ≤ 1 − (ties the pieces force, less all
+   the pairs the target ties) / pairs not tied on x, the forced ties being the fewest any choice of n of the pieces can
+   make (spread as evenly as stock allows over the lightness values). */
+double maxSomersD(List<double> x, Map<double, int> piecesByValue) {
+  final n = x.length;
+  final caps = piecesByValue.values.toList()..sort();
+  final take = List<int>.filled(caps.length, 0);
+  var left = n;
+  for (var k = 0; k < caps.length; k++) {
+    final even = (left / (caps.length - k)).floor();
+    take[k] = math.min(caps[k], even);
+    left -= take[k];
+  }
+  // whatever the even split could not place goes on the largest stocks, one at a time
+  for (var k = caps.length - 1; k >= 0 && left > 0; k--) {
+    final more = math.min(caps[k] - take[k], left);
+    take[k] += more;
+    left -= more;
+  }
+  if (left > 0) return double.nan;
+  int c2(int k) => k * (k - 1) ~/ 2;
+  final forced = take.fold(0, (a, k) => a + c2(k));
+  final groups = <double, int>{};
+  for (final v in x) { groups[v] = (groups[v] ?? 0) + 1; }
+  final xTied = groups.values.fold(0, (a, k) => a + c2(k));
+  final untied = c2(n) - xTied;
+  if (untied == 0) return double.nan;
+  return 1 - math.max(0, forced - xTied) / untied;
+}
+
+/* Spearman's ρ with average ranks for ties, for comparing two target maps (Diamond against Centre). */
 List<double> ranks(List<double> x) {
   final idx = [for (var i = 0; i < x.length; i++) i]..sort((a, b) => x[a].compareTo(x[b]));
   final r = List<double>.filled(x.length, 0);
@@ -89,39 +147,58 @@ double pearson(List<double> x, List<double> y) {
   return sxx == 0 || syy == 0 ? double.nan : sxy / math.sqrt(sxx * syy);
 }
 
-/* Spearman's ρ with average ranks for ties; NaN when either side is constant. */
 double spearman(List<double> x, List<double> y) => x.length < 3 ? double.nan : pearson(ranks(x), ranks(y));
 
-/* The highest ρ any board could reach against target y: a lightness that follows y exactly, its ties broken. Below 1
-   when y has ties (Border on 3 × 3: 8 ring squares tied, 1 middle, at most 0.55). */
-double ceilingRho(List<double> y) {
-  final order = [for (var i = 0; i < y.length; i++) i]..sort((a, b) { final c = y[a].compareTo(y[b]); return c != 0 ? c : a.compareTo(b); });
-  final perfect = List<double>.filled(y.length, 0);
-  for (var k = 0; k < order.length; k++) { perfect[order[k]] = k.toDouble(); }
-  return spearman(perfect, y);
+/* The Wilson score interval for k successes in n (Brown, Cai and DasGupta 2001), at 95% (z = 1.96). */
+({double lo, double hi}) wilson(int k, int n, [double z = 1.96]) {
+  if (n == 0) return (lo: double.nan, hi: double.nan);
+  final p = k / n, z2 = z * z, den = 1 + z2 / n;
+  final mid = (p + z2 / (2 * n)) / den, half = z * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n)) / den;
+  return (lo: math.max(0, mid - half), hi: math.min(1, mid + half));
 }
-
-/* ρ as a share of [ceilingRho]: 1 is the best a board can do on that map. (Added after the first run of 31 October
-   2026 showed raw ρ could not reach [strongRho] on tied maps even for a perfect board; the threshold is unchanged.) */
-double relativeRho(List<double> x, List<double> y) => spearman(x, y) / ceilingRho(y);
 
 double _mean(Iterable<double> v) => v.isEmpty ? double.nan : v.reduce((a, b) => a + b) / v.length;
 double _median(List<double> v) { final s = List.of(v)..sort(); final n = s.length; return n.isOdd ? s[n ~/ 2] : (s[n ~/ 2 - 1] + s[n ~/ 2]) / 2; }
 
-/* Hue on Spectrum's own axis: its targets run 200° (cool) to 20° (warm); a hue is unwrapped about 290°, the angle
-   opposite the middle of that run, so blues past 200 stay cool and magentas past 360 count as warmer than red. */
-double spectrumAxis(double h) { final x = ((h % 360) + 360) % 360; return x > 290 ? x - 360 : x; }
+/* The check's own hue measure, coded apart from the solver's: CAM16 hue (Li et al. 2017) straight from
+   material_color_utilities, on a line cut where Spectrum is defined to cut it: in the purples, the arc no wavelength
+   makes (from the spectrum locus's 380 nm end at 331.8° round through 0° to its 700 nm end at 19.3°), at the middle
+   of the widest stretch of that arc holding none of the box's own coloured hues. Higher is cooler. */
+double camHue(Lab lab) {
+  final wp = ColorUtils.whitePointD65();
+  final fy = (lab.l + 16) / 116;
+  return Cam16.fromXyzInViewingConditions(wp[0] * _finv(fy + lab.a / 500), wp[1] * _finv(fy),
+      wp[2] * _finv(fy - lab.b / 200), ViewingConditions.sRgb).hue;
+}
+double _finv(double t) => t > 6 / 29 ? t * t * t : 3 * (6 / 29) * (6 / 29) * (t - 4 / 29);
+double checkCut(List<double> hues) {
+  const from = 331.8, to = 379.3;
+  final inside = [for (final h in hues) h < from ? h + 360 : h].where((h) => h > from && h < to).toList()..sort();
+  var at = (from + to) / 2, wide = -1.0, prev = from;
+  for (final h in [...inside, to]) {
+    if (h - prev > wide) { wide = h - prev; at = (h + prev) / 2; }
+    prev = h;
+  }
+  return at >= 360 ? at - 360 : at;
+}
+double onCheckLine(double h, double cut) => h > cut ? h - 360 : h;
+
+double ab(Lab p, Lab q) => chromaUcs(ucsOf(p), ucsOf(q));
 
 // ---- The verdict on one board. ----
 
+enum Outcome { pass, fail, cannot }
+
 class Verdict {
-  Verdict(this.applies, this.passes, this.stat, this.detail);
-  /* False when the box gives the rule nothing to judge (Ripple with no busy spread, Spectrum with no colour). */
-  final bool applies, passes;
-  /* The rule's main statistic, for the margin over random (ρ, a share, a consistency). */
+  Verdict(this.outcome, this.stat, this.detail);
+  final Outcome outcome;
+  /* The rule's main statistic (Somers' d, a share, a consistency, a seam gap). */
   final double stat;
   final String detail;
+  bool get passes => outcome == Outcome.pass;
 }
+
+Verdict _cannot(String why) => Verdict(Outcome.cannot, double.nan, why);
 
 class Judged {
   Judged(this.rule, this.repeats, this.apartApplies);
@@ -131,107 +208,176 @@ class Judged {
   bool get apart => repeats == 0;
 }
 
-/* The most a board of n squares can get from its pieces on Chess and Mixed: the mean lightness of the n/2 lightest
-   pieces minus that of the n/2 darkest. */
-double splitContrast(List<double> l, List<int> stock, List<int> members, int n) {
-  final pieces = <double>[for (final i in members) for (var k = 0; k < stock[i]; k++) l[i]]..sort();
-  final half = math.min(n ~/ 2, pieces.length ~/ 2);
-  if (half == 0) return 0;
-  return _mean(pieces.sublist(pieces.length - half)) - _mean(pieces.sublist(0, half));
+/* The pieces of a box, one entry per piece. */
+List<int> piecesOf(List<int> stock, List<int> members) => [for (final i in members) for (var k = 0; k < stock[i]; k++) i];
+
+Map<double, int> _byValue(List<double> v, List<int> stock, List<int> members) {
+  final out = <double, int>{};
+  for (final i in members) { if (stock[i] > 0) out[v[i]] = (out[v[i]] ?? 0) + stock[i]; }
+  return out;
 }
 
+/* A lightness pattern: Somers' d of lightness given the target, and the light-third-against-dark-third separation. */
 Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members) {
   final t = m.obj.targetL!, w = m.obj.wL!, l = m.pool.lightness;
   final idx = [for (var i = 0; i < grid.length; i++) if (w[i] > 0) i];
   final lt = [for (final i in idx) t[i]], ll = [for (final i in idx) l[grid[i]]];
-  final rho = relativeRho(ll, lt);
-  if (rho.isNaN) return Verdict(false, false, double.nan, 'no spread to rank');
   final lo = lt.reduce(math.min), hi = lt.reduce(math.max), span = hi - lo;
+  if (span == 0) return _cannot('the box has one lightness');
   final top = [for (var k = 0; k < idx.length; k++) if (lt[k] >= lo + 2 * span / 3 - 1e-9) k];
   final bottom = [for (var k = 0; k < idx.length; k++) if (lt[k] <= lo + span / 3 + 1e-9) k];
-  final pieces = <double>[for (final i in members) for (var k = 0; k < stock[i]; k++) l[i]]..sort();
-  final can = top.length + bottom.length > pieces.length ? double.infinity
+  final want = _mean(top.map((k) => lt[k])) - _mean(bottom.map((k) => lt[k]));
+  // The bound: the lightest pieces in the top third, the darkest in the bottom.
+  final pieces = [for (final i in piecesOf(stock, members)) l[i]]..sort();
+  final can = top.length + bottom.length > pieces.length ? double.negativeInfinity
       : _mean(pieces.sublist(pieces.length - top.length)) - _mean(pieces.sublist(0, bottom.length));
-  final want = math.min(_mean(top.map((k) => lt[k])) - _mean(bottom.map((k) => lt[k])), can);
+  final maxD = maxSomersD(lt, _byValue(l, stock, members));
+  if (can < separationShare * want) {
+    return _cannot('at most ${can.toStringAsFixed(1)} of separation from its pieces, needs ${(separationShare * want).toStringAsFixed(1)}');
+  }
+  if (maxD < minSomersD) return _cannot('at most d ${maxD.toStringAsFixed(2)} from its pieces');
+  final d = somersD(ll, lt);
   final got = _mean(top.map((k) => ll[k])) - _mean(bottom.map((k) => ll[k]));
-  final ok = rho >= strongRho && got >= separationShare * want;
-  return Verdict(true, ok, rho, 'ρ ${rho.toStringAsFixed(2)}, separation ${got.toStringAsFixed(1)} of ${want.toStringAsFixed(1)}');
+  final ok = d >= minSomersD && got >= separationShare * want;
+  return Verdict(ok ? Outcome.pass : Outcome.fail, d,
+      'd ${d.toStringAsFixed(2)}, separation ${got.toStringAsFixed(1)} of ${want.toStringAsFixed(1)}');
 }
 
-({double median, double checker}) _seams(Compiled m, List<int> grid) {
-  final l = m.pool.lightness, cols = m.obj.cols;
+/* Chess and Mixed. The bound: a seam reaches [seamL] only between two pieces that far apart in lightness, so a square
+   whose cloth has no such partner in the box spoils every seam it touches, at least one each; if those squares must
+   be more than half the seams, the median cannot reach it. */
+Verdict _seamRule(Compiled m, List<int> grid, List<int> stock, List<int> members, {required bool chess}) {
+  final l = m.pool.lightness, cols = m.obj.cols, pairs = m.obj.pairs;
+  final partnered = [for (final i in members) if (stock[i] > 0 && members.any((j) => stock[j] > 0 && (l[i] - l[j]).abs() >= seamL)) i];
+  final open = partnered.fold(0, (a, i) => a + stock[i]);
+  final lonely = math.max(0, grid.length - open);
+  if (lonely > pairs.length / 2) return _cannot('$lonely squares must take cloth with no partner ${seamL.round()} L* away');
   final gaps = <double>[];
   var pos = 0, neg = 0;
-  for (final (a, b) in m.obj.pairs) {
+  for (final (a, b) in pairs) {
     gaps.add((l[grid[a]] - l[grid[b]]).abs());
     final even = ((a ~/ cols) + (a % cols)).isEven ? a : b, odd = even == a ? b : a;
     final d = l[grid[even]] - l[grid[odd]];
     if (d > 0) { pos++; } else if (d < 0) { neg++; }
   }
-  return (median: _median(gaps), checker: (pos - neg).abs() / m.obj.pairs.length);
+  final median = _median(gaps), checker = (pos - neg).abs() / pairs.length;
+  final detail = 'median seam ${median.toStringAsFixed(1)} (needs ${seamL.round()}), checker ${checker.toStringAsFixed(2)}';
+  final ok = median >= seamL && (!chess || checker >= checkerConsistency);
+  return Verdict(ok ? Outcome.pass : Outcome.fail, chess ? checker : median, detail);
 }
 
-Verdict _seamRule(Compiled m, List<int> grid, List<int> stock, List<int> members, {required bool chess}) {
-  final s = _seams(m, grid);
-  final need = math.min(m.obj.weights.lTarget, seamShare * splitContrast(m.pool.lightness, stock, members, grid.length));
-  final seamOk = s.median >= need;
-  final detail = 'median seam ${s.median.toStringAsFixed(1)} (needs ${need.toStringAsFixed(1)}), checker ${s.checker.toStringAsFixed(2)}';
-  return chess
-      ? Verdict(true, seamOk && s.checker >= checkerConsistency, s.checker, detail)
-      : Verdict(true, seamOk, s.median - need, detail);
+/* Spectrum: cool on the left to warm on the right. Somers' d of the coloured squares' warmth (lower on the check's hue
+   line) given their column. */
+Verdict _spectrum(Compiled m, List<int> grid, List<int> stock, List<int> members) {
+  final lab = m.pool.lab, cols = m.obj.cols;
+  bool coloured(int f) => ucsOf(lab[f]).c >= minChroma;
+  final colouredPieces = members.where(coloured).fold(0, (a, i) => a + stock[i]);
+  if (colouredPieces < spectrumMinSquares) return _cannot('$colouredPieces coloured pieces');
+  final hues = {for (final i in members) if (coloured(i)) i: camHue(lab[i])};
+  if (hues.values.toSet().length < 2) return _cannot('one hue');
+  final cut = checkCut(hues.values.toList());
+  final idx = [for (var i = 0; i < grid.length; i++) if (coloured(grid[i])) i];
+  if (idx.length < spectrumMinSquares) {
+    return Verdict(Outcome.fail, double.nan, '${idx.length} coloured squares');
+  }
+  final d = somersD([for (final i in idx) -onCheckLine(hues[grid[i]]!, cut)], [for (final i in idx) (i % cols).toDouble()]);
+  return Verdict(d >= minSomersD ? Outcome.pass : Outcome.fail, d, 'd ${d.toStringAsFixed(2)} over ${idx.length} coloured squares');
 }
 
-Verdict _spectrum(Compiled m, List<int> grid) {
-  final t = m.obj.targetHue!, lab = m.pool.lab;
-  final idx = [for (var i = 0; i < grid.length; i++) if (chroma(lab[grid[i]]) >= hueMinChroma) i];
-  if (idx.length < spectrumMinSquares) return Verdict(false, false, double.nan, '${idx.length} coloured squares');
-  final rho = relativeRho([for (final i in idx) spectrumAxis(hueOf(lab[grid[i]]))], [for (final i in idx) t[i]]);
-  if (rho.isNaN) return Verdict(false, false, double.nan, 'no hue spread');
-  return Verdict(true, rho >= strongRho, rho, 'ρ ${rho.toStringAsFixed(2)} over ${idx.length} coloured squares');
-}
-
-Verdict _blocks(Compiled m, List<int> grid) {
+/* Blocks. The bound: each block can hold at most as many squares nearest its colour as there are pieces nearest it. */
+Verdict _blocks(Compiled m, List<int> grid, List<int> stock, List<int> members) {
   final t = m.obj.targetColour!, lab = m.pool.lab;
   final targets = t.toSet().toList();
-  var near = 0;
-  for (var i = 0; i < grid.length; i++) {
-    final own = chromaDistance(lab[grid[i]], lab[t[i]]);
-    if (targets.every((q) => q == t[i] || own <= chromaDistance(lab[grid[i]], lab[q]))) near++;
+  bool nearest(int f, int q) { final own = ab(lab[f], lab[q]); return targets.every((o) => o == q || own <= ab(lab[f], lab[o])); }
+  var reach = 0;
+  for (final q in targets) {
+    final squares = [for (final v in t) if (v == q) v].length;
+    reach += math.min(squares, members.where((f) => nearest(f, q)).fold(0, (a, f) => a + stock[f]));
   }
+  if (reach / grid.length < blockShare) return _cannot('at most ${(100 * reach / grid.length).round()}% from its pieces');
+  var near = 0;
+  for (var i = 0; i < grid.length; i++) { if (nearest(grid[i], t[i])) near++; }
   final share = near / grid.length;
-  return Verdict(true, share >= blockShare, share, '${(100 * share).round()}% nearest their own block’s colour');
+  return Verdict(share >= blockShare ? Outcome.pass : Outcome.fail, share, '${(100 * share).round()}% nearest their own block’s colour');
 }
 
-Verdict _heart(Compiled m, List<int> grid, List<int> members, BoardSize g) {
+/* Heart. The bounds: enough pieces of the heart's colour for the heart, enough of other colours for the ground, and
+   the ground's lightest pieces against the heart's darkest at least [seamL] apart. */
+Verdict _heart(Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) {
   final zones = layouts[LayoutKey.heart]!.zonesOn(g), anchor = m.anchors[1]!, lab = m.pool.lab, l = m.pool.lightness;
   final heart = [for (var i = 0; i < grid.length; i++) if (zones[i] == 1) i];
   final ground = [for (var i = 0; i < grid.length; i++) if (zones[i] != 1) i];
-  bool near(int i) => chromaDistance(lab[grid[i]], lab[anchor]) <= m.obj.weights.deTarget;
-  final inHeart = heart.where(near).length / heart.length, inGround = ground.isEmpty ? 0.0 : ground.where(near).length / ground.length;
-  final lmax = members.map((i) => l[i]).reduce(math.max);
+  bool near(int f) => ab(lab[f], lab[anchor]) <= sameColour;
+  final nearPieces = members.where(near).fold(0, (a, f) => a + stock[f]);
+  final farPieces = members.where((f) => !near(f)).fold(0, (a, f) => a + stock[f]);
+  if (nearPieces < (heartShare * heart.length).ceil()) return _cannot('$nearPieces pieces of the heart’s colour for ${heart.length} squares');
+  if (farPieces < ((1 - groundShare) * ground.length).ceil()) return _cannot('$farPieces pieces of other colours for ${ground.length} squares');
+  final pieces = [for (final i in piecesOf(stock, members)) l[i]]..sort();
+  final can = _mean(pieces.sublist(pieces.length - ground.length)) - _mean(pieces.sublist(0, heart.length));
+  if (can < seamL) return _cannot('at most ${can.toStringAsFixed(1)} L* between ground and heart');
+  final inHeart = heart.where((i) => near(grid[i])).length / heart.length;
+  final inGround = ground.isEmpty ? 0.0 : ground.where((i) => near(grid[i])).length / ground.length;
   final contrast = _mean(ground.map((i) => l[grid[i]])) - _mean(heart.map((i) => l[grid[i]]));
-  final want = heartContrastShare * (lmax - l[anchor]);
-  final ok = inHeart >= heartShare && inGround <= groundShare && contrast >= want;
-  return Verdict(true, ok, inHeart, 'heart ${(100 * inHeart).round()}% its colour, ground ${(100 * inGround).round()}%, '
-      'ground lighter by ${contrast.toStringAsFixed(1)} (needs ${want.toStringAsFixed(1)})');
+  final ok = inHeart >= heartShare && inGround <= groundShare && contrast >= seamL;
+  return Verdict(ok ? Outcome.pass : Outcome.fail, inHeart, 'heart ${(100 * inHeart).round()}% its colour, ground '
+      '${(100 * inGround).round()}%, ground lighter by ${contrast.toStringAsFixed(1)} (needs ${seamL.round()})');
+}
+
+/* The Single Irish Chain's links: the squares its own target makes darkest. Every one of them one cloth (owner,
+   1 November 2026). The bound: a cloth with a piece for every link. */
+Verdict _chain(Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) {
+  final t = targetMap(LayoutKey.chain, g);
+  final links = [for (var i = 0; i < grid.length; i++) if (t[i] == 0) i];
+  if (!members.any((f) => stock[f] >= links.length)) return _cannot('no cloth has ${links.length} pieces for the links');
+  final v = _map(m, grid, stock, members);
+  if (v.outcome == Outcome.cannot) return v;
+  final kinds = {for (final i in links) grid[i]}.length;
+  return Verdict(v.passes && kinds == 1 ? Outcome.pass : Outcome.fail, v.stat, '${v.detail}, links of $kinds cloth');
+}
+
+/* Diamond as Sunshine and Shadow (owner, 1 November 2026): each ring one colour family, dark, middle and light outward,
+   each family one colour at one lightness (grouped by CAM16-UCS ΔE′, J′a′b′). A ring is one family when at least
+   [blockShare] of its squares are nearer (ΔE′) to its own family's colour than to any other family's; every ring
+   must be. The lightness order is [_map]'s. A Diamond with no family per ring (before 1 November 2026) fails. The
+   bound: as Blocks', over the rings. */
+Verdict _diamond(Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) {
+  final t = m.obj.targetColour, lab = m.pool.lab;
+  final v = _map(m, grid, stock, members);
+  if (v.outcome == Outcome.cannot) return v;
+  if (t == null) return Verdict(Outcome.fail, 0, '${v.detail}, no colour family per ring');
+  final targets = t.toSet().toList();
+  double de(int p, int q) => deUcs(ucsOf(lab[p]), ucsOf(lab[q]));
+  bool nearest(int f, int q) { final own = de(f, q); return targets.every((o) => o == q || own <= de(f, o)); }
+  final cr = (g.rows - 1) / 2, cc = (g.cols - 1) / 2;
+  int ringOf(int i) => (i ~/ g.cols - cr).abs().floor() + (i % g.cols - cc).abs().floor();
+  final rings = <int, List<int>>{};
+  for (var i = 0; i < grid.length; i++) { (rings[ringOf(i)] ??= []).add(i); }
+  for (final q in targets) {
+    final squares = [for (final x in t) if (x == q) x].length;
+    final have = members.where((f) => nearest(f, q)).fold(0, (a, f) => a + stock[f]);
+    if (have < blockShare * squares) return _cannot('$have pieces nearest a family that rings of $squares squares need');
+  }
+  var worst = 1.0;
+  for (final ring in rings.values) {
+    worst = [worst, ring.where((i) => nearest(grid[i], t[i])).length / ring.length].reduce((a, b) => a < b ? a : b);
+  }
+  final ok = v.passes && worst >= blockShare;
+  return Verdict(ok ? Outcome.pass : Outcome.fail, worst, '${v.detail}, least one-family ring ${(100 * worst).round()}%');
 }
 
 Verdict ruleFor(LayoutKey key, Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) {
   switch (key) {
     case LayoutKey.contrast: return _seamRule(m, grid, stock, members, chess: true);
     case LayoutKey.boro: return _seamRule(m, grid, stock, members, chess: false);
-    case LayoutKey.spectrum: return _spectrum(m, grid);
-    case LayoutKey.blocks: return _blocks(m, grid);
-    case LayoutKey.heart: return _heart(m, grid, members, g);
+    case LayoutKey.spectrum: return _spectrum(m, grid, stock, members);
+    case LayoutKey.blocks: return _blocks(m, grid, stock, members);
+    case LayoutKey.heart: return _heart(m, grid, stock, members, g);
+    case LayoutKey.chain: return _chain(m, grid, stock, members, g);
+    case LayoutKey.diamond: return _diamond(m, grid, stock, members, g);
     case LayoutKey.medallionPrint:
       final kinds = {for (final i in members) m.pool.lightness[i]}.length;
-      if (kinds < rippleKinds) return Verdict(false, false, double.nan, '$kinds kinds of busy');
+      if (kinds < rippleKinds) return _cannot('$kinds kinds of busy');
       return _map(m, grid, stock, members);
-    case LayoutKey.chain:
-      final v = _map(m, grid, stock, members);
-      final links = [for (var i = 0; i < grid.length; i++) if (m.obj.pin![i] >= 0) grid[i]];
-      final one = links.toSet().length == 1;
-      return Verdict(v.applies, v.passes && one, v.stat, '${v.detail}, links of ${links.toSet().length} cloth');
     default: return _map(m, grid, stock, members);
   }
 }
@@ -241,12 +387,72 @@ int repeatsOf(List<int> grid, Objective obj) => obj.pairs.where((p) => grid[p.$1
 Judged judge(LayoutKey key, Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) =>
     Judged(ruleFor(key, m, grid, stock, members, g), repeatsOf(grid, m.obj), members.length >= apartFrom);
 
+// ---- The two baselines. ----
+
+/* A random arrangement of the same pieces: n drawn without replacement from the box's pieces, in a random order. */
+List<int> randomGrid(List<int> stock, List<int> members, int n, int seed) {
+  final pieces = piecesOf(stock, members)..shuffle(math.Random(seed));
+  return pieces.take(n).toList();
+}
+
+/* n of the pieces, ordered by `key`, spread evenly over that order (its two ends included). */
+List<int> _spread(List<int> pieces, double Function(int f) key, int n) {
+  final s = List.of(pieces)..sort((a, b) { final c = key(a).compareTo(key(b)); return c != 0 ? c : a.compareTo(b); });
+  if (n == 1) return [s.first];
+  return [for (var k = 0; k < n; k++) s[(k * (s.length - 1) / (n - 1)).round()]];
+}
+
+List<int> _deal(List<double> target, List<int> chosen) {
+  final order = [for (var i = 0; i < target.length; i++) i]
+    ..sort((a, b) { final c = target[a].compareTo(target[b]); return c != 0 ? c : a.compareTo(b); });
+  final grid = List<int>.filled(target.length, -1);
+  for (var k = 0; k < order.length; k++) { grid[order[k]] = chosen[k]; }
+  return grid;
+}
+
+/* The sorted baseline: no search. A lightness pattern takes n pieces spread evenly over the box's lightness and deals
+   them in its target's order (lightest piece to the lightest target); Spectrum does the same with the solver's own hue
+   targets on a CAM16 hue line; Blocks gives each square, block by block, the piece left that is nearest its block's
+   colour; Heart gives the heart the pieces nearest its colour and the ground the lightest of the rest. Mixed has no
+   order to follow and no sorted baseline (null). */
+List<int>? sortedGrid(LayoutKey key, Compiled m, List<int> stock, List<int> members) {
+  final n = m.obj.rows * m.obj.cols, pieces = piecesOf(stock, members), lab = m.pool.lab, l = m.pool.lightness;
+  if (pieces.length < n) return null;
+  switch (key) {
+    case LayoutKey.boro:
+      return null;
+    case LayoutKey.spectrum:
+      final cut = purpleCut([for (final f in members) if (coloured(lab[f])) ucsOf(lab[f]).hue]);
+      double line(int f) => !coloured(lab[f]) ? 1e9 : hueOnLine(ucsOf(lab[f]).hue, cut);
+      return _deal(m.obj.targetHue!, _spread(pieces, line, n));
+    case LayoutKey.blocks:
+      final t = m.obj.targetColour!, left = List.of(pieces), grid = List<int>.filled(n, -1);
+      for (var i = 0; i < n; i++) {
+        left.sort((a, b) => ab(lab[a], lab[t[i]]).compareTo(ab(lab[b], lab[t[i]])));
+        grid[i] = left.removeAt(0);
+      }
+      return grid;
+    case LayoutKey.heart:
+      final anchor = m.anchors[1]!, zones = layouts[LayoutKey.heart]!.zonesOn((rows: m.obj.rows, cols: m.obj.cols));
+      final left = List.of(pieces)..sort((a, b) => ab(lab[a], lab[anchor]).compareTo(ab(lab[b], lab[anchor])));
+      final grid = List<int>.filled(n, -1);
+      for (var i = 0; i < n; i++) { if (zones[i] == 1) grid[i] = left.removeAt(0); }
+      left.sort((a, b) => l[b].compareTo(l[a]));
+      for (var i = 0; i < n; i++) { if (zones[i] != 1) grid[i] = left.removeAt(0); }
+      return grid;
+    default:
+      return _deal(m.obj.targetL!, _spread(pieces, (f) => l[f], n));
+  }
+}
+
 // ---- Boxes. ----
 
 class Box {
-  const Box(this.name, this.fabrics);
+  const Box(this.name, this.fabrics, {this.heldOut = false});
   final String name;
   final List<Fabric> fabrics;
+  /* Never tuned on (see [heldOutBoxes]). */
+  final bool heldOut;
   int get pieces => fabrics.fold(0, (a, f) => a + f.stock);
 
   /* The box with enough pieces for a board of n squares: each cloth's count times the least whole k that gives at least
@@ -261,19 +467,23 @@ class Box {
 
 double _d(Object? v) => (v as num).toDouble();
 
+/* The Sample box's pieces per cloth, as lib/data/sample_box.dart gives them (that file imports Flutter, so they are
+   copied here; sample_box_test.dart holds the two equal). */
+const List<int> samplePiecesHere = [12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
+
+const sampleFiles = ['red', 'navy', 'purple', 'turmeric', 'orange', 'dark-green', 'white', 'red-bandhani',
+  'red-and-blue-block-print', 'teal-flower-print'];
+
 /* The Sample box as a fresh install makes it: the ten photos in assets/sample/, measured by the studio's own measure,
-   7 pieces each (lib/data/sample_box.dart). Run in studio/. */
-Box sampleBox() {
-  const files = ['red', 'navy', 'purple', 'turmeric', 'orange', 'dark-green', 'white', 'red-bandhani',
-    'red-and-blue-block-print', 'teal-flower-print'];
-  return Box('Sample', [
-    for (final f in files)
-      () {
-        final m = measureBytes(File('assets/sample/$f.jpg').readAsBytesSync());
-        return Fabric(id: f, name: f, lab: m.lab, busy: busyOf(m.spread), edge: edgeOf(m.spread), grain: null, stock: 7);
-      }(),
-  ]);
-}
+   with [samplePiecesHere] pieces (lib/data/sample_box.dart). Run in studio/. */
+Box sampleBox([List<int> pieces = samplePiecesHere]) => Box('Sample', [
+      for (var k = 0; k < sampleFiles.length; k++)
+        () {
+          final m = measureBytes(File('assets/sample/${sampleFiles[k]}.jpg').readAsBytesSync());
+          return Fabric(id: sampleFiles[k], name: sampleFiles[k], lab: m.lab, busy: busyOf(m.spread), edge: edgeOf(m.spread),
+              grain: null, stock: pieces[k]);
+        }(),
+    ]);
 
 /* The 47 factory cloths of tool/start_cloth.json, as measured from their photos on 26 October 2026. */
 List<Fabric> startCloth() {
@@ -298,60 +508,87 @@ Box tuningBox() {
   ]);
 }
 
-/* Boxes drawn from the 47 factory cloths, each with 2–8 pieces of a cloth, seeded so every run draws the same:
-   any colour (6, 12 and 20 cloths), a narrow lightness spread (8 cloths, L* 40–65) and warm hues only (10 cloths,
-   hue −60° to 90°). */
-List<Box> drawnBoxes() {
-  final all = startCloth();
-  final r = math.Random(20261031);
-  List<Fabric> draw(List<Fabric> from, int n) {
+double _hue180(Fabric f) { final x = hueOf(f.lab) % 360; return x > 180 ? x - 360 : x; }
+
+List<Fabric> Function(List<Fabric>, int) _drawer(int seed) {
+  final r = math.Random(seed);
+  return (from, n) {
     final pick = List.of(from)..shuffle(r);
     return [for (final f in pick.take(n)) Fabric(id: f.id, name: f.name, lab: f.lab, busy: f.busy, edge: f.edge, grain: null,
         stock: 2 + r.nextInt(7))];
-  }
-  double h(Fabric f) { final x = hueOf(f.lab) % 360; return x > 180 ? x - 360 : x; }
+  };
+}
+
+/* Boxes drawn from the 47 factory cloths, each with 2–8 pieces of a cloth, seeded so every run draws the same:
+   any colour (6, 12 and 20 cloths), a narrow lightness spread (8 cloths, L* 40–65) and warm hues only (10 cloths,
+   hue −60° to 90°). All five were swept while tuning on 1 November 2026. */
+List<Box> drawnBoxes() {
+  final all = startCloth(), draw = _drawer(20261031);
   return [
     Box('Any 6', draw(all, 6)),
     Box('Any 12', draw(all, 12)),
     Box('Any 20', draw(all, 20)),
     Box('Narrow 8', draw([for (final f in all) if (f.lab.l >= 40 && f.lab.l <= 65) f], 8)),
-    Box('Warm 10', draw([for (final f in all) if (chroma(f.lab) >= hueMinChroma && h(f) >= -60 && h(f) <= 90) f], 10)),
+    Box('Warm 10', draw([for (final f in all) if (chroma(f.lab) >= 10 && _hue180(f) >= -60 && _hue180(f) <= 90) f], 10)),
   ];
 }
 
-List<Box> allBoxes() => [sampleBox(), tuningBox(), Box('All 47', startCloth()), ...drawnBoxes()];
+/* The held-out boxes, fixed on 1 November 2026 before any tuning of the audit's fixes and never tuned on: four boxes
+   drawn afresh (seed 20261102, used nowhere else) from the 47 factory cloths, at every board size. Any 8 and Any 16
+   (any colour), Mid 10 (L* 30–75) and Cool 10 (hue 120° to 300°, chroma 10 or more). The cloths themselves are not
+   new: the 47 were in the tuning boxes too, so these test new boxes of known cloth, not new cloth. The 11 September
+   2026 tuning (~/kantha canvas/reports/sweep-2026-09-11.md) used only the tuning pool at 5 × 7. */
+List<Box> heldOutBoxes() {
+  final all = startCloth(), draw = _drawer(20261102);
+  double h360(Fabric f) => ((hueOf(f.lab) % 360) + 360) % 360;
+  return [
+    Box('Held Any 8', draw(all, 8), heldOut: true),
+    Box('Held Any 16', draw(all, 16), heldOut: true),
+    Box('Held Mid 10', draw([for (final f in all) if (f.lab.l >= 30 && f.lab.l <= 75) f], 10), heldOut: true),
+    Box('Held Cool 10', draw([for (final f in all) if (chroma(f.lab) >= 10 && h360(f) >= 120 && h360(f) <= 300) f], 10), heldOut: true),
+  ];
+}
+
+/* The boxes tuning may look at. */
+List<Box> tuningBoxes() => [sampleBox(), tuningBox(), Box('All 47', startCloth()), ...drawnBoxes()];
+
+List<Box> allBoxes() => [...tuningBoxes(), ...heldOutBoxes()];
 
 // ---- One case: a pattern, a box, a board, a seed. ----
 
 class Case {
-  Case(this.key, this.box, this.size, this.seed, this.fills, this.solved, this.random, this.grid, this.colours);
+  Case(this.key, this.box, this.heldOut, this.size, this.seed, this.fills, this.why, this.solved, this.random, this.sorted,
+      this.grid, this.colours, this.millis);
   final LayoutKey key;
   final String box;
+  final bool heldOut;
   final BoardSize size;
   final int seed;
-  /* False when the box cannot fill the pattern (the studio fades its tile); then nothing is judged. */
+  /* False when the studio refuses to fill the pattern from this box (it fades the tile); then nothing is judged. */
   final bool fills;
-  final Judged? solved, random;
+  final String? why;
+  final Judged? solved, random, sorted;
   final List<int>? grid;
   final List<Lab>? colours;
+  final int millis;
+  Outcome get outcome => fills ? solved!.rule.outcome : Outcome.cannot;
 }
 
-/* A random arrangement of the same pieces: n drawn without replacement from the box's pieces, in a random order. */
-List<int> randomGrid(List<int> stock, List<int> members, int n, int seed) {
-  final pieces = <int>[for (final i in members) for (var k = 0; k < stock[i]; k++) i]..shuffle(math.Random(seed));
-  return pieces.take(n).toList();
-}
-
-Case runCase(LayoutKey key, Box box, BoardSize g, int seed) {
+Case runCase(LayoutKey key, Box box, BoardSize g, int seed, {SolveOptions? options}) {
   final n = g.rows * g.cols, b = box.forBoard(n);
   final m = modelFor(key, ObjectiveInput(pool: b.pool, edge: b.edge, members: b.members, mount: Mount.none, stock: b.stock, size: g));
-  if (!m.fills) return Case(key, box.name, g, seed, false, null, null, null, null);
+  Case refused(String why) => Case(key, box.name, box.heldOut, g, seed, false, why, null, null, null, null, null, 0);
+  if (!m.fills) return refused(m.why?.name ?? 'refused');
   final prep = prepare(m.pool, m.obj.distance);
-  final s = solve(m.obj, prep, b.stock, b.members, SolveOptions(seed: seed));
-  if (s == null) return Case(key, box.name, g, seed, false, null, null, null, null);
+  final sw = Stopwatch()..start();
+  final s = solve(m.obj, prep, b.stock, b.members, options ?? SolveOptions(seed: seed));
+  final ms = sw.elapsedMilliseconds;
+  if (s == null) return refused('no solve');
   final rand = randomGrid(b.stock, b.members, n, seed * 7919 + n);
-  return Case(key, box.name, g, seed, true, judge(key, m, s.grid, b.stock, b.members, g),
-      judge(key, m, rand, b.stock, b.members, g), s.grid, b.pool.lab);
+  final sorted = sortedGrid(key, m, b.stock, b.members);
+  return Case(key, box.name, box.heldOut, g, seed, true, null, judge(key, m, s.grid, b.stock, b.members, g),
+      judge(key, m, rand, b.stock, b.members, g), sorted == null ? null : judge(key, m, sorted, b.stock, b.members, g),
+      s.grid, b.pool.lab, ms);
 }
 
 /* The studio's pattern names, for the table (messages/en.json's titles). */
