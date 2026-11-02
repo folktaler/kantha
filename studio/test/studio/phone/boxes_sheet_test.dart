@@ -83,7 +83,7 @@ void main() {
     for (var i = 1; i < names.length; i++) {
       expect(tester.getRect(row(names[i - 1])).top, lessThan(tester.getRect(row(names[i])).top), reason: names[i]);
     }
-    expect(inSheet(find.text('170 pieces · sample cloth')), findsOneWidget);
+    expect(inSheet(find.text('189 pieces · sample cloth')), findsOneWidget);
     expect(inSheet(find.text('0 pieces')), findsOneWidget);
     expect(inSheet(find.text('105 pieces')), findsOneWidget);
     expect(inSheet(find.text('Makes the next number and opens it')), findsOneWidget);

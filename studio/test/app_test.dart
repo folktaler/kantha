@@ -45,7 +45,7 @@ void main() {
         turns: 200);
     final c = tester.widget<StudioScreen>(screen).controller;
     expect(c.isSample(c.box!), isTrue);
-    expect(c.piecesIn(c.box!), 170);
+    expect(c.piecesIn(c.box!), 189);
     // Unmounted, the shelf's watches close over drift's next turns.
     await tester.pumpWidget(const SizedBox.shrink());
     await letWork(tester, turns: 3);

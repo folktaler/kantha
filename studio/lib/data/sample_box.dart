@@ -21,7 +21,7 @@ const sampleCloth = [
   SampleCloth('Red', 'red.jpg'), // KF-47
   SampleCloth('Navy', 'navy.jpg'), // KF-35
   SampleCloth('Purple', 'purple.jpg', 34), // KF-9
-  SampleCloth('Turmeric', 'turmeric.jpg'), // KF-46
+  SampleCloth('Turmeric', 'turmeric.jpg', 31), // KF-46
   SampleCloth('Orange', 'orange.jpg'), // KF-5
   SampleCloth('Dark green', 'dark-green.jpg'), // KF-29
   SampleCloth('White', 'white.jpg', 40), // KF-28
@@ -30,12 +30,12 @@ const sampleCloth = [
   SampleCloth('Teal flower print', 'teal-flower-print.jpg'), // KF-4
 ];
 
-/* 12 pieces of each cloth but two, 170 in all (owner, 2 November 2026: "Bigger Sample box", then "Only 2 raised"):
-   the fewest that let all 15 patterns fill a board 12 wide and 10 tall. Chain needs 34 of one dark cloth for its links:
-   Purple, the darkest, which gives Chain the most light and dark between links and ground (at 7 × 5 its links were
-   Purple already). Diamond needs 40 of White, the one cloth of its light family, for its light rings. Up to 12 × 12,
-   wide by tall, it cannot fill 11 × 11 or 12 × 11 (Chain; Diamond too at 12 × 11), 9 × 12 or 10 × 12 (Heart), and
-   11 × 12 or 12 × 12 (Heart, Chain and Diamond). */
+/* 12 pieces of each cloth but three, 189 in all (owner, 2 November 2026: "Bigger Sample box", "Only 2 raised", then
+   "Add Turmeric"): the fewest that let all 15 patterns fill a board 12 wide and 10 tall, and Heart keep its rule there.
+   Chain needs 34 of one dark cloth for its links: Purple, the darkest, which gives Chain the most light and dark
+   between links and ground (at 7 × 5 its links were Purple already). Diamond needs 40 of White, the one cloth of its
+   light family, for its light rings. Heart's ground must be 25 L* lighter than its heart, and at 12 × 10 that takes 31
+   of Turmeric, the next lightest after White. */
 const samplePieces = 12;
 
 /* The pieces of each cloth an untouched Sample box held before, in order: 7 until 1 November 2026, then 12. The shelf's

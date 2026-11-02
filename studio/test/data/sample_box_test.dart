@@ -28,7 +28,7 @@ import '../support/studio_fixture.dart';
 
 final _names = [for (final s in sampleCloth) s.name];
 final _today = [for (final s in sampleCloth) s.pieces];
-const _total = 170;
+const _total = 189;
 
 final _todayByName = {for (final s in sampleCloth) s.name: s.pieces};
 
@@ -43,7 +43,7 @@ void main() {
     expect(m.map((x) => x.name).toSet().length, 10, reason: 'ten colour names');
   });
 
-  test('a fresh install gets the Sample box once, with the 10 cloths, 12 of each but Purple at 34 and White at 40, named as the owner named them', () async {
+  test('a fresh install gets the Sample box once, with the 10 cloths, 12 of each but Purple at 34, Turmeric at 31 and White at 40, named as the owner named them', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     await ensureSampleBox(shelf);
@@ -52,7 +52,7 @@ void main() {
     final cloth = await shelf.db.select(shelf.db.cloths).get();
     expect(cloth.map((c) => c.name), _names);
     expect(cloth.every((c) => c.fabric == ''), isTrue);
-    expect([for (final c in cloth) c.pieces], [12, 12, 34, 12, 12, 12, 40, 12, 12, 12]);
+    expect([for (final c in cloth) c.pieces], [12, 12, 34, 31, 12, 12, 40, 12, 12, 12]);
     expect(_today.fold(0, (a, b) => a + b), _total);
     expect(samplePiecesHere, _today, reason: 'pattern_rules.dart copies the counts');
     expect(await shelf.swatchesToReplace(drawnSwatches), isNull, reason: 'a Sample box made now needs no swap');
@@ -263,13 +263,14 @@ void main() {
       return shelf;
     }
 
-    test('gets Purple at 34 and White at 40 if she has not changed them, once; the rest, and a cloth she changed, stay', () async {
+    test('gets Purple at 34, Turmeric at 31 and White at 40 if she has not changed them, once; the rest, and a cloth she '
+        'changed, stay', () async {
       final shelf = await old();
       final cloth = await shelf.db.select(shelf.db.cloths).get();
       await shelf.editCloth(cloth[0].id, fabric: '', pieces: 7);
       await shelf.editCloth(cloth[6].id, fabric: 'Cotton', pieces: 12);
       await topUpSample(shelf);
-      expect(await _pieces(shelf), [7, 12, 34, 12, 12, 12, 12, 12, 12, 12], reason: '7 in a box topped up to 12 is hers');
+      expect(await _pieces(shelf), [7, 12, 34, 31, 12, 12, 12, 12, 12, 12], reason: '7 in a box topped up to 12 is hers');
       expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
       await shelf.editCloth(cloth[2].id, fabric: '', pieces: 12);
       await topUpSample(shelf);
