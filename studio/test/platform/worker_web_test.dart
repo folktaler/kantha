@@ -70,4 +70,28 @@ line.postMessage('started');
     await expectLater(held, throwsA(isA<WorkerStopped>()));
     expect(await ask(w), containsPair('said', 'yes'));
   });
+
+  test('after dispose nothing is asked, and no worker starts: an ask fails with WorkerStopped', () async {
+    final w = PageWorker(url);
+    expect(await ask(w), containsPair('said', 'yes'));
+    w.dispose();
+    await expectLater(ask(w), throwsA(isA<WorkerStopped>()));
+    w.post('{"id":0}'.toJS);
+    w.warm();
+    w.restart();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect((starts, w.running), (1, false));
+  });
+
+  test('an ask that cannot be sent fails at once, as the worker gone; a buffer handed over is never sent again',
+      () async {
+    final w = PageWorker(url);
+    addTearDown(w.dispose);
+    await expectLater(w.ask((id) => throw StateError('no message')), throwsA(isA<WorkerFailed>()));
+    final buffer = JSArrayBuffer(8);
+    expect(await w.ask((id) => '{"id":$id}'.toJS, transfer: [buffer]), containsPair('said', 'yes'));
+    expect(buffer.toDart.lengthInBytes, 0, reason: 'handed over');
+    await expectLater(w.ask((id) => '{"id":$id}'.toJS, transfer: [buffer]), throwsA(isA<WorkerGone>()));
+    expect(await ask(w), containsPair('said', 'yes'), reason: 'the worker is as it was');
+  });
 }

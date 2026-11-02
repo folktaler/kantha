@@ -52,9 +52,7 @@ class _WorkerRunner implements SolverRunner {
             .toJS;
       }) as Map<String, dynamic>;
       return LayoutSolve(m['fills'] as bool, (m['grid'] as List?)?.cast<int>(), (m['rot'] as List?)?.cast<int>());
-    } on WorkerFailed {
-      return const LayoutSolve(false, null, null);
-    } on WorkerStopped {
+    } on WorkerGone {
       return const LayoutSolve(false, null, null);
     } finally {
       _steps.remove(asked);
