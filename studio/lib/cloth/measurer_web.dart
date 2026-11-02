@@ -32,18 +32,23 @@ PageWorker get _worker => _one ??= PageWorker(releaseFile('measure_worker.js', p
 void warmMeasurer() => _worker.warm();
 
 /* `rgba` (width × height RGBA pixels) measured by measureImage in the worker. Its buffer is handed over, not copied (a
-   crop is up to 2500 × 2500 × 4 bytes, on old phones too): afterwards it is empty. Throws MeasureError as measureImage
-   does, or MeasurerGone. */
-Future<Measured> measureRgba(Uint8List rgba, int width, int height) => _measure(_worker, rgba, width, height, measureWait);
+   crop is up to 2500 × 2500 × 4 bytes, on old phones too): afterwards it is empty. A measure let go before it began
+   (its worker was stuck on another, and started again) is asked once more of the new worker, with `again`: the same
+   pixels afresh, never the buffer handed over. Throws MeasureError as measureImage does, or MeasurerGone. */
+Future<Measured> measureRgba(Uint8List rgba, int width, int height, {Uint8List Function()? again}) =>
+    _measure(_worker, rgba, width, height, measureWait, again);
+
+typedef Measure = Future<Measured> Function(Uint8List rgba, int width, int height, {Uint8List Function()? again});
 
 /* measureRgba by the worker at `url`, waiting `wait`. */
 @visibleForTesting
-Future<Measured> Function(Uint8List rgba, int width, int height) measurerAt(String url, {Duration wait = measureWait}) {
+Measure measurerAt(String url, {Duration wait = measureWait}) {
   final worker = PageWorker(url);
-  return (rgba, width, height) => _measure(worker, rgba, width, height, wait);
+  return (rgba, width, height, {again}) => _measure(worker, rgba, width, height, wait, again);
 }
 
-Future<Measured> _measure(PageWorker worker, Uint8List rgba, int width, int height, Duration wait) async {
+Future<Measured> _measure(PageWorker worker, Uint8List rgba, int width, int height, Duration wait,
+    Uint8List Function()? again) async {
   // The whole buffer goes: a view of part of one is copied first, so only its own pixels go.
   final whole = rgba.offsetInBytes == 0 && rgba.lengthInBytes == rgba.buffer.lengthInBytes ? rgba : Uint8List.fromList(rgba);
   final pixels = whole.buffer.toJS;
@@ -57,6 +62,9 @@ Future<Measured> _measure(PageWorker worker, Uint8List rgba, int width, int heig
       ..['height'] = height.toJS, transfer: [pixels], wait: wait, from: WaitFrom.begin);
   } on TimeoutException catch (e) {
     throw MeasurerGone(e);
+  } on WorkerStopped catch (e) {
+    if (again == null) throw MeasurerGone(e);
+    return _measure(worker, again(), width, height, wait, null);
   } on WorkerGone catch (e) {
     throw MeasurerGone(e);
   }

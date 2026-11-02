@@ -167,17 +167,21 @@ Future<({Uint8List jpeg, Measured measured})> preparePhoto(Uint8List cropped) as
   if (side == 0 || side * side * 4 != cropped.length) throw const MeasureError('notAnImage');
   // What is stored is the RGB the measure read, as on a phone: a see-through pixel drawn as it is would come out of
   // the JPEG black, and read as another colour when measured again. So every pixel is made solid, its RGB kept.
-  final solid = Uint8List.fromList(cropped);
-  for (var i = 3; i < solid.length; i += 4) {
-    solid[i] = 255;
+  Uint8List solidOf() {
+    final solid = Uint8List.fromList(cropped);
+    for (var i = 3; i < solid.length; i += 4) {
+      solid[i] = 255;
+    }
+    return solid;
   }
+  final solid = solidOf();
   final (whole, wholeContext) = canvasOf(side, side);
   wholeContext.putImageData(web.ImageData(Uint8ClampedList.sublistView(solid).toJS, side, side.toJS), 0, 0);
   // Measured in the measure's worker, so the studio keeps moving while it reads (measurer_web.dart): the solid copy
   // is handed to it, now drawn, as measureImage reads the RGB alone. `cropped` stays the caller's (a cloth whose add
   // fails is added again), and is measured in place where the worker cannot. Awaited once the JPEG is made; ignored
   // until then, so an error is not taken for one nobody handles.
-  final measuring = measureRgba(solid, side, side)
+  final measuring = measureRgba(solid, side, side, again: solidOf)
       .onError<MeasurerGone>((_, _) => measureImage(img.Image.fromBytes(width: side, height: side, bytes: cropped.buffer,
           bytesOffset: cropped.offsetInBytes, numChannels: 4)))
     ..ignore();

@@ -154,11 +154,60 @@ void main() {
     for (var i = 0; i < 20 && !c.solving; i++) {
       await pumpEventQueue();
     }
-    if (c.solving) {
-      expect(c.canStop, isFalse, reason: 'nothing a press asked for: no board from before to put back');
-      c.stopSolve();
-    }
+    expect(c.solving, isTrue, reason: 'the shelf asked for a solve');
+    expect(c.canStop, isFalse, reason: 'nothing a press asked for: no board from before to put back');
+    c.stopSolve();
     expect(c.box, two);
+  });
+
+  test('her cloth lowered while it solves, below what the board from before uses: Stop is not offered', () async {
+    final solver = HeldSolver();
+    final s = await studio(solver: solver);
+    final c = s.c;
+    final uses = <int, int>{};
+    for (final i in c.grid!) {
+      uses[i] = (uses[i] ?? 0) + 1;
+    }
+    final twice = uses.entries.firstWhere((e) => e.value > 1).key, id = c.cloth[twice].id;
+    solver.hold = true;
+    c.loadLayout(layoutKeys.firstWhere((k) => k != c.layout && c.feasible[k]!.fills));
+    expect(c.canStop, isTrue);
+    await s.shelf.editCloth(id, fabric: 'Cotton', pieces: 1); // the board from before has it twice; she now holds 1
+    for (var i = 0; i < 20 && c.cloth.firstWhere((x) => x.id == id).stock != 1; i++) {
+      await pumpEventQueue();
+    }
+    expect(c.cloth.firstWhere((x) => x.id == id).stock, 1);
+    expect(c.solving, isTrue);
+    expect(c.canStop, isFalse, reason: 'that board would use a piece more times than she holds');
+  });
+
+  test('her cloth added to while it solves, then Stop: what the box can fill is read from her cloth now', () async {
+    final solver = HeldSolver();
+    final s = await studio(solver: solver);
+    final c = s.c;
+    final two = await s.shelf.makeBox();
+    for (var i = 0; i < 5; i++) {
+      await s.shelf.addPiecesForTest(two, 7);
+    }
+    await pumpEventQueue();
+    c.openBox(two);
+    await pumpEventQueue();
+    final couldNot = [for (final k in layoutKeys) if (!c.feasible[k]!.fills) k];
+    expect(couldNot, isNotEmpty);
+    solver.hold = true;
+    c.loadLayout(layoutKeys.firstWhere((k) => k != c.layout && c.feasible[k]!.fills));
+    for (var i = 0; i < 4; i++) {
+      await s.shelf.addPiecesForTest(two, 7);
+    }
+    List<LayoutKey> nowFill() => [for (final k in couldNot) if (c.feasible[k]!.fills) k];
+    for (var i = 0; i < 20 && nowFill().isEmpty; i++) {
+      await pumpEventQueue();
+    }
+    final now = nowFill();
+    expect(now, isNotEmpty, reason: 'more cloth: a pattern it could not fill, it now can');
+    expect(c.canStop, isTrue);
+    c.stopSolve();
+    expect(nowFill(), now, reason: 'not the box as it was before she added cloth');
   });
 
   test('a press during a solve no press asked for (the first one): the board as it is now, when it has one', () async {
@@ -189,7 +238,7 @@ void main() {
     c.stopSolve();
     await pumpEventQueue();
     expect((c.box, c.grid, c.rot, c.layout, c.name), (box, grid, rot, layout, name));
-    expect(c.feasible, feasible);
+    expect({for (final e in c.feasible.entries) e.key: e.value.why}, {for (final e in feasible.entries) e.key: e.value.why});
   });
 
   test('Stop puts back the note the board had, as it was, and says it no second time', () async {

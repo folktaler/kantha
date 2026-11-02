@@ -137,10 +137,17 @@ class StudioController extends ChangeNotifier {
   /* The solve `_before` is for: any path that drops that solve (a new id) leaves it for no one. */
   int _beforeFor = -1;
   _Before? get _live => _beforeFor == _reqId ? _before : null;
-  /* A solve can be stopped while the board it replaces can be put back: one made only of cloth still in its box. */
+  /* A solve can be stopped while the board it replaces can be put back: one made only of cloth still in its box, each
+     piece used no more times than she holds of it now (her cloth may change while she waits). */
   bool get canStop {
     final b = _live, g = b?.grid;
-    return solving && g != null && g.every((i) => i >= 0 && i < cloth.length && cloth[i].box == b!.box);
+    if (!solving || g == null) return false;
+    final uses = <int, int>{};
+    for (final i in g) {
+      if (i < 0 || i >= cloth.length || cloth[i].box != b!.box) return false;
+      uses[i] = (uses[i] ?? 0) + 1;
+    }
+    return uses.entries.every((e) => e.value <= cloth[e.key].stock);
   }
   /* What a press takes as the board to go back to: the board now, or, while a solve is out, the one from before it;
      the board now when that solve was none a press asked for. */
@@ -953,8 +960,13 @@ class StudioController extends ChangeNotifier {
     solver.stop();
     final resized = b.chosen != chosen;
     layout = b.layout; name = b.name; mount = b.mount; grid = b.grid; rot = b.rot; seed = b.seed; box = b.box;
-    savedId = b.savedId; savedGrid = b.savedGrid; chosen = b.chosen; feasible = b.feasible;
+    savedId = b.savedId; savedGrid = b.savedGrid; chosen = b.chosen;
     _note = b.note; warn = b.warn; // as it was: no second toast
+    // What the box can fill is read from her cloth as it is now, not as it was: a note that it could not fill goes when
+    // it now can, and one is said when it now cannot.
+    final couldNot = b.feasible[b.layout]?.fills == false;
+    _checkFeasible(box);
+    if (couldNot && (feasible[layout]?.fills ?? true)) { _note = ''; warn = false; }
     _holding = b.holding; solving = false; solveStep = null; _before = null; _dropFor = null; _pressFor = null;
     _recommendThread();
     if (resized) {

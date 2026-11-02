@@ -48,8 +48,9 @@ final class WorkerStopped extends WorkerGone {
      not spend the find's wait loading. Until then the load has a wait of its own, so one that never loads still ends.
    - begin: once the worker says it has begun that ask ({"type":"begin","id"}: the measure's), or the ask before it has
      ended, so time in the queue is not counted, and a worker stuck on one lets the next go after a wait of its own.
-     When that one too runs out with nothing heard since the first, the worker is stuck: it is started again, the
-     asks still in its queue fail once (WorkerStopped), and the new worker serves those after. */
+     When that one too runs out with nothing heard since the first, the worker is stuck: it is started again, and the
+     asks still in its queue, none of them begun, fail with WorkerStopped, for the caller to ask again of the new
+     worker. Only the one it was stuck on timed out. */
 enum WaitFrom { ready, begin }
 
 class _Ask {
@@ -136,10 +137,12 @@ class PageWorker {
     if (wait == null || (a.timer != null && !again)) return;
     a.timer?.cancel();
     a.timer = Timer(wait, () {
+      // Stuck on the one before: this one never began, so it goes with the rest, WorkerStopped, to be asked again of
+      // the new worker.
+      if (a.from == WaitFrom.begin && _overdue) return restart();
       _waiting.removeWhere((_, x) => identical(x, a));
       a.done.completeError(TimeoutException('the worker did not answer', wait));
       if (a.from != WaitFrom.begin) return;
-      if (_overdue) return restart(); // stuck: the rest go once, and a new worker serves what comes after
       _overdue = true;
       _nextBegins();
     });

@@ -53,9 +53,10 @@ class WaitRing extends StatelessWidget {
 
   /* 8 frames a second, not the screen's 60. On the web every frame is the page's own work, so Material's ring, drawn
      each frame, took the main thread from a wait whose work is there too: opening a backup at 20x CPU took 19 s with
-     it, 5 s at 8 frames a second, 3.4 s with no ring (1 November 2026). Where a frame takes longer than that (a
-     slow phone, a busy page), the next turn waits 3 frames' time (nextTurnAfter), so the ring never takes more than a
-     quarter of the thread: at a steady 8 a second it once held it whole, 18.5 s in 1 run of 10 at 20x. */
+     it, 5 s at 8 frames a second, 3.4 s with no ring (1 November 2026). Where a frame takes longer (a slow phone, a
+     busy page), the next turn waits 3 times what it took, at most 500 ms (nextTurnAfter): for frames up to 167 ms the
+     ring takes at most a quarter of the thread; past that, a frame's time over that time plus 500 ms (a 500 ms frame,
+     half). At a steady 8 a second it once held the thread whole, 18.5 s in 1 run of 10 at 20x. */
   static const turnEvery = Duration(milliseconds: 125);
 
   @override

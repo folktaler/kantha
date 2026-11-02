@@ -96,8 +96,8 @@ onmessage = (e) => {
     expect(nextGone - slowGone, greaterThan(const Duration(milliseconds: 800)), reason: 'one at a time, never all at once');
   });
 
-  test('a worker stuck on one: the one after runs out too, and then the worker is started again; what was queued is '
-      'measured in place, once, and the new worker serves what comes after', () async {
+  test('a worker stuck on one: only that one is measured in place; the 3 behind it, never begun, are asked again of a '
+      'new worker, from fresh pixels, and answered', () async {
     const stuck = '''
 postMessage('{"type":"ready"}');
 onmessage = (e) => {
@@ -107,13 +107,18 @@ onmessage = (e) => {
 };
 ''';
     final measure = measurerAt(urlOf(stuck), wait: const Duration(milliseconds: 500));
-    final queued = [measure(Uint8List(4), 1, 1), for (var i = 0; i < 3; i++) measure(Uint8List(8), 2, 1)];
-    for (final m in queued) {
-      await expectLater(m, throwsA(isA<MeasurerGone>()));
+    var fresh = 0;
+    Uint8List again() {
+      fresh++;
+      return Uint8List(8);
     }
-    final watch = Stopwatch()..start();
-    await expectLater(measure(Uint8List(8), 2, 1), throwsA(isA<MeasureError>()), reason: 'a new worker answered');
-    expect(watch.elapsedMilliseconds, lessThan(1000));
+    final first = measure(Uint8List(4), 1, 1, again: () => Uint8List(4));
+    final behind = [for (var i = 0; i < 3; i++) measure(Uint8List(8), 2, 1, again: again)];
+    await expectLater(first, throwsA(isA<MeasurerGone>()), reason: 'the one it was stuck on: measured in place');
+    for (final m in behind) {
+      await expectLater(m, throwsA(isA<MeasureError>()), reason: 'answered by the new worker');
+    }
+    expect(fresh, 3, reason: 'each sent again from its own pixels afresh');
   });
 }
 
