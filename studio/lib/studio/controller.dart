@@ -314,12 +314,12 @@ class StudioController extends ChangeNotifier {
      a studio that then fails to re-open is reported, never passed off as the import failing. */
   Future<void> importFile(Uint8List bytes) async {
     await importBackup(bytes, shelf, side);
-    // One made before 2 Nov brings an older top-up marker, or none, so its Sample box gets 40 pieces of each cloth,
-    // before the studio re-opens on it (the top-up reads only the shelf). The studio re-opens next, so the pictures the
-    // swap makes of the backup's designs are drawn from the backup's cloth, not this device's (an id can be in both).
-    // Last, one made before 22 Oct brings no swap marker, so its Sample box is swapped for the real cloth, put in at
-    // 40: the board dealt from the drawn swatches is dealt again (_dealAgainWithout). When the studio did not re-open,
-    // no swap.
+    // One made before 2 Nov brings an older top-up marker, or none, so its Sample box gets today's counts, before the
+    // studio re-opens on it (the top-up reads only the shelf). The studio re-opens next, so the pictures the swap makes
+    // of the backup's designs are drawn from the backup's cloth, not this device's (an id can be in both). Last, one
+    // made before 22 Oct brings no swap marker, so its Sample box is swapped for the real cloth, put in at today's
+    // counts: the board dealt from the drawn swatches is dealt again (_dealAgainWithout). When the studio did not
+    // re-open, no swap.
     try {
       await sample.topUpSample(shelf);
     } catch (e, s) {

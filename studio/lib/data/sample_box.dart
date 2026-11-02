@@ -11,39 +11,42 @@ import 'shelf.dart';
    EXIF), shipped as app files in assets/sample/. Each is measured by the same code as a photograph when the box is
    made, and stored like any cloth of hers. */
 class SampleCloth {
-  const SampleCloth(this.name, this.file);
+  const SampleCloth(this.name, this.file, [this.pieces = samplePieces]);
   final String name;
   final String file; // in assets/sample/
+  final int pieces;
 }
 
 const sampleCloth = [
   SampleCloth('Red', 'red.jpg'), // KF-47
   SampleCloth('Navy', 'navy.jpg'), // KF-35
-  SampleCloth('Purple', 'purple.jpg'), // KF-9
+  SampleCloth('Purple', 'purple.jpg', 34), // KF-9
   SampleCloth('Turmeric', 'turmeric.jpg'), // KF-46
   SampleCloth('Orange', 'orange.jpg'), // KF-5
   SampleCloth('Dark green', 'dark-green.jpg'), // KF-29
-  SampleCloth('White', 'white.jpg'), // KF-28
+  SampleCloth('White', 'white.jpg', 40), // KF-28
   SampleCloth('Red bandhani', 'red-bandhani.jpg'), // KF-22
   SampleCloth('Red and blue block print', 'red-and-blue-block-print.jpg'), // KF-37
   SampleCloth('Teal flower print', 'teal-flower-print.jpg'), // KF-4
 ];
 
-/* 40 pieces of each cloth (owner, 2 November 2026: "Bigger Sample box"): the fewest of each that let all 15 patterns
-   fill a board 12 wide and 10 tall. Chain needs 34 of one dark cloth for its links; Diamond needs 40 of White, the one
-   cloth of its light family, for its light rings. Every cloth gets 40, so the box stays even (White at 40, one dark
-   cloth at 34 and the rest at 12 would also do). Diamond still cannot fill 11 × 12, 12 × 11 or 12 × 12 from it. */
-const samplePieces = 40;
+/* 12 pieces of each cloth but two, 170 in all (owner, 2 November 2026: "Bigger Sample box", then "Only 2 raised"):
+   the fewest that let all 15 patterns fill a board 12 wide and 10 tall. Chain needs 34 of one dark cloth for its links:
+   Purple, the darkest, which gives Chain the most light and dark between links and ground (at 7 × 5 its links were
+   Purple already). Diamond needs 40 of White, the one cloth of its light family, for its light rings. Up to 12 × 12,
+   wide by tall, it cannot fill 11 × 11 or 12 × 11 (Chain; Diamond too at 12 × 11), 9 × 12 or 10 × 12 (Heart), and
+   11 × 12 or 12 × 12 (Heart, Chain and Diamond). */
+const samplePieces = 12;
 
 /* The pieces of each cloth an untouched Sample box held before, in order: 7 until 1 November 2026, then 12. The shelf's
    top-up marker counts which of them it holds (Shelf.topUpSample). */
 const samplePiecesBefore = [7, 12];
 
-/* A Sample box made with fewer pieces of each cloth gets samplePieces of each cloth she has not changed, once (owner,
+/* A Sample box made with fewer pieces gets each cloth's count today of each cloth she has not changed, once (owner,
    1 and 2 November 2026; Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that
    swap puts in is topped up too. */
 Future<void> topUpSample(Shelf shelf) =>
-    shelf.topUpSample({for (final s in sampleCloth) s.name}, before: samplePiecesBefore, to: samplePieces);
+    shelf.topUpSample({for (final s in sampleCloth) s.name: s.pieces}, before: samplePiecesBefore);
 
 /* The eight swatches drawn in code that a Sample box held before 22 Oct, by name. They are replaced by the ten cloths
    once (replaceDrawnSample); a cloth she photographed into the Sample box has its own C-n name and is never among them. */
@@ -75,7 +78,7 @@ Future<List<NewCloth>> measuredSampleCloth(
   }, photos);
   return [
     for (var i = 0; i < sampleCloth.length; i++)
-      (name: sampleCloth[i].name, photo: photos[i], measured: measured[i], pieces: samplePieces),
+      (name: sampleCloth[i].name, photo: photos[i], measured: measured[i], pieces: sampleCloth[i].pieces),
   ];
 }
 

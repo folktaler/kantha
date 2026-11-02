@@ -124,22 +124,25 @@ class Shelf {
       .insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: sampleTopUpDone));
 
   /* The Sample box's top-up (owner, 1 and 2 November 2026), once, in one transaction with its done-once marker. The
-     marker says which count of `before` the box was made or last topped up with (absent or 1: the first). Each of its
-     cloth named in `names` that she has not changed (still that count, no fabric, never re-cropped) gets `to` pieces.
-     A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only the
-     marker is written. A Sample box made since holds `to` already and is marked when made. */
-  Future<void> topUpSample(Set<String> names, {required List<int> before, required int to}) => _write(() async {
+     marker says which count of `before` the box was made or last topped up with (absent or 1: the first). Each cloth
+     named in `to` that she has not changed (still that count, no fabric, never re-cropped) gets its count in `to`. A
+     cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only the marker
+     is written. A Sample box made since holds `to` already and is marked when made. */
+  Future<void> topUpSample(Map<String, int> to, {required List<int> before}) => _write(() async {
         if (before.length + 1 != sampleTopUpDone) throw ArgumentError.value(before, 'before');
         final step = await counterAt(_sampleTopUp);
         if (step >= sampleTopUpDone) return;
         final from = before[math.max(1, step) - 1];
-        _check(to);
+        to.values.forEach(_check);
         final box = await _sampleBox();
         if (box != null) {
-          await (db.update(db.cloths)
-                ..where((c) => c.box.equals(box) & c.name.isIn(names) & c.pieces.equals(from) & c.fabric.equals('') &
-                    c.version.equals(1)))
-              .write(ClothsCompanion(pieces: Value(to)));
+          for (final MapEntry(key: name, value: pieces) in to.entries) {
+            if (pieces == from) continue;
+            await (db.update(db.cloths)
+                  ..where((c) => c.box.equals(box) & c.name.equals(name) & c.pieces.equals(from) & c.fabric.equals('') &
+                      c.version.equals(1)))
+                .write(ClothsCompanion(pieces: Value(pieces)));
+          }
         }
         await _markSampleToppedUp();
       });

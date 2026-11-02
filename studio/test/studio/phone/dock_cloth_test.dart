@@ -36,8 +36,8 @@ void main() {
     final c = await pumpOnSample(tester, size: phone);
     await openClothTab(tester);
     expect(find.descendant(of: picker, matching: find.text('Sample')), findsOneWidget);
-    expect(find.descendant(of: picker, matching: find.text('400 pieces · sample cloth')), findsOneWidget);
-    expect(find.bySemanticsLabel('Sample\n400 pieces · sample cloth'), findsOneWidget, reason: 'both lines are its name');
+    expect(find.descendant(of: picker, matching: find.text('170 pieces · sample cloth')), findsOneWidget);
+    expect(find.bySemanticsLabel('Sample\n170 pieces · sample cloth'), findsOneWidget, reason: 'both lines are its name');
     expect(find.descendant(of: add, matching: find.text('Add pieces')), findsOneWidget);
     expect(find.descendant(of: add, matching: find.byType(tabler.Plus)), findsOneWidget);
 
@@ -49,7 +49,7 @@ void main() {
     expect(p.top, closeTo(panel.top + 8, 0.5));
     final name = tester.widget<Text>(find.descendant(of: picker, matching: find.text('Sample')));
     expect((name.style!.fontSize, name.style!.fontWeight), (15.81, FontWeight.w500));
-    final note = tester.widget<Text>(find.descendant(of: picker, matching: find.text('400 pieces · sample cloth')));
+    final note = tester.widget<Text>(find.descendant(of: picker, matching: find.text('170 pieces · sample cloth')));
     expect((note.style!.fontSize, note.style!.color), (13.83, PhonePalette.text2));
 
     // Row 2: the box's ten cloths, each with what is left of it.

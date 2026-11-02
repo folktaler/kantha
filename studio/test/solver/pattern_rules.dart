@@ -575,7 +575,7 @@ double _d(Object? v) => (v as num).toDouble();
 
 /* The Sample box's pieces per cloth, as lib/data/sample_box.dart gives them (that file imports Flutter, so they are
    copied here; sample_box_test.dart holds the two equal). */
-const List<int> samplePiecesHere = [40, 40, 40, 40, 40, 40, 40, 40, 40, 40];
+const List<int> samplePiecesHere = [12, 12, 34, 12, 12, 12, 40, 12, 12, 12];
 
 const sampleFiles = ['red', 'navy', 'purple', 'turmeric', 'orange', 'dark-green', 'white', 'red-bandhani',
   'red-and-blue-block-print', 'teal-flower-print'];
