@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:kantha_studio/measure/measure.dart';
+import 'package:kantha_studio/studio/phone/menu_panel.dart' show menuTurn;
 import 'package:kantha_studio/studio/phone/phone_theme.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 import 'package:kantha_studio/studio/phone/phone_toast.dart';
@@ -112,15 +113,74 @@ void main() {
         'Back up or move to another device\nYour work is kept on this device only', c.name, '(its words)', '(its words)', 'Close']);
   });
 
-  testWidgets('≡ is named Menu while the menu is shut and Close while it is open, to a mouse and a screen reader',
-      (tester) async {
+  testWidgets('≡ is named Menu while the menu is shut and Close while it is open; a mouse sees no Close, which would '
+      'cover Help', (tester) async {
     await pumpStudio(tester, size: desk);
     final button = tester.widget<Pressable>(menu);
     expect((button.label, button.tooltip), ('Menu', 'Menu'));
     await tester.tap(menu);
     await tester.pumpAndSettle();
     final open = tester.widget<Pressable>(menu);
-    expect((open.label, open.tooltip, open.expanded), ('Close', 'Close', true));
+    expect((open.label, open.tooltip, open.expanded), ('Close', null, true));
+  });
+
+  for (final (name, size) in [('desk', desk), ('phone', phone)]) {
+    testWidgets('≡ turns into × over the menu\'s 300 ms, not at once, though its title goes as it opens ($name)',
+        (tester) async {
+      await pumpStudio(tester, size: size);
+      await tester.tap(menu);
+      await tester.pump();
+      await tester.pump(menuTurn ~/ 2);
+      // The × fades in as ≡ turns away: half way through, it is neither gone nor all there.
+      final x = find.byKey(const ValueKey('menu-icon-x'));
+      expect(tester.widget<FadeTransition>(x).opacity.value, inExclusiveRange(0.05, 0.95));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FadeTransition>(x).opacity.value, 1);
+    });
+  }
+
+  /* The focus ring coming or going round ≡ leaves its icon where it is: the turn runs on through it. */
+  group('≡ turns on through a change of focus', () {
+    double xShown(WidgetTester tester) =>
+        tester.widget<FadeTransition>(find.byKey(const ValueKey('menu-icon-x'))).opacity.value;
+    bool onMenu() =>
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<Pressable>()?.key == const ValueKey('phone-menu');
+
+    testWidgets('Tab off ≡ half way through its turn into ×', (tester) async {
+      await pumpStudio(tester, size: desk);
+      for (var i = 0; i < 30 && !onMenu(); i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+      }
+      expect(onMenu(), isTrue, reason: 'reached from the keyboard, so its ring shows');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(menuTurn ~/ 2);
+      final mid = xShown(tester);
+      expect(mid, inExclusiveRange(0.05, 0.95));
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(onMenu(), isFalse, reason: 'focus has left it, and its ring with it');
+      expect(xShown(tester), inInclusiveRange(mid, 0.95), reason: 'the × goes on fading in, it does not jump');
+      await tester.pumpAndSettle();
+      expect(xShown(tester), 1);
+    });
+
+    testWidgets('Escape from a row of the menu: × turns back into ≡, as focus and its ring come back to it', (tester) async {
+      await pumpStudio(tester, size: desk);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(onMenu(), isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(onMenu(), isTrue);
+      await tester.pump(menuTurn ~/ 2);
+      expect(xShown(tester), inExclusiveRange(0.05, 0.95), reason: 'half way back, not snapped to ≡');
+      await tester.pumpAndSettle();
+      expect(xShown(tester), 0);
+    });
   });
 
   testWidgets('on a desk Enter on Save while the menu is open shuts it and leaves focus on Save', (tester) async {

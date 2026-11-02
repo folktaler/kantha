@@ -355,8 +355,13 @@ void main() {
     finder.answer = FinderAnswer(squares: [sq(10, 10, 20)], groups: [0], tiny: tooSmallTiny);
     await openAdd(tester);
     await pick(tester);
-    expect(inSheet(find.text('The pieces are too small in this photo to find. Come closer, so the pieces fill the photo, '
-        'and take it again.')), findsOneWidget);
+    final told = inSheet(find.text('The pieces are too small in this photo to find. Come closer, so the pieces fill the photo, '
+        'and take it again.'));
+    expect(told, findsOneWidget);
+    // Both quiet buttons' words on the content line, with the words above them (their 12 px inset taken out).
+    for (final b in ["It's one piece", 'Choose a different picture']) {
+      expect(tester.getRect(inSheet(find.text(b))).left, tester.getRect(told).left, reason: b);
+    }
     await tapAndSettle(tester, inSheet(find.text('Choose a different picture')));
     expect(inSheet(find.text('Photo of the pieces')), findsOneWidget);
   });
@@ -568,7 +573,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Done'));
     await tester.pump();
-    const wait = 'The cropper is still loading. Give it a moment and press again.';
+    const wait = 'The photo is not ready. Wait a moment, then press again.';
     expect(find.text(wait), findsOneWidget);
     read.complete(photo);
     await letWork(tester, done: () => find.text('Your cloths').evaluate().isNotEmpty ||

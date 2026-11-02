@@ -153,7 +153,7 @@ void main() {
     final pieces = tester.widget<Text>(inSheet(find.text('Pieces in the box')));
     expect((pieces.style!.fontSize, pieces.style!.fontWeight), (15.81, FontWeight.w500));
     expect(inSheet(find.text('$stock')), findsOneWidget);
-    expect(inSheet(find.textContaining('pieces are currently in use')), findsNothing, reason: 'some are left');
+    expect(inSheet(find.textContaining('pieces of this cloth are in the pattern')), findsNothing, reason: 'some are left');
 
     final save = button('Save changes'), remove = button('Remove this piece');
     expect(tester.widget<PhoneButton>(save).kind, PhoneButtonKind.blue);
@@ -176,7 +176,7 @@ void main() {
     expect(sheet, findsNothing);
   });
 
-  testWidgets('on a phone a cloth whose pieces are all on the board opens with All n pieces are currently in use', (tester) async {
+  testWidgets('on a phone a cloth whose pieces are all on the board opens with All n pieces of this cloth are in the pattern', (tester) async {
     final c = await pumpStudio(tester, size: phone, photos: FixturePhotos());
     await openClothTab(tester);
     final f = c.members(c.box).firstWhere((m) => usedOf(c, m) > 0);
@@ -188,7 +188,7 @@ void main() {
     await tester.tap(key('swatch-${cloth.id}'));
     await letWork(tester, done: () => sheet.evaluate().isNotEmpty, turns: 10);
     expect(title(cloth.name), findsOneWidget);
-    expect(inSheet(find.text('All $used pieces are currently in use. Add more to give the pattern solver more options.')),
+    expect(inSheet(find.text('All $used pieces of this cloth are in the pattern. Add more pieces and the studio has more to choose from.')),
         findsOneWidget);
   });
 
@@ -322,6 +322,9 @@ void main() {
     for (final line in ['1.', 'Cut each piece 6 cm by 6 cm.', 'For best results, photograph it in daylight.']) {
       inter(line, 15.81, PhonePalette.text2);
     }
+    // The disclosure triangle starts on the content edge, as the numbered lines do (it is drawn from its box's left).
+    final caret = inSheet(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_DisclosureCaret'));
+    expect(tester.getRect(caret).left, tester.getRect(inSheet(find.text('1.'))).left);
 
     // Add with no photo: the error, in the body-small role, in the phone's red.
     await tapShown(tester, inSheet(find.text('Add to box')));

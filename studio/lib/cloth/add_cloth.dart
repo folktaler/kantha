@@ -21,7 +21,7 @@ import '../data/numbers.dart' show startCount;
 import '../data/shelf.dart';
 import '../l10n/app_localizations.dart';
 import '../measure/measure.dart';
-import '../studio/phone/phone_sheet.dart' show PhoneButton, PhoneButtonKind;
+import '../studio/phone/phone_sheet.dart' show PhoneButton, PhoneButtonKind, phoneTextInset;
 import '../studio/phone/phone_theme.dart';
 import '../studio/pressable.dart';
 import 'crop_step.dart';
@@ -30,6 +30,14 @@ import 'parts.dart';
 import 'piece_finder.dart';
 import 'photo_source.dart';
 import 'prepare.dart';
+
+/* A quiet button, which keeps the room before the content line that the rest of the card is set in from. */
+class _Quiet extends StatelessWidget {
+  const _Quiet(this.child);
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => child;
+}
 
 class AddCloth extends StatefulWidget {
   const AddCloth({super.key, required this.box, required this.shelf, required this.photos, required this.words,
@@ -407,7 +415,7 @@ class _AddClothState extends State<AddCloth> {
         _store(croppedImage);
       case CropFailure(:final cause, :final stackTrace):
         reportClothError(cause, stackTrace, 'while the photo was cropped');
-        if (mounted) setState(() { _busy = false; _closeAfter = false; _error = words.clothErrorsNotReady; _toldToWait = true; });
+        if (mounted) setState(() { _busy = false; _closeAfter = false; _error = words.clothErrorsUnreadable; _toldToWait = false; });
     }
   }
 
@@ -457,11 +465,12 @@ class _AddClothState extends State<AddCloth> {
     return held == null ? crop : CropHold(held: held, child: crop);
   }
 
-  /* A quiet button: a 48 px text button, as tall as a finger needs. */
-  Widget _quietButton(String text, VoidCallback? onPressed) => Align(
+  /* A quiet button: a 48 px text button, as tall as a finger needs, its words on the content line; its ground and ring
+     reach phoneTextInset before them, into the room the sheet leaves there (build). */
+  Widget _quietButton(String text, VoidCallback? onPressed) => _Quiet(Align(
         alignment: AlignmentDirectional.centerStart,
         child: PhoneButton(text: text, kind: PhoneButtonKind.text, onPressed: onPressed),
-      );
+      ));
 
   String get _submitText => _busy || _reading ? words.clothBusy : _count == 1 ? words.clothAddOne : words.clothAddMany('$_count');
 
@@ -472,13 +481,18 @@ class _AddClothState extends State<AddCloth> {
     // The ×, the scrim, back and Escape ask the sheet to close; with a photo waiting they go through Done.
     return PopScope<Object?>(canPop: _picture == null, onPopInvokedWithResult: (didPop, _) { if (!didPop) _done(dismiss: true); },
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, spacing: 16,
-            children: _many ? _manySteps(last) : [
-      if (last != null) _addedNote(last),
-      ..._photoOrCrop(),
-      _howToBlock(),
-      _countRow(),
-      if (_error.isNotEmpty) cardError(_error),
-      _buttons(PhoneButton(text: _submitText, busy: _busy || _reading, onPressed: _submit)),
+            children: [
+      // The sheet sets this card out phoneTextInset before the content line (cloth_sheet.dart): everything but the
+      // quiet buttons comes back to it, and they draw, and take taps, in that room.
+      for (final w in _many ? _manySteps(last) : [
+        if (last != null) _addedNote(last),
+        ..._photoOrCrop(),
+        _howToBlock(),
+        _countRow(),
+        if (_error.isNotEmpty) cardError(_error),
+        _buttons(PhoneButton(text: _submitText, busy: _busy || _reading, onPressed: _submit)),
+      ])
+        w is _Quiet ? w : Padding(padding: const EdgeInsetsDirectional.only(start: phoneTextInset), child: w),
     ]));
   }
 
@@ -616,8 +630,9 @@ class _AddClothState extends State<AddCloth> {
             expanded: _howTo, onPressed: () => setState(() => _howTo = !_howTo),
             builder: (context, st) {
               final row = Row(mainAxisSize: MainAxisSize.min, children: [
-                ExcludeSemantics(child: Icon(_howTo ? Icons.arrow_drop_down : Icons.arrow_right, size: 16,
-                    color: PhonePalette.text)),
+                // The triangle on the sheet's content edge, as the lines under it: Material's arrow glyphs sit 5 to 7
+                // px inside their box.
+                CustomPaint(size: const Size(12, 16), painter: _DisclosureCaret(open: _howTo)),
                 Text(words.clothHowTo, style: pText(PType.cardLabel)),
               ]);
               // The toggle is a finger's 48 px tall.
@@ -638,6 +653,26 @@ class _AddClothState extends State<AddCloth> {
             ]),
           ),
       ]);
+}
+
+/* <details>' marker, from its left edge: ▸ shut (Material's arrow_right, 3.3 by 6.7 at 16 px), ▾ open (arrow_drop_down,
+   6.7 by 3.3), centred on the box's height. */
+class _DisclosureCaret extends CustomPainter {
+  const _DisclosureCaret({required this.open});
+  final bool open;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const a = 10 / 3, b = 20 / 3;
+    final m = size.height / 2;
+    final path = open
+        ? (Path()..moveTo(0, m - a / 2)..lineTo(b, m - a / 2)..lineTo(b / 2, m + a / 2))
+        : (Path()..moveTo(0, m - b / 2)..lineTo(a, m)..lineTo(0, m + b / 2));
+    canvas.drawPath(path..close(), Paint()..color = PhonePalette.text);
+  }
+
+  @override
+  bool shouldRepaint(_DisclosureCaret old) => old.open != open;
 }
 
 enum _Step { pick, finding, tooSmall, crop, check, cloths }

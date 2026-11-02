@@ -98,11 +98,16 @@ class _PressableState extends State<Pressable> {
 
   @override
   Widget build(BuildContext context) {
-    Widget box = widget.builder(context, PressState(hovered: _hover && _enabled, focused: _focus && !_byPointer, enabled: _enabled));
-    // The browser's title: after a pause, the theme's dark box, so it does not cover the next button at once.
-    if (widget.tooltip != null) {
-      box = Tooltip(message: widget.tooltip, excludeFromSemantics: true, waitDuration: const Duration(milliseconds: 500), child: box);
-    }
+    final drawn = widget.builder(context, PressState(hovered: _hover && _enabled, focused: _focus && !_byPointer, enabled: _enabled));
+    // The browser's title: after a pause, the theme's dark box, so it does not cover the next button at once. It lies
+    // over what the builder draws, beside it in a Stack rather than round it, so what is drawn stays where it is in the
+    // tree when the title comes or goes, and keeps its state (the menu icon's turn runs on).
+    final box = Stack(fit: StackFit.passthrough, children: [
+      drawn,
+      if (widget.tooltip != null)
+        Positioned.fill(child: Tooltip(message: widget.tooltip, excludeFromSemantics: true,
+            waitDuration: const Duration(milliseconds: 500), child: const SizedBox.expand())),
+    ]);
     // A key pressed while it has focus: from then on it was reached from the keyboard, and
     // shows its ring, as :focus-visible does after a key (Escape closing a menu, say).
     return Focus(
@@ -138,10 +143,11 @@ class _PressableState extends State<Pressable> {
    then 2 px of the darker action colour (constituition.border.2, in kantha's focus.ring). One colour cannot stand out
    from both the paper and the action-coloured and ink buttons, so the ring is two, and on any ground one of them does:
    the paper 7.82:1 on the action colour, 16.02:1 on the ink and on a chosen tile's action-coloured edge 7.82:1; the
-   darker action colour 10.01:1 on paper 1, 9.03:1 on paper 3, 8.56:1 on the chosen tint and 8.22:1 on the hover ground. */
-Widget focusRing(bool on, Widget child) => on
-    ? DecoratedBox(position: DecorationPosition.foreground,
-        decoration: BoxDecoration(border: Border.all(color: PhonePalette.white, width: 2)),
-        child: DecoratedBox(position: DecorationPosition.foreground,
-            decoration: BoxDecoration(border: Border.all(color: PhonePalette.blueDark, width: 4)), child: child))
-    : child;
+   darker action colour 10.01:1 on paper 1, 9.03:1 on paper 3, 8.56:1 on the chosen tint and 8.22:1 on the hover ground.
+   The two layers are there whether it is on or off, so the child keeps its place in the tree, and its state, as focus
+   comes and goes. */
+const _noRing = BoxDecoration();
+Widget focusRing(bool on, Widget child) => DecoratedBox(position: DecorationPosition.foreground,
+    decoration: on ? BoxDecoration(border: Border.all(color: PhonePalette.white, width: 2)) : _noRing,
+    child: DecoratedBox(position: DecorationPosition.foreground,
+        decoration: on ? BoxDecoration(border: Border.all(color: PhonePalette.blueDark, width: 4)) : _noRing, child: child));

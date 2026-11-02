@@ -840,13 +840,13 @@ abstract class L {
   /// No description provided for @clothErrorsUnreadable.
   ///
   /// In en, this message translates to:
-  /// **'The factory answered in a way this could not read. Nothing was added.'**
+  /// **'The studio could not read that picture.'**
   String get clothErrorsUnreadable;
 
   /// No description provided for @clothErrorsNotReady.
   ///
   /// In en, this message translates to:
-  /// **'The cropper is still loading. Give it a moment and press again.'**
+  /// **'The photo is not ready. Wait a moment, then press again.'**
   String get clothErrorsNotReady;
 
   /// No description provided for @clothErrorsNoSuchCloth.
@@ -1002,7 +1002,7 @@ abstract class L {
   /// No description provided for @clothFixAllUsed.
   ///
   /// In en, this message translates to:
-  /// **'All {n} pieces are currently in use. Add more to give the pattern solver more options.'**
+  /// **'All {n} pieces of this cloth are in the pattern. Add more pieces and the studio has more to choose from.'**
   String clothFixAllUsed(String n);
 
   /// No description provided for @clothManyTitle.

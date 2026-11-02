@@ -125,4 +125,32 @@ void main() {
     }
     expect(checkTargets(tester, 44), 6);
   });
+
+  /* A text button whose words sit on a 16 px line is set out phoneTextInset before it by its caller (Delete box, Add a
+     piece's quiet buttons): its ground and ring clear its words by 12 px on each side, and it is drawn, laid out and
+     tapped from that edge, in either reading direction. */
+  for (final dir in TextDirection.values) {
+    testWidgets('a text button set out before its line keeps its words on it and takes a tap 2 px inside its drawn '
+        'start edge ($dir)', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(MaterialApp(home: Directionality(textDirection: dir, child: Scaffold(body: Padding(
+        padding: const EdgeInsetsDirectional.only(start: 16 - phoneTextInset, end: 16),
+        child: Align(alignment: AlignmentDirectional.centerStart,
+            child: PhoneButton(text: 'Delete box', kind: PhoneButtonKind.redText, onPressed: () => taps++)),
+      )))));
+      final button = find.byType(PhoneButton);
+      final drawn = tester.getRect(find.descendant(of: button, matching: find.byType(Container)));
+      final words = tester.getRect(find.text('Delete box'));
+      final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      expect(drawn, tester.getRect(button), reason: 'what it draws is what it lays out');
+      final rtl = dir == TextDirection.rtl, start = rtl ? drawn.right : drawn.left;
+      expect(rtl ? words.right : words.left, rtl ? width - 16 : 16, reason: 'its words on the 16 px line');
+      expect(start, rtl ? width - 16 + phoneTextInset : 16 - phoneTextInset, reason: 'its ground and ring 12 px before them');
+      expect(rtl ? drawn.left - words.left : words.right - drawn.right, -phoneTextInset, reason: 'and 12 px after them');
+      await tester.tapAt(Offset(start + (rtl ? -2 : 2), drawn.center.dy));
+      expect(taps, 1);
+      await tester.tapAt(Offset(start + (rtl ? 2 : -2), drawn.center.dy));
+      expect(taps, 1, reason: 'nothing outside it');
+    });
+  }
 }

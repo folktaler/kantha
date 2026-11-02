@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:crop_your_image/crop_your_image.dart' show Crop, CropFailure, CropStatus;
+import 'package:kantha_studio/cloth/crop_step.dart';
+import 'package:kantha_studio/data/database.dart' show ClothRow;
+import 'package:kantha_studio/data/shelf.dart';
+import 'package:kantha_studio/measure/measure.dart' show Measured;
 import 'package:kantha_studio/studio/controller.dart';
+import '../support/db.dart';
 import '../support/pump.dart';
 import '../support/studio_fixture.dart';
 
 /* Box 2 with one cloth of hers of 3 pieces, on the board, and that cloth's Fix this cloth sheet open. */
-Future<(StudioController, String)> openFix(WidgetTester tester, {String fabric = 'Cotton'}) async {
-  final c = await pumpStudio(tester, photos: FixturePhotos());
+Future<(StudioController, String)> openFix(WidgetTester tester, {String fabric = 'Cotton', Shelf? on}) async {
+  final c = await pumpStudio(tester, photos: FixturePhotos(), on: on);
   final id = (await tester.runAsync(() => c.shelf.addClothForTest(boxPieces: 3, fabric: fabric)))!;
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('tab-cloth')));
@@ -110,4 +116,55 @@ void main() {
     expect(c.cloth.firstWhere((x) => x.id == id).version, version + 1);
     expect(sheet, findsNothing, reason: 'the sheet closes');
   });
+
+  testWidgets('a crop that fails on a ready photo says the picture could not be read, not to wait', (tester) async {
+    await openFix(tester);
+    await letWork(tester, turns: 10); // the cropper reads the stored photo
+    // As crop_your_image does: the result, then the cropper ready again.
+    tester.widget<CropStep>(find.byType(CropStep)).onCropped(CropFailure(Exception('the crop failed')));
+    tester.widget<Crop>(find.byType(Crop)).onStatusChanged!(CropStatus.ready);
+    await tester.pump();
+    expect(tester.takeException(), isException, reason: 'it is reported');
+    expect(inSheet(find.text('The studio could not read that picture.')), findsOneWidget);
+    expect(inSheet(find.text('The photo is not ready. Wait a moment, then press again.')), findsNothing);
+  });
+
+  /* A new count and a moved crop are saved together: when the crop fails, nothing is written. The real crop runs in an
+     isolate, which the test's clock never lets finish: the failure stands in for its result. */
+  testWidgets('a crop that fails after the count changed writes neither the count nor the crop, and says so', (tester) async {
+    final shelf = _Writes(memoryDb());
+    await openFix(tester, on: shelf);
+    await letWork(tester, turns: 10); // the cropper reads the stored photo
+    await tester.ensureVisible(find.byKey(const ValueKey('crop-stage')));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byKey(const ValueKey('crop-stage')), const Offset(-10, -10));
+    await tester.pumpAndSettle();
+    await tapShown(tester, inSheet(find.bySemanticsLabel('One more piece')));
+    await tester.pump();
+    await tapShown(tester, inSheet(find.text('Save changes')));
+    await tester.pump();
+    // As crop_your_image does: the result, then the cropper ready again.
+    tester.widget<CropStep>(find.byType(CropStep)).onCropped(CropFailure(Exception('the crop failed')));
+    tester.widget<Crop>(find.byType(Crop)).onStatusChanged!(CropStatus.ready);
+    await tester.pump();
+    expect(tester.takeException(), isException, reason: 'it is reported');
+    expect(inSheet(find.text('The studio could not read that picture.')), findsOneWidget);
+    expect(shelf.writes, isEmpty, reason: 'the count waits for the crop, and goes in with it');
+  });
+}
+
+/* A shelf that notes each change asked of a cloth. */
+class _Writes extends Shelf {
+  _Writes(super.db);
+  final writes = <String>[];
+  @override
+  Future<void> editCloth(String id, {required String fabric, required int pieces}) {
+    writes.add('editCloth');
+    return super.editCloth(id, fabric: fabric, pieces: pieces);
+  }
+  @override
+  Future<ClothRow> recrop(String id, Uint8List photo, Measured measured, {int? pieces}) {
+    writes.add('recrop');
+    return super.recrop(id, photo, measured, pieces: pieces);
+  }
 }

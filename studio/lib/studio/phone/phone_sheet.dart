@@ -101,7 +101,7 @@ Future<bool> askSure(BuildContext context, {required String question, required S
 enum RowEnd { none, check, chevron, action }
 
 /* A list row: at least 56 tall, padding 8 16 8 13 inside a 3 px left edge (the action colour, on the tint, when
-   selected), a 1 px divider 16 px in from the left; `name` in the card-label role over `note` in fine print, text2; `leading` an optional 48 px widget;
+   selected), a 1 px divider 16 px in from each side; `name` in the card-label role over `note` in fine print, text2; `leading` an optional 48 px widget;
    `icon` an optional Tabler icon before the name, sized to it (`iconBusy`, a spinner, takes its place). One button,
    named by its name and note. */
 class SheetRow extends StatelessWidget {
@@ -153,7 +153,7 @@ class SheetRow extends StatelessWidget {
             if (trailing != null) ...[const SizedBox(width: 12), trailing],
           ]),
         ),
-        const Positioned(left: 16, right: 0, bottom: 0, height: 1, child: ColoredBox(color: PhonePalette.border)),
+        const Positioned(left: 16, right: 16, bottom: 0, height: 1, child: ColoredBox(color: PhonePalette.border)),
       ])),
     );
   }
@@ -166,8 +166,14 @@ enum PhoneButtonKind { blue, dark, red, outlinedRed, text, redText }
 /* A dark button's hover: constituition.component.button.neutral.hover. */
 const _darkHover = Color(0xFF37322F);
 
+/* How far a text button's words sit in from its edge. */
+const phoneTextInset = 12.0;
+
 /* A 48 px button with 2 px corners, its words in the control role at the left (0 16; a text button 0 12), `icon` (Tabler)
-   before them in their colour. `busy` shows a spinner after them and takes no press; with no `onPressed` it is drawn disabled. */
+   before them in their colour. `busy` shows a spinner after them and takes no press; with no `onPressed` it is drawn disabled.
+   A text button whose words must sit on the line the words above it start on is set out by its caller phoneTextInset
+   toward the start, so its hover ground and focus ring clear its words by 12 px on both sides, and it
+   lays out, and takes a tap, everywhere it draws. */
 class PhoneButton extends StatelessWidget {
   const PhoneButton({super.key, required this.text, required this.onPressed, this.kind = PhoneButtonKind.blue, this.icon,
       this.busy = false});
@@ -198,7 +204,7 @@ class PhoneButton extends StatelessWidget {
         final after = busy ? SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2, color: words)) : null;
         return focusRing(st.focused, Container(
           height: 48,
-          padding: EdgeInsets.symmetric(horizontal: bare ? 12 : 16),
+          padding: EdgeInsets.symmetric(horizontal: bare ? phoneTextInset : 16),
           decoration: BoxDecoration(color: ground, borderRadius: kControlRadius, border: edge == null ? null : Border.all(color: edge)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (icon != null) ...[roleIcon(icon!, PType.control, color: words), const SizedBox(width: iconGap)],

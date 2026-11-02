@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:crop_your_image/crop_your_image.dart' show Crop, CropFailure, CropStatus;
+import 'package:kantha_studio/cloth/crop_step.dart';
 import 'package:kantha_studio/cloth/add_cloth.dart';
 import 'package:kantha_studio/cloth/photo_source.dart';
 import 'package:kantha_studio/cloth/prepare.dart' show PickedPhoto;
@@ -194,7 +196,7 @@ void main() {
     expect(find.text('Measuring…'), findsOneWidget);
     await closes['Done']!(tester);
     await tester.pump();
-    const wait = 'The cropper is still loading. Give it a moment and press again.';
+    const wait = 'The photo is not ready. Wait a moment, then press again.';
     expect(inSheet(find.text(wait)), findsOneWidget);
     await letWork(tester, turns: 10);
     expect(find.text('Measuring…'), findsNothing);
@@ -246,6 +248,8 @@ void main() {
     await openAdd(tester, photos);
     await tester.tap(find.text('Photo of the piece'));
     await letWork(tester, turns: 10);
+    expect(tester.getRect(find.text('Choose a different picture')).left, tester.getRect(find.text('fill the square with the piece')).left,
+        reason: 'its words on the content line, with the hint above');
     await tapShown(tester, find.text('Choose a different picture'));
     await tester.pumpAndSettle();
     await tapShown(tester, find.text('Choose a picture'));
@@ -274,7 +278,7 @@ void main() {
     await openAdd(tester, NotAPicture());
     await tester.tap(find.text('Photo of the piece'));
     await letWork(tester, turns: 5);
-    expect(find.text('The factory answered in a way this could not read. Nothing was added.'), findsOneWidget);
+    expect(find.text('The studio could not read that picture.'), findsOneWidget);
   });
 
   testWidgets('Add asks for nothing but the photo: it is ready at once, and with no photo it says one is needed', (tester) async {
@@ -344,6 +348,20 @@ void main() {
     expect(find.text('piece.png could not be read as a picture.'), findsOneWidget);
     expect(find.text('Measuring…'), findsNothing);
     expect(find.text('Photo of the piece'), findsOneWidget, reason: 'she can pick again');
+  });
+
+  /* The crop failing once the photo is ready is not a photo still being read: it says the picture could not be read. */
+  testWidgets('a crop that fails on a ready photo says the picture could not be read, not to wait', (tester) async {
+    await openAdd(tester, FixturePhotos());
+    await tester.tap(find.text('Photo of the piece'));
+    await letWork(tester, turns: 10);
+    // As crop_your_image does: the result, then the cropper ready again.
+    tester.widget<CropStep>(find.byType(CropStep)).onCropped(CropFailure(Exception('the crop failed')));
+    tester.widget<Crop>(find.byType(Crop)).onStatusChanged!(CropStatus.ready);
+    await tester.pump();
+    expect(tester.takeException(), isException, reason: 'it is reported');
+    expect(inSheet(find.text('The studio could not read that picture.')), findsOneWidget);
+    expect(inSheet(find.text('The photo is not ready. Wait a moment, then press again.')), findsNothing);
   });
 }
 

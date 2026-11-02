@@ -6,6 +6,7 @@ import 'package:kantha_studio/studio/phone/phone_sheet.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../support/db.dart';
 import '../../support/pump.dart';
+import '../../support/sheet_rows.dart';
 import '../../support/studio_fixture.dart';
 import '../../support/targets.dart';
 
@@ -36,6 +37,7 @@ Future<void> more(WidgetTester tester, int i) async {
   await tester.tap(find.bySemanticsLabel('More').at(i));
   await tester.pumpAndSettle();
 }
+
 
 void main() {
   testWidgets('on a phone the title opens My designs: a row for each design, its box under its name, each with Open',
@@ -242,6 +244,7 @@ void main() {
     for (final e in find.byType(SheetRow).evaluate()) {
       expect(tester.getSize(find.byWidget(e.widget)).height, greaterThanOrEqualTo(56));
     }
+    expectDividersInset(tester);
     final dots = tester.getSize(find.bySemanticsLabel('More').first);
     expect(dots.width, 48);
     expect(dots.height, greaterThanOrEqualTo(48));

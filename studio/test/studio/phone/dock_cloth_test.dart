@@ -80,6 +80,9 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Close'));
     await tester.pumpAndSettle();
     expect(find.text('Delete box'), findsOneWidget, reason: 'under the swatches, on a box that holds pieces (owner, 20 Oct)');
+    expect(tester.getRect(find.text('Delete box')).left, 16, reason: 'its words on the picker\'s and the swatches\' line');
+    expect(tester.getRect(find.byKey(const ValueKey('delete-box'))).left, 4,
+        reason: 'its hover ground and focus ring, and what takes a tap, start 12 px before its words');
     expect(find.text(startHere), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -152,6 +155,7 @@ void main() {
     expect(k.center.dx, inInclusiveRange(a.left, a.right), reason: 'under Add pieces');
     expect(k.top, greaterThan(a.bottom));
     expect(tester.getRect(delete).left, lessThan(t.left), reason: 'Delete box at the left');
+    expect(tester.getRect(delete).left, 16, reason: 'its words on the picker\'s line');
     expect(tester.takeException(), isNull);
 
     await tester.tap(delete);
