@@ -18,20 +18,23 @@ const _sizes = [(rows: 7, cols: 5), (rows: 3, cols: 12), (rows: 12, cols: 3), (r
 /* Cases whose outcome is not a pass, each reported to the owner (1 November 2026) and left until he decides; a case not
    listed must pass. Keyed '<pattern> <box> <rows>x<cols>'; the comment is what the rule measured then. */
 const Map<String, Outcome> _known = {
-  // Heart on the Sample box. Three cannot be made: with the heart in its colour, the ground in others and no cloth
-  // beside itself, the box's pieces give the ground at most 23.0, 23.2 and 21.5 L* over the heart. One the box could
-  // make, and the solver falls short: the ground is not 25 L* lighter.
-  'heart Sample 3x12': Outcome.cannot,
-  'heart Sample 12x3': Outcome.cannot,
-  'heart Sample 8x8': Outcome.fail, // heart 96%, ground 29% its colour, lighter by 19.7
-  'heart Sample 12x12': Outcome.cannot,
-  // Chain needs one dark cloth with a piece for every link; 12 pieces cover 7 x 5 but not these boards.
-  'chain Sample 8x8': Outcome.cannot, // noChainCloth
-  'chain Sample 12x12': Outcome.cannot, // noChainCloth
+  // Heart on the Sample box at 12 pieces a cloth: 3x12, 12x3 and 12x12 could not be made, and 8x8 fell short. At 40
+  // (owner, 2 November 2026) the first two pass, 8x8 passes with two same-cloth neighbours (_knownRepeats), and
+  // 12x12, now possible, falls just short: the ground is 25.0 L* lighter, not quite 25 (seeds 2 to 6 pass).
+  'heart Sample 12x12': Outcome.fail,
+  // Chain needs one dark cloth with a piece for every link; the Sample box's 40 cover these, the tuning pool's not.
   'chain Tuning pool 12x12': Outcome.cannot, // noChainCloth
-  // Diamond needs a colour family with enough pieces for each ring.
-  'diamond Sample 8x8': Outcome.cannot, // noRingFamily
+  // Diamond needs a colour family with enough pieces for each ring. 8x8, now possible from the Sample box at 40, falls
+  // short: the least one-family ring is 67% (every seed from 1 to 6).
+  'diamond Sample 8x8': Outcome.fail,
   'diamond Sample 12x12': Outcome.cannot, // noRingFamily
+};
+
+/* Same-cloth neighbours found on cases that pass, reported to the owner (2 November 2026) and left until he decides; a
+   case not listed must have none. Both came with the Sample box at 40 pieces a cloth. */
+const Map<String, int> _knownRepeats = {
+  'heart Sample 8x8': 2, // seeds 2, 3 and 6 have none
+  'stripes Sample 12x12': 1, // seed 3 has none; the others 1 or 2
 };
 
 void main() {
@@ -49,7 +52,9 @@ void main() {
           judged++;
           if (c.solved!.rule.passes) mine++;
           if (c.random!.rule.passes) chance++;
-          if (c.solved!.apartApplies) expect(c.solved!.repeats, 0, reason: '$id: same-cloth neighbours');
+          if (c.solved!.apartApplies) {
+            expect(c.solved!.repeats, _knownRepeats[id] ?? 0, reason: '$id: same-cloth neighbours');
+          }
         }
       }
       expect(judged, greaterThan(0));

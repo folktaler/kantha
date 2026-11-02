@@ -29,17 +29,21 @@ const sampleCloth = [
   SampleCloth('Teal flower print', 'teal-flower-print.jpg'), // KF-4
 ];
 
-/* 12 pieces of each cloth (owner, 1 November 2026: "we can give more cloth in the sample box since its a sample box"):
-   the fewest of each that let all 15 patterns fill the start board, 7 × 5. Chain needs 9 of its darkest cloth for its
-   9 links; Diamond needs 12 of White, the one cloth of its light family, for its light rings. Every cloth gets 12, so
-   the box stays even (9 of each and 12 of White would also do). */
-const samplePieces = 12;
+/* 40 pieces of each cloth (owner, 2 November 2026: "Bigger Sample box"): the fewest of each that let all 15 patterns
+   fill a board 12 wide and 10 tall. Chain needs 34 of one dark cloth for its links; Diamond needs 40 of White, the one
+   cloth of its light family, for its light rings. Every cloth gets 40, so the box stays even (White at 40, one dark
+   cloth at 34 and the rest at 12 would also do). Diamond still cannot fill 11 × 12, 12 × 11 or 12 × 12 from it. */
+const samplePieces = 40;
 
-/* A Sample box made with 7 pieces of each cloth gets samplePieces of each cloth she has not changed, once (owner, 1 November 2026;
-   Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that swap puts in is topped
-   up too. */
+/* The pieces of each cloth an untouched Sample box held before, in order: 7 until 1 November 2026, then 12. The shelf's
+   top-up marker counts which of them it holds (Shelf.topUpSample). */
+const samplePiecesBefore = [7, 12];
+
+/* A Sample box made with fewer pieces of each cloth gets samplePieces of each cloth she has not changed, once (owner,
+   1 and 2 November 2026; Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that
+   swap puts in is topped up too. */
 Future<void> topUpSample(Shelf shelf) =>
-    shelf.topUpSample({for (final s in sampleCloth) s.name}, from: 7, to: samplePieces);
+    shelf.topUpSample({for (final s in sampleCloth) s.name}, before: samplePiecesBefore, to: samplePieces);
 
 /* The eight swatches drawn in code that a Sample box held before 22 Oct, by name. They are replaced by the ten cloths
    once (replaceDrawnSample); a cloth she photographed into the Sample box has its own C-n name and is never among them. */

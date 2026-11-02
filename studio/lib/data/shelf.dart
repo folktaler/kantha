@@ -8,8 +8,10 @@ import 'database.dart';
 
 const clothsPerBox = 200;
 const _sampleSwap = 'sample';
-/* The done-once marker of the Sample box's top-up to more pieces (owner, 1 November 2026): the counter at 2. */
+/* The marker of the Sample box's top-ups to more pieces (owner, 1 and 2 November 2026): absent or 1 for a box made
+   with the first count, 2 once it holds the second, and [sampleTopUpDone] once it holds today's (Shelf.topUpSample). */
 const _sampleTopUp = 'samplePieces';
+const sampleTopUpDone = 3;
 
 class ShelfError implements Exception {
   const ShelfError(this.key, [this.values = const {}]);
@@ -118,15 +120,19 @@ class Shelf {
   Future<void> _markSampleReplaced() =>
       db.into(db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: _sampleSwap, next: 2));
 
-  Future<void> _markSampleToppedUp() =>
-      db.into(db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: 2));
+  Future<void> _markSampleToppedUp() => db.into(db.counters)
+      .insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: sampleTopUpDone));
 
-  /* The Sample box's top-up (owner, 1 November 2026), once, in one transaction with its done-once marker: each of its
-     cloth named in `names` that she has not changed (still `from` pieces, no fabric, never re-cropped) gets `to`
-     pieces. A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only
-     the marker is written. A Sample box made since holds `to` already and is marked when made. */
-  Future<void> topUpSample(Set<String> names, {required int from, required int to}) => _write(() async {
-        if (await counterAt(_sampleTopUp) >= 2) return;
+  /* The Sample box's top-up (owner, 1 and 2 November 2026), once, in one transaction with its done-once marker. The
+     marker says which count of `before` the box was made or last topped up with (absent or 1: the first). Each of its
+     cloth named in `names` that she has not changed (still that count, no fabric, never re-cropped) gets `to` pieces.
+     A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only the
+     marker is written. A Sample box made since holds `to` already and is marked when made. */
+  Future<void> topUpSample(Set<String> names, {required List<int> before, required int to}) => _write(() async {
+        if (before.length + 1 != sampleTopUpDone) throw ArgumentError.value(before, 'before');
+        final step = await counterAt(_sampleTopUp);
+        if (step >= sampleTopUpDone) return;
+        final from = before[math.max(1, step) - 1];
         _check(to);
         final box = await _sampleBox();
         if (box != null) {
