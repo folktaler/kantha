@@ -105,6 +105,38 @@ void main() {
     expect(c.solving, isFalse);
   });
 
+  test('a pattern press, the shelf changing under its solve (asked again), then another press, then Stop: the board '
+      'from before the first press', () async {
+    final solver = HeldSolver();
+    final s = await studio(solver: solver);
+    final c = s.c;
+    final grid = c.grid, layout = c.layout, name = c.name, box = c.box!;
+    solver.hold = true;
+    final others = layoutKeys.where((k) => k != layout && c.feasible[k]!.fills).toList();
+    c.loadLayout(others[0]);
+    final asked = solver.held.length;
+    await s.shelf.addPiecesForTest(box, 3); // her cloth changes while it solves: the solve is asked again
+    for (var i = 0; i < 20 && solver.held.length == asked; i++) {
+      await pumpEventQueue();
+    }
+    expect(solver.held.length, greaterThan(asked), reason: 'asked again, by no press');
+    expect(c.canStop, isTrue);
+    c.loadLayout(others[1]);
+    expect(c.canStop, isTrue);
+    c.stopSolve();
+    await pumpEventQueue();
+    expect((c.layout, c.name, c.grid), (layout, name, grid));
+  });
+
+  test('a press during a solve no press asked for (the first one): the board as it is now, when it has one', () async {
+    final solver = HeldSolver()..hold = true;
+    final c = (await studio(solver: solver)).c;
+    expect(c.solving, isTrue);
+    expect(c.grid, isNull);
+    c.loadLayout(layoutKeys.firstWhere((k) => k != c.layout && c.feasible[k]!.fills));
+    expect(c.canStop, isFalse, reason: 'no board to go back to');
+  });
+
   test('a box opened, then another, while it solves, then Stop: the first box\'s board, exactly', () async {
     final solver = HeldSolver();
     final s = await studio(solver: solver);
