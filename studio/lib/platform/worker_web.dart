@@ -24,17 +24,39 @@ extension type _Message._(JSObject _) implements JSObject {
   external JSAny? get data;
 }
 
-/* The worker failed (did not load, or broke) while it held the ask. */
-class WorkerFailed implements Exception {
-  const WorkerFailed(this.url);
-  final String url;
-  @override
-  String toString() => 'WorkerFailed: $url';
+/* The worker cannot answer the ask: it failed, or it was let go. */
+sealed class WorkerGone implements Exception {
+  const WorkerGone();
 }
 
-/* The ask was let go by restart. */
-class WorkerStopped implements Exception {
+/* The worker failed (did not load, or broke) while it held the ask, or the ask could not be sent to it. */
+final class WorkerFailed extends WorkerGone {
+  const WorkerFailed(this.url, [this.why]);
+  final String url;
+  final Object? why;
+  @override
+  String toString() => 'WorkerFailed: $url${why == null ? '' : ': $why'}';
+}
+
+/* The ask was let go: by restart, or by dispose. */
+final class WorkerStopped extends WorkerGone {
   const WorkerStopped();
+}
+
+/* When an ask's wait starts.
+   - ready: once the worker has said "ready" (the finder's, once OpenCV.js has loaded), so a worker started again does
+     not spend the find's wait loading. Until then the load has a wait of its own, so one that never loads still ends.
+   - begin: once the worker says it has begun that ask ({"type":"begin","id"}: the measure's), or the ask before it has
+     ended, so time in the queue is not counted, and a worker stuck on one lets the next go after a wait of its own,
+     one at a time, never all at once. */
+enum WaitFrom { ready, begin }
+
+class _Ask {
+  _Ask(this.wait, this.from);
+  final done = Completer<Object?>();
+  final Duration? wait;
+  final WaitFrom from;
+  Timer? timer;
 }
 
 class PageWorker {
@@ -46,15 +68,15 @@ class PageWorker {
   final bool Function(Map<String, dynamic> m)? onNote;
 
   _Worker? _worker;
-  var _heard = false;
-  final _waiting = <int, Completer<Object?>>{};
+  var _heard = false, _disposed = false;
+  final _waiting = <int, _Ask>{};
   var _next = 0;
 
   bool get running => _worker != null;
 
   /* Starts one now, if none runs, so it has loaded by the time it is asked. */
   void warm() {
-    if (_worker == null) _start();
+    if (_worker == null && !_disposed) _start();
   }
 
   void _start() {
@@ -66,12 +88,22 @@ class PageWorker {
       final data = e.data;
       if (data.isA<JSString>()) {
         final m = jsonDecode((data! as JSString).toDart) as Map<String, dynamic>;
-        if (m['type'] == 'ready') return;
+        switch (m['type']) {
+          case 'ready':
+            for (final a in _waiting.values) {
+              if (a.from == WaitFrom.ready) _time(a, again: true);
+            }
+            return;
+          case 'begin':
+            final a = _waiting[m['id']];
+            if (a != null) _time(a, again: true); // begun now: its wait is counted from here
+            return;
+        }
         if (onNote?.call(m) ?? false) return;
-        _waiting.remove(m['id'])?.complete(m);
+        _answer(m['id'], m);
       } else {
         final o = data! as JSObject;
-        _waiting.remove((o['id']! as JSNumber).toDartInt)?.complete(o);
+        _answer((o['id']! as JSNumber).toDartInt, o);
       }
     }).toJS;
     w.onerror = ((JSObject _) {
@@ -85,45 +117,90 @@ class PageWorker {
     onStart?.call();
   }
 
-  void _failAll(Object e) {
-    final out = _waiting.values.toList();
-    _waiting.clear();
-    for (final w in out) {
-      w.completeError(e);
+  void _answer(Object? id, Object answer) {
+    final a = _waiting.remove(id);
+    if (a == null) return;
+    a.timer?.cancel();
+    a.done.complete(answer);
+    if (a.from == WaitFrom.begin) _nextBegins();
+  }
+
+  /* The ask's wait starts now (`again`: afresh); past it, it fails with TimeoutException, alone: the worker carries
+     on. */
+  void _time(_Ask a, {bool again = false}) {
+    final wait = a.wait;
+    if (wait == null || (a.timer != null && !again)) return;
+    a.timer?.cancel();
+    a.timer = Timer(wait, () {
+      _waiting.removeWhere((_, x) => identical(x, a));
+      a.done.completeError(TimeoutException('the worker did not answer', wait));
+      if (a.from == WaitFrom.begin) _nextBegins();
+    });
+  }
+
+  /* The ask before has ended: the first waiting in turn begins now, as far as its wait goes. */
+  void _nextBegins() {
+    for (final a in _waiting.values) {
+      if (a.from == WaitFrom.begin) return _time(a);
     }
   }
 
-  /* A message that has no answer; to a worker that runs, or to one started for it. */
+  void _failAll(WorkerGone e) {
+    final out = _waiting.values.toList();
+    _waiting.clear();
+    for (final a in out) {
+      a.timer?.cancel();
+      a.done.completeError(e);
+    }
+  }
+
+  /* A message that has no answer; to a worker that runs, or to one started for it. Nothing once disposed. */
   void post(JSAny message, [List<JSAny> transfer = const []]) {
+    if (_disposed) return;
     warm();
     _worker!.postMessage(message, transfer.toJS);
   }
 
-  /* `message(id)` sent, and its answer: a Map for JSON, else the object. Fails with WorkerFailed, WorkerStopped, or,
-     past `wait`, TimeoutException (the worker carries on). */
-  Future<Object?> ask(JSAny Function(int id) message, {List<JSAny> transfer = const [], Duration? wait}) {
-    final id = ++_next, done = Completer<Object?>();
-    _waiting[id] = done;
-    post(message(id), transfer);
-    if (wait == null) return done.future;
-    return done.future.timeout(wait, onTimeout: () {
+  /* `message(id)` sent, and its answer: a Map for JSON, else the object. Fails with WorkerGone (WorkerFailed when it
+     could not be sent either: a buffer already handed over is not sent twice), or, past `wait` counted from `from`,
+     TimeoutException. */
+  Future<Object?> ask(JSAny Function(int id) message,
+      {List<JSAny> transfer = const [], Duration? wait, WaitFrom from = WaitFrom.ready}) {
+    if (_disposed) return Future.error(const WorkerStopped());
+    final id = ++_next, a = _Ask(wait, from);
+    _waiting[id] = a;
+    try {
+      post(message(id), transfer);
+    } catch (e) {
       _waiting.remove(id);
-      throw TimeoutException('the worker did not answer', wait);
-    });
+      return Future.error(WorkerFailed(url, e));
+    }
+    switch (from) {
+      case WaitFrom.ready:
+        _time(a); // the load's wait, until "ready"; the ask's own, after
+      case WaitFrom.begin:
+        if (!_waiting.values.any((x) => x.from == WaitFrom.begin && !identical(x, a))) _time(a); // first in turn
+    }
+    return a.done.future;
   }
 
-  /* Ends the worker and all it held, and starts another. */
+  /* Ends the worker and all it held (each ask fails with WorkerStopped), and starts another. */
   void restart() {
+    if (_disposed) return;
     _worker?.terminate();
     _worker = null;
     _failAll(const WorkerStopped());
     _start();
   }
 
-  /* Ends the worker; what it held is dropped, unanswered. */
+  /* Ends the worker; what it held is dropped, unanswered, and nothing is asked of it again. */
   void dispose() {
+    _disposed = true;
     _worker?.terminate();
     _worker = null;
+    for (final a in _waiting.values) {
+      a.timer?.cancel();
+    }
     _waiting.clear();
   }
 }

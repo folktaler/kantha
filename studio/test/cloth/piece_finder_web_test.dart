@@ -55,4 +55,20 @@ onmessage = (e) => {
     await expectLater(first, throwsA(anything));
     web.URL.revokeObjectURL(url);
   });
+
+  test('its wait starts once the worker says it is ready: loading (OpenCV.js) has a wait of its own', () async {
+    // 1.5 s to load, then 1 s for each find: 2.5 s in all, past a wait of 2 s counted from the ask.
+    const loading = '''
+const loaded = Date.now() + 1500; while (Date.now() < loaded) {}
+postMessage('{"type":"ready"}');
+onmessage = (e) => {
+  const until = Date.now() + 1000; while (Date.now() < until) {}
+  postMessage(JSON.stringify({id: e.data.id, scale: 1, squares: [], groups: [], tiny: e.data.width}));
+};
+''';
+    final url = web.URL.createObjectURL(web.Blob(<JSAny>[loading.toJS].toJS, web.BlobPropertyBag(type: 'text/javascript')));
+    final finder = finderAt(url, wait: const Duration(seconds: 2));
+    expect((await finder.find(await photo(3))).tiny, 3);
+    web.URL.revokeObjectURL(url);
+  });
 }

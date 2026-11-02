@@ -13,7 +13,8 @@ import '../measure/measure.dart';
 import '../platform/release.dart' show pageBase, releaseFile;
 import '../platform/worker_web.dart';
 
-/* The longest a measure waits for the worker; past it the worker is started again and the crop measured in place. */
+/* The longest a measure waits for the worker once the worker has begun it (time in its turn is not counted); past it
+   that crop alone is measured in place, and the worker carries on with the rest. */
 const measureWait = Duration(seconds: 30);
 
 /* The worker could not measure: the caller measures in place. */
@@ -48,17 +49,15 @@ Future<Measured> _measure(PageWorker worker, Uint8List rgba, int width, int heig
   final pixels = whole.buffer.toJS;
   final Object? answer;
   try {
+    // Sent once: the buffer goes with it, so a measure in place after reads the caller's own pixels, never this.
     answer = await worker.ask((id) => JSObject()
       ..['id'] = id.toJS
       ..['pixels'] = pixels
       ..['width'] = width.toJS
-      ..['height'] = height.toJS, transfer: [pixels], wait: wait);
+      ..['height'] = height.toJS, transfer: [pixels], wait: wait, from: WaitFrom.begin);
   } on TimeoutException catch (e) {
-    worker.restart(); // it is still on this one: the next measure is not kept waiting behind it
     throw MeasurerGone(e);
-  } on WorkerFailed catch (e) {
-    throw MeasurerGone(e);
-  } on WorkerStopped catch (e) {
+  } on WorkerGone catch (e) {
     throw MeasurerGone(e);
   }
   final m = answer! as Map<String, dynamic>;

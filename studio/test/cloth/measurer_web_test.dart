@@ -57,23 +57,43 @@ void main() {
     await expectLater(measure(solid(p.pixels), p.width, p.height), throwsA(isA<MeasurerGone>()));
   });
 
-  test('a worker that does not answer within the wait: MeasurerGone, and the next measure is not kept behind it',
-      () async {
-    // Busy for 5 s with a first ask of width 1; answers any other at once.
-    const script = '''
+  // A stand-in that says it has begun each ask, then is busy: `ms` per ask, 5 s for one 1 px wide.
+  String busy(int ms) => '''
 postMessage('{"type":"ready"}');
 onmessage = (e) => {
-  if (e.data.width === 1) { const until = Date.now() + 5000; while (Date.now() < until) {} }
+  postMessage(JSON.stringify({type: 'begin', id: e.data.id}));
+  const until = Date.now() + (e.data.width === 1 ? 5000 : $ms); while (Date.now() < until) {}
   postMessage(JSON.stringify({id: e.data.id, error: 'notAnImage'}));
 };
 ''';
+  String urlOf(String script) {
     final url = web.URL.createObjectURL(web.Blob(<JSAny>[script.toJS].toJS, web.BlobPropertyBag(type: 'text/javascript')));
     addTearDown(() => web.URL.revokeObjectURL(url));
-    final measure = measurerAt(url, wait: const Duration(seconds: 1));
-    await expectLater(measure(Uint8List(4), 1, 1), throwsA(isA<MeasurerGone>()));
+    return url;
+  }
+
+  test('time waiting its turn is not counted: 3 measures of 0.6 s each, a wait of 1 s, all answered', () async {
+    final measure = measurerAt(urlOf(busy(600)), wait: const Duration(seconds: 1));
+    final all = [for (var i = 0; i < 3; i++) measure(Uint8List(8), 2, 1)];
+    for (final m in all) {
+      await expectLater(m, throwsA(isA<MeasureError>()), reason: 'answered by the worker, not given up');
+    }
+  });
+
+  test('one the worker does not finish within the wait goes alone (MeasurerGone, to be measured in place); the one '
+      'behind it is not given up with it, but after a wait of its own', () async {
+    final measure = measurerAt(urlOf(busy(100)), wait: const Duration(seconds: 1));
     final watch = Stopwatch()..start();
-    await expectLater(measure(Uint8List(8), 2, 1), throwsA(isA<MeasureError>()));
-    expect(watch.elapsedMilliseconds, lessThan(1000), reason: 'a fresh worker answered, not the busy one');
+    final slow = measure(Uint8List(4), 1, 1);
+    var nextGone = Duration.zero;
+    final next = measure(Uint8List(8), 2, 1).catchError((Object e) {
+      nextGone = watch.elapsed;
+      throw e;
+    });
+    await expectLater(slow, throwsA(isA<MeasurerGone>()));
+    final slowGone = watch.elapsed;
+    await expectLater(next, throwsA(isA<MeasurerGone>()));
+    expect(nextGone - slowGone, greaterThan(const Duration(milliseconds: 800)), reason: 'one at a time, never all at once');
   });
 }
 
