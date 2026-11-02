@@ -131,12 +131,17 @@ class StudioController extends ChangeNotifier {
   ({int done, int of})? solveStep;
   /* The board as it was before the press that asked for this solve (a pattern, Rows or Columns, a box, New design):
      Stop puts it back. `_taking` is held from the press until the solve is asked for. A press while a solve is out
-     keeps the board from before the first (_pressed), so Stop never puts back a board half changed. */
+     keeps the board from before the first (_pressed), so Stop never puts back a board half changed; so does a solve
+     no press asked for (the shelf changed under one), when it is asked again. */
   _Before? _before, _taking;
-  /* A solve can be stopped while the board it replaces can be put back. */
-  bool get canStop => solving && _before != null;
-  /* What a press takes as the board to go back to: the board now, or, while a solve is out, the one from before it. */
-  _Before? _pressed() => solving ? _before : _snapshot();
+  /* A solve can be stopped while the board it replaces can be put back: one made only of cloth still in its box. */
+  bool get canStop {
+    final b = _before, g = b?.grid;
+    return solving && g != null && g.every((i) => i >= 0 && i < cloth.length && cloth[i].box == b!.box);
+  }
+  /* What a press takes as the board to go back to: the board now, or, while a solve is out, the one from before it;
+     the board now when that solve was none a press asked for. */
+  _Before? _pressed() => solving ? _before ?? _snapshot() : _snapshot();
   /* Counts the boards a tap on another pattern's tile put up; the board drops each one's squares in (owner, 21 Oct).
      `_dropFor` is the solve such a tap asked for: any later solve replaces it, and its board does not drop. */
   int drops = 0;
@@ -264,6 +269,7 @@ class StudioController extends ChangeNotifier {
   Future<void> afterImport() async {
     imports++;
     _reqId++; // a solve still out was asked of the device as it was
+    _before = null; // nor is that device's board put back by Stop
     memory = const {}; savedId = null; savedGrid = null; _justSaved = null; note = ''; warn = false;
     notifyListeners();
     final now = await shelfNow(shelf);
@@ -347,7 +353,9 @@ class StudioController extends ChangeNotifier {
     // (decision 13: the empty sheet, and nothing to save).
     if (starting || members(box).isEmpty) { _clearBoard(); notifyListeners(); return; }
     final id = ++_reqId, s = _seeds();
-    _before = _taking?.grid == null ? null : _taking;
+    // A press says what Stop puts back; a solve asked again as the shelf changes keeps it.
+    final t = _taking;
+    if (t != null) _before = t.grid == null ? null : t;
     _taking = null;
     solveSince = _now();
     solveStep = null;
@@ -433,6 +441,7 @@ class StudioController extends ChangeNotifier {
     layout = next;
     if (kept != null) {
       _reqId++;
+      _before = null; // the solve out is dropped
       drops++;
       final moved = kept.mount != mount;
       name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
@@ -526,6 +535,7 @@ class StudioController extends ChangeNotifier {
     final kept = _canFill && members(box).isNotEmpty ? recall(memory, keyOf(box, layout, size)) : null;
     if (kept != null) {
       _reqId++;
+      _before = null; // the solve out is dropped
       name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
       savedId = kept.savedId; savedGrid = kept.savedGrid; note = ''; warn = false;
       _recommendThread();
@@ -816,6 +826,7 @@ class StudioController extends ChangeNotifier {
     final g = grid;
     if (_started && g != null && uses(g)) {
       grid = null;
+      _before = null; // a board of the swatches that went is not put back
       solving = true;
       _checkFeasible(box);
       _requestSolve();
