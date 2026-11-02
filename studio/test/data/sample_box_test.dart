@@ -32,7 +32,6 @@ const _total = 189;
 
 final _todayByName = {for (final s in sampleCloth) s.name: s.pieces};
 
-Future<List<int>> _pieces(Shelf shelf) async => [for (final c in await shelf.db.select(shelf.db.cloths).get()) c.pieces];
 Future<Map<String, int>> _piecesByName(Shelf shelf) async =>
     {for (final c in await shelf.db.select(shelf.db.cloths).get()) c.name: c.pieces};
 
@@ -270,7 +269,8 @@ void main() {
       await shelf.editCloth(cloth[0].id, fabric: '', pieces: 7);
       await shelf.editCloth(cloth[6].id, fabric: 'Cotton', pieces: 12);
       await topUpSample(shelf);
-      expect(await _pieces(shelf), [7, 12, 34, 31, 12, 12, 12, 12, 12, 12], reason: '7 in a box topped up to 12 is hers');
+      expect(await _piecesByName(shelf), {..._todayByName, 'Red': 7, 'White': 12},
+          reason: '7 in a box topped up to 12 is hers, and so is cotton');
       expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
       await shelf.editCloth(cloth[2].id, fabric: '', pieces: 12);
       await topUpSample(shelf);
@@ -294,7 +294,7 @@ void main() {
       final ids = await shelf.clothIn(box.id);
       for (final id in ids.take(4)) { await shelf.removeCloth(id); }
       await topUpSample(shelf);
-      expect(await _pieces(shelf), _today.skip(4));
+      expect(await _piecesByName(shelf), {for (final s in sampleCloth.skip(4)) s.name: s.pieces});
       final emptied = await old();
       final b = (await emptied.db.select(emptied.db.boxes).get()).single;
       await emptied.deleteBox(b.id, cloth: await emptied.clothIn(b.id));
@@ -302,6 +302,21 @@ void main() {
       expect(await emptied.db.select(emptied.db.cloths).get(), isEmpty);
       expect(await emptied.counterAt('samplePieces'), sampleTopUpDone);
     });
+  });
+
+  test('a Sample box from before 22 October is not topped up before its swap: its drawn Turmeric keeps its 7, and the '
+      'swap puts the real cloth in at today\'s counts', () async {
+    final shelf = Shelf(memoryDb());
+    await _oldSample(shelf);
+    await (shelf.db.delete(shelf.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
+    await topUpSample(shelf);
+    expect((await _piecesByName(shelf))['Turmeric'], 7, reason: 'the drawn swatch, not the real cloth');
+    expect(await shelf.counterAt('samplePieces'), 1, reason: 'no marker until the swap');
+    await replaceDrawnSample(shelf);
+    expect(await _piecesByName(shelf), _todayByName);
+    expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
+    await topUpSample(shelf);
+    expect(await _piecesByName(shelf), _todayByName);
   });
 
   test('the top-up knows every count the Sample box held before today\'s', () {

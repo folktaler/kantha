@@ -31,22 +31,18 @@ const sampleCloth = [
 ];
 
 /* 12 pieces of each cloth but three, 189 in all (owner, 2 November 2026: "Bigger Sample box", "Only 2 raised", then
-   "Add Turmeric"): the fewest that let all 15 patterns fill a board 12 wide and 10 tall, and Heart keep its rule there.
+   "Add Turmeric"): the fewest that let all 15 patterns fill a board 12 wide × 10 tall, and Heart keep its rule there.
    Chain needs 34 of one dark cloth for its links: Purple, the darkest, which gives Chain the most light and dark
    between links and ground (at 7 × 5 its links were Purple already). Diamond needs 40 of White, the one cloth of its
-   light family, for its light rings. Heart's ground must be 25 L* lighter than its heart, and at 12 × 10 that takes 31
-   of Turmeric, the next lightest after White. */
+   light family, for its light rings. Heart's ground must be 25 L* lighter than its heart, and at 12 wide × 10 tall that
+   takes 31 of Turmeric, the next lightest after White. */
 const samplePieces = 12;
-
-/* The pieces of each cloth an untouched Sample box held before, in order: 7 until 1 November 2026, then 12. The shelf's
-   top-up marker counts which of them it holds (Shelf.topUpSample). */
-const samplePiecesBefore = [7, 12];
 
 /* A Sample box made with fewer pieces gets each cloth's count today of each cloth she has not changed, once (owner,
    1 and 2 November 2026; Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that
    swap puts in is topped up too. */
 Future<void> topUpSample(Shelf shelf) =>
-    shelf.topUpSample({for (final s in sampleCloth) s.name: s.pieces}, before: samplePiecesBefore);
+    shelf.topUpSample({for (final s in sampleCloth) s.name: s.pieces});
 
 /* The eight swatches drawn in code that a Sample box held before 22 Oct, by name. They are replaced by the ten cloths
    once (replaceDrawnSample); a cloth she photographed into the Sample box has its own C-n name and is never among them. */

@@ -8,10 +8,13 @@ import 'database.dart';
 
 const clothsPerBox = 200;
 const _sampleSwap = 'sample';
+/* The pieces of each cloth an untouched Sample box held before, in order: 7 until 1 November 2026, then 12. */
+const samplePiecesBefore = [7, 12];
 /* The marker of the Sample box's top-ups to more pieces (owner, 1 and 2 November 2026): absent or 1 for a box made
-   with the first count, 2 once it holds the second, and [sampleTopUpDone] once it holds today's (Shelf.topUpSample). */
+   with the first count of [samplePiecesBefore], 2 once it holds the second, and so on; [sampleTopUpDone] once it holds
+   today's (Shelf.topUpSample). */
 const _sampleTopUp = 'samplePieces';
-const sampleTopUpDone = 3;
+final sampleTopUpDone = samplePiecesBefore.length + 1;
 
 class ShelfError implements Exception {
   const ShelfError(this.key, [this.values = const {}]);
@@ -124,15 +127,17 @@ class Shelf {
       .insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: sampleTopUpDone));
 
   /* The Sample box's top-up (owner, 1 and 2 November 2026), once, in one transaction with its done-once marker. The
-     marker says which count of `before` the box was made or last topped up with (absent or 1: the first). Each cloth
-     named in `to` that she has not changed (still that count, no fabric, never re-cropped) gets its count in `to`. A
-     cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only the marker
-     is written. A Sample box made since holds `to` already and is marked when made. */
-  Future<void> topUpSample(Map<String, int> to, {required List<int> before}) => _write(() async {
-        if (before.length + 1 != sampleTopUpDone) throw ArgumentError.value(before, 'before');
+     marker says which count of [samplePiecesBefore] the box was made or last topped up with (absent or 1: the first).
+     Each cloth named in `to` that she has not changed (still that count, no fabric, never re-cropped) gets its count in
+     `to`. A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only the
+     marker is written. A Sample box made since holds `to` already and is marked when made. While the drawn swatches of
+     before 22 October still wait for their swap, nothing is done and no marker written: a swatch shares a name with a
+     real cloth (Turmeric), and the swap puts the real cloth in at today's counts and writes this marker itself. */
+  Future<void> topUpSample(Map<String, int> to) => _write(() async {
+        if (await counterAt(_sampleSwap) < 2) return;
         final step = await counterAt(_sampleTopUp);
         if (step >= sampleTopUpDone) return;
-        final from = before[math.max(1, step) - 1];
+        final from = samplePiecesBefore[math.max(1, step) - 1];
         to.values.forEach(_check);
         final box = await _sampleBox();
         if (box != null) {
@@ -185,6 +190,8 @@ class Shelf {
           for (final c in cloth) {
             await _insertCloth(box: box!, photo: c.photo, measured: c.measured, fabric: '', pieces: c.pieces, name: c.name);
           }
+          // In at today's counts, so the top-up has nothing left to do here.
+          await _markSampleToppedUp();
         }
         await _markSampleReplaced();
       });
