@@ -5,7 +5,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/l10n/words.dart';
 import 'package:kantha_studio/solver/compile.dart' show Unfillable;
-import 'package:kantha_studio/solver/geometry.dart' show Mount;
+import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart' show LayoutSolve;
 import 'package:kantha_studio/studio/painters.dart' show StitchPainter, hexColor;
@@ -38,7 +38,8 @@ double opacityOf(WidgetTester tester, LayoutKey k) =>
 /* A solver that finds no arrangement, as the real one answers for cloth it cannot place. */
 class _NoArrangement extends QuickSolver {
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) async =>
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) async =>
       const LayoutSolve(false, null, null);
 }
 

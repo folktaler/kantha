@@ -35,4 +35,40 @@ onmessage = (e) => {
     expect(answer.tiny, 2);
     web.URL.revokeObjectURL(url);
   });
+
+  test('stop lets go of a find under way: the next find is answered at once, by a fresh worker', () async {
+    // Busy for 5 s with a photo 1 px wide; answers any other at once.
+    const busy = '''
+onmessage = (e) => {
+  if (e.data.width === 1) { const until = Date.now() + 5000; while (Date.now() < until) {} }
+  postMessage(JSON.stringify({id: e.data.id, scale: 1, squares: [], groups: [], tiny: e.data.width}));
+};
+''';
+    final url = web.URL.createObjectURL(web.Blob(<JSAny>[busy.toJS].toJS, web.BlobPropertyBag(type: 'text/javascript')));
+    final finder = finderAt(url, wait: const Duration(seconds: 30));
+    final first = finder.find(await photo(1))..ignore();
+    await Future<void>.delayed(const Duration(milliseconds: 200)); // it is on it
+    finder.stop();
+    final watch = Stopwatch()..start();
+    expect((await finder.find(await photo(2))).tiny, 2);
+    expect(watch.elapsedMilliseconds, lessThan(2000));
+    await expectLater(first, throwsA(anything));
+    web.URL.revokeObjectURL(url);
+  });
+
+  test('its wait starts once the worker says it is ready: loading (OpenCV.js) has a wait of its own', () async {
+    // 1.5 s to load, then 1 s for each find: 2.5 s in all, past a wait of 2 s counted from the ask.
+    const loading = '''
+const loaded = Date.now() + 1500; while (Date.now() < loaded) {}
+postMessage('{"type":"ready"}');
+onmessage = (e) => {
+  const until = Date.now() + 1000; while (Date.now() < until) {}
+  postMessage(JSON.stringify({id: e.data.id, scale: 1, squares: [], groups: [], tiny: e.data.width}));
+};
+''';
+    final url = web.URL.createObjectURL(web.Blob(<JSAny>[loading.toJS].toJS, web.BlobPropertyBag(type: 'text/javascript')));
+    final finder = finderAt(url, wait: const Duration(seconds: 2));
+    expect((await finder.find(await photo(3))).tiny, 3);
+    web.URL.revokeObjectURL(url);
+  });
 }

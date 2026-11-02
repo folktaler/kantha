@@ -18,6 +18,16 @@ class Measured {
   final String name;
   final double spread;
   final int width, height;
+
+  /* As the measure's worker hands it back (web/measure_worker.dart). Every number is a double or an int, which JSON
+     carries exactly. */
+  Map<String, Object> toJson() =>
+      {'l': lab.l, 'a': lab.a, 'b': lab.b, 'name': name, 'spread': spread, 'width': width, 'height': height};
+
+  factory Measured.fromJson(Map<String, dynamic> j) => Measured(
+      lab: (l: (j['l'] as num).toDouble(), a: (j['a'] as num).toDouble(), b: (j['b'] as num).toDouble()),
+      name: j['name'] as String, spread: (j['spread'] as num).toDouble(), width: j['width'] as int,
+      height: j['height'] as int);
 }
 
 class MeasureError implements Exception {

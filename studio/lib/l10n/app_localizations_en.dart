@@ -86,6 +86,14 @@ class LEn extends L {
   String get canvasSolving => 'Arranging the cloth…';
 
   @override
+  String canvasSolvingStep(String done, String total) {
+    return 'Tried $done of $total arrangements';
+  }
+
+  @override
+  String get canvasWaitStop => 'Stop';
+
+  @override
   String get canvasCantSolve =>
       'This box holds fewer than 35 pieces — open another box.';
 
@@ -858,6 +866,9 @@ class LEn extends L {
   }
 
   @override
+  String get deviceSavingBackup => 'Saving a backup…';
+
+  @override
   String get deviceImportButton => 'Open a backup file';
 
   @override
@@ -878,6 +889,9 @@ class LEn extends L {
   String deviceImportDone(String file) {
     return 'This device now holds what was in $file.';
   }
+
+  @override
+  String get deviceOpeningBackup => 'Opening the backup…';
 
   @override
   String get deviceNotBackup =>

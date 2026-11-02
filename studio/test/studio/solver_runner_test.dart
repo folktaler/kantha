@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/platform/solver_runner.dart';
@@ -49,11 +50,63 @@ void main() {
     final b = fixtureBase(), runner = createSolverRunner()..setPool(b);
     addTearDown(runner.dispose);
     final members = [for (var i = 0; i < b.stock.length; i++) i];
-    final s = await runner.solve(LayoutKey.wave, members, Mount.frame, 11);
+    final s = await runner.solve(null, LayoutKey.wave, members, Mount.frame, 11);
     final direct = solveLayout(LayoutKey.wave, b, members, Mount.frame, 11);
     expect(s.fills, direct.fills);
     expect(s.grid, direct.grid);
     expect(s.rot, direct.rot);
     expect(s.grid, hasLength(cells));
+  }, testOn: 'vm');
+
+  test('on a phone a solve says each of its starts and answers as solveLayout does; the steps change nothing',
+      () async {
+    final b = fixtureBase(), runner = createSolverRunner()..setPool(b);
+    addTearDown(runner.dispose);
+    final members = [for (var i = 0; i < b.stock.length; i++) i];
+    final steps = <(int, int)>[];
+    final s = await runner.solve(null, LayoutKey.wave, members, Mount.frame, 11, onStep: (d, of) => steps.add((d, of)));
+    final direct = solveLayout(LayoutKey.wave, b, members, Mount.frame, 11);
+    expect(s.grid, direct.grid);
+    expect(s.rot, direct.rot);
+    expect(steps, [for (var k = 1; k <= 4; k++) (k, 4)]);
+  }, testOn: 'vm');
+
+  test('on a phone Stop ends a solve at once: it answers no arrangement', () async {
+    final b = fixtureBase(), runner = createSolverRunner()..setPool(b);
+    addTearDown(runner.dispose);
+    final members = [for (var i = 0; i < b.stock.length; i++) i];
+    final first = Completer<void>();
+    final out = runner.solve((rows: 9, cols: 9), LayoutKey.gradient, members, Mount.none, 3, onStep: (d, of) {
+      if (!first.isCompleted) first.complete();
+    });
+    await first.future.timeout(const Duration(seconds: 30)); // it is solving
+    final watch = Stopwatch()..start();
+    runner.stop();
+    final s = await out;
+    expect(s.grid, isNull);
+    expect(watch.elapsedMilliseconds, lessThan(500));
+  }, testOn: 'vm');
+
+  test('on a phone Stop while the isolate is still being spawned: it answers no arrangement, and the isolate goes as '
+      'it arrives, saying no step', () async {
+    final b = fixtureBase(), runner = createSolverRunner()..setPool(b);
+    addTearDown(runner.dispose);
+    final members = [for (var i = 0; i < b.stock.length; i++) i];
+    // How soon a solve left alone says its first step.
+    final watch = Stopwatch()..start(), first = Completer<void>();
+    final alone = runner.solve((rows: 9, cols: 9), LayoutKey.gradient, members, Mount.none, 3, onStep: (_, _) {
+      if (!first.isCompleted) first.complete();
+    });
+    await first.future.timeout(const Duration(seconds: 30));
+    final firstStep = watch.elapsed;
+    runner.stop();
+    await alone;
+
+    var steps = 0;
+    final out = runner.solve((rows: 9, cols: 9), LayoutKey.gradient, members, Mount.none, 3, onStep: (_, _) => steps++);
+    runner.stop(); // Isolate.spawn has not returned yet
+    expect((await out).grid, isNull);
+    await Future<void>.delayed(firstStep * 3 + const Duration(milliseconds: 300));
+    expect(steps, 0, reason: 'killed as it arrived');
   }, testOn: 'vm');
 }

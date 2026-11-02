@@ -1,5 +1,6 @@
 /* prepare.dart on the web: the browser reads, crops, sizes and saves the picture (platform/canvas_web.dart); the
-   colour is measured in Dart from the crop's own pixels, by the same measureImage as on a phone. */
+   colour is measured in Dart from the crop's own pixels, by the same measureImage as on a phone, in a worker
+   (measurer_web.dart). */
 import 'dart:js_interop';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -10,6 +11,7 @@ import 'package:web/web.dart' as web;
 import '../measure/measure.dart';
 import '../platform/canvas_web.dart';
 import 'long_side.dart';
+import 'measurer_web.dart';
 import 'photo_source.dart' show pickedLongSide, previewLongSide;
 import '../solver/geometry.dart' show maxLongSide;
 import 'prepare.dart' show PickedPhoto, pickedSize, storedJpegQuality, storedLongSide;
@@ -29,6 +31,7 @@ void closePicture(Object picture) => (picture as web.ImageBitmap).close();
    (2500 × 2500 × 4). The cropper is shown the bytes as picked, or, for a picture brought down or turned, that picture
    at previewLongSide as a JPEG with no EXIF; it lays it out by the size of the picture it cuts from. */
 Future<PickedPhoto> readPhoto(Uint8List picked) async {
+  warmMeasurer();
   final size = pickedSize(picked), turn = _exifTurn(picked), takes = await bitmapOptions();
   // The size it is asked to come out at: upright, when the browser turns it before it resizes.
   int? width, height;
@@ -156,28 +159,38 @@ Uint8List _rgbaSquare(web.ImageBitmap original, {required Offset topLeft, requir
   return pixels;
 }
 
-/* The cropped square (PhotoCropper's RGBA pixels), measured by measureImage — from the crop at its own
+/* The cropped square (PhotoCropper's RGBA pixels), measured by measureImage in the measure's worker — from the crop at its own
    resolution (its colour from every pixel; only its texture from a copy brought to 2500 px) — then brought down to storedLongSide by the
    browser and stored as JPEG, which carries no EXIF — no place, no camera. */
 Future<({Uint8List jpeg, Measured measured})> preparePhoto(Uint8List cropped) async {
   final side = math.sqrt(cropped.length / 4).round();
   if (side == 0 || side * side * 4 != cropped.length) throw const MeasureError('notAnImage');
-  final measured = measureImage(img.Image.fromBytes(width: side, height: side, bytes: cropped.buffer,
-      bytesOffset: cropped.offsetInBytes, numChannels: 4));
   // What is stored is the RGB the measure read, as on a phone: a see-through pixel drawn as it is would come out of
   // the JPEG black, and read as another colour when measured again. So every pixel is made solid, its RGB kept.
-  final solid = Uint8List.fromList(cropped);
-  for (var i = 3; i < solid.length; i += 4) {
-    solid[i] = 255;
+  Uint8List solidOf() {
+    final solid = Uint8List.fromList(cropped);
+    for (var i = 3; i < solid.length; i += 4) {
+      solid[i] = 255;
+    }
+    return solid;
   }
+  final solid = solidOf();
   final (whole, wholeContext) = canvasOf(side, side);
   wholeContext.putImageData(web.ImageData(Uint8ClampedList.sublistView(solid).toJS, side, side.toJS), 0, 0);
+  // Measured in the measure's worker, so the studio keeps moving while it reads (measurer_web.dart): the solid copy
+  // is handed to it, now drawn, as measureImage reads the RGB alone. `cropped` stays the caller's (a cloth whose add
+  // fails is added again), and is measured in place where the worker cannot. Awaited once the JPEG is made; ignored
+  // until then, so an error is not taken for one nobody handles.
+  final measuring = measureRgba(solid, side, side, again: solidOf)
+      .onError<MeasurerGone>((_, _) => measureImage(img.Image.fromBytes(width: side, height: side, bytes: cropped.buffer,
+          bytesOffset: cropped.offsetInBytes, numChannels: 4)))
+    ..ignore();
   final n = longSideSize(side, side, storedLongSide).width;
-  if (n == side) return (jpeg: await jpegOf(whole, storedJpegQuality), measured: measured);
+  if (n == side) return (jpeg: await jpegOf(whole, storedJpegQuality), measured: await measuring);
   final (stored, storedContext) = canvasOf(n, n);
   storedContext.drawImage(whole, 0, 0, side, side, 0, 0, n, n);
   release(whole);
-  return (jpeg: await jpegOf(stored, storedJpegQuality), measured: measured);
+  return (jpeg: await jpegOf(stored, storedJpegQuality), measured: await measuring);
 }
 
 /* A piece the finder cut (side × side RGBA pixels, as the cropper's square): preparePhoto. */

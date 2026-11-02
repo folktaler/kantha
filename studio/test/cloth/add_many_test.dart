@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/cloth/add_cloth.dart';
+import 'package:kantha_studio/studio/phone/waiting.dart' show waitIsLong, waitShows;
 import 'package:kantha_studio/cloth/many_pieces.dart' show CheckPieces, smallestSide;
 import 'package:kantha_studio/cloth/piece_finder.dart';
 import 'package:kantha_studio/cloth/prepare.dart' show PickedPhoto, readPhoto;
@@ -63,6 +64,9 @@ class FakeFinder implements PieceFinder {
 
   @override
   void forget() => forgot++;
+  var stops = 0;
+  @override
+  void stop() => stops++;
 }
 
 /* A square of `side` with its top left at x, y, turned by `turn` radians about that corner. */
@@ -462,6 +466,8 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
       await tester.pump(const Duration(milliseconds: 1));
     }
+    // Its note shows once the wait has passed a second (waiting.dart).
+    await tester.pump(waitShows);
     expect(find.text('Finding the pieces…'), findsOneWidget);
   }
 
@@ -482,13 +488,54 @@ void main() {
       });
     }
 
-    testWidgets('a finder that never answers: after finderWait, the crop, and Done adds the photo as one piece',
+    testWidgets('a find past 10 s shows Stop; Stop takes the photo to the crop, and a late answer changes nothing',
+        (tester) async {
+      finder.findHeld = Completer();
+      await openAdd(tester);
+      await tester.tap(find.text('Photo of the pieces'));
+      await untilFinding(tester);
+      expect(find.text('Stop'), findsNothing);
+      await tester.pump(waitIsLong);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      Future<void> turns() async {
+        for (var i = 0; i < 60; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+          await tester.pump(const Duration(milliseconds: 1));
+        }
+      }
+      await tester.tap(find.text('Stop'));
+      await turns();
+      expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'a stop is not an error');
+      expect(finder.stops, 1, reason: 'the finder lets go of the find, so the next photo does not wait behind it');
+      finder.findHeld!.complete(three);
+      await turns();
+      expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
+    });
+
+    testWidgets('a finder that loads, then looks, within its own two waits: the sheet takes what it found', (tester) async {
+      finder.findHeld = Completer();
+      await openAdd(tester);
+      await tester.tap(find.text('Photo of the pieces'));
+      await untilFinding(tester);
+      await tester.pump(finderWait + const Duration(seconds: 20)); // a 20 s load, then most of a look
+      finder.findHeld!.complete(three);
+      for (var i = 0; i < 60; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(tester.takeException(), isNull);
+      expect(inSheet(find.text('Next')), findsOneWidget, reason: 'the pieces it found, to check');
+      expect(inSheet(find.text('fill the square with the piece')), findsNothing);
+    });
+
+    testWidgets('a finder that never answers: after finderLongest, the crop, and Done adds the photo as one piece',
         (tester) async {
       finder.findHeld = Completer();
       final c = await openAdd(tester);
       await tester.tap(find.text('Photo of the pieces'));
       await untilFinding(tester);
-      await tester.pump(finderWait);
+      await tester.pump(finderLongest);
       for (var i = 0; i < 60; i++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
         await tester.pump(const Duration(milliseconds: 1));

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:ui' show Rect;
 import 'package:flutter/painting.dart' show PaintingBinding;
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
@@ -22,12 +24,22 @@ void main() {
     final d = CaptureDelivery();
     final said = <String>[];
     var busy = 0;
-    final out = await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) => said.add(t), words: words, busy: () => busy++);
+    final out = await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) => said.add(t), words: words, busy: (_) { busy++; return () => busy++; });
     final name = backupFileName(DateTime.now());
     expect(out, BackupSaved.kept);
     expect(d.backups.keys, [name]);
     expect(said, ['Saved $name.']);
-    expect(busy, 1);
+    expect(busy, 2, reason: 'told as the work starts, and as it ends');
+  });
+
+  test('the wait for a backup ends once it is made, before the share sheet opens: she may take her time there',
+      () async {
+    final s = await studio();
+    var busy = 0;
+    final d = _AtShareSheet(() => busy);
+    await exportBackupNow(c: s.c, delivery: d, say: (t, {failed = false}) {}, words: words,
+        busy: (_) { busy++; return () => busy++; });
+    expect(d.busyThen, 2, reason: 'the wait had ended when the share sheet opened');
   });
 
   test('a share sheet she dismissed is notKept, and nothing is said', () async {
@@ -36,7 +48,7 @@ void main() {
     final out = await exportBackupNow(c: s.c, delivery: CaptureDelivery(kept: false), say: (t, {failed = false}) => said.add(t),
         words: words);
     expect(out, BackupSaved.notKept);
-    expect(said, ['']);
+    expect(said, isEmpty, reason: 'not even a clear: a toast said meanwhile is not cut short');
   });
 
   testWidgets('after an import, nothing this session remembered from before shows', (tester) async {
@@ -106,4 +118,16 @@ void main() {
     expect(s.c.note, s.c.words.canvasMissingCloth);
     expect(s.c.box, box, reason: 'and stays there');
   });
+}
+
+/* Notes how the wait stood when the share sheet opened. */
+class _AtShareSheet extends CaptureDelivery {
+  _AtShareSheet(this.busy);
+  final int Function() busy;
+  int? busyThen;
+  @override
+  Future<bool> saveBackup(Uint8List b, String f, {Rect? origin}) {
+    busyThen = busy();
+    return super.saveBackup(b, f, origin: origin);
+  }
 }

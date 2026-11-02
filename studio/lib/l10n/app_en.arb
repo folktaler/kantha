@@ -44,6 +44,18 @@
     }
   },
   "canvasSolving": "Arranging the cloth…",
+  "canvasSolvingStep": "Tried {done} of {total} arrangements",
+  "@canvasSolvingStep": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasWaitStop": "Stop",
   "canvasCantSolve": "This box holds fewer than 35 pieces — open another box.",
   "canvasSaved": "Saved to My designs.",
   "canvasSaveFailed": "Could not save: {error}",
@@ -509,6 +521,7 @@
       }
     }
   },
+  "deviceSavingBackup": "Saving a backup…",
   "deviceImportButton": "Open a backup file",
   "deviceImportSure": "Opening {file} overwrites all designs and boxes currently on this device. Save a backup first to prevent losing your work.",
   "@deviceImportSure": {
@@ -529,6 +542,7 @@
       }
     }
   },
+  "deviceOpeningBackup": "Opening the backup…",
   "deviceNotBackup": "That file is not a Kantha backup. Nothing was changed.",
   "deviceTooNew": "That backup was made by a newer Kantha. Update the app, then open it again. Nothing was changed.",
   "deviceBackupFailed": "The backup could not be made. Nothing was changed.",

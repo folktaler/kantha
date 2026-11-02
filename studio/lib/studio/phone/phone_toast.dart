@@ -1,29 +1,74 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'phone_theme.dart';
+import 'waiting.dart';
 
 /* One toast at a time: `say` replaces what is showing and restarts the 2.8 s. Work that ends after the app has gone
-   (a box being made, a backup) may still say something; once disposed, the toaster does nothing. */
+   (a box being made, a backup) may still say something; once disposed, the toaster does nothing. `wait` says work is
+   under way: past waitShows, its words with a ring, until the work ends (owner, 1 November 2026). What is said
+   meanwhile waits for it, and is said after, in turn. */
 class Toaster extends ChangeNotifier {
   static const showFor = Duration(milliseconds: 2800);
   String? _text;
   Timer? _timer;
-  bool _disposed = false;
+  bool _disposed = false, _waiting = false;
+  /* The work under way (one wait at a time; a second ends the first), and what was said while it ran. */
+  Object? _wait;
+  final _after = <String>[];
 
   String? get text => _text;
+  /* The toast is a wait's: it stays up, with a ring, until the work it waits for ends. */
+  bool get waiting => _waiting;
 
   void say(String text) {
     if (_disposed) return;
+    if (_wait != null) {
+      _after.add(text); // the same words twice are two toasts, as notes are
+      return;
+    }
+    _show(text);
+  }
+
+  void _show(String text) {
     _timer?.cancel();
     _text = text;
-    _timer = Timer(showFor, clear);
+    _waiting = false;
+    _timer = Timer(showFor, _next);
     notifyListeners();
   }
 
+  void _next() => _after.isEmpty ? clear() : _show(_after.removeAt(0));
+
+  /* Work under way: nothing for waitShows, so a quick one shows nothing; then `text` and a ring until the work ends,
+     when it calls what this returns. A toast showing goes at once; what is said meanwhile is said after. */
+  VoidCallback wait(String text) {
+    if (_disposed) return () {};
+    final mine = _wait = Object();
+    _timer?.cancel();
+    _text = null;
+    _waiting = false;
+    notifyListeners();
+    _timer = Timer(waitShows, () {
+      _timer = null;
+      _text = text;
+      _waiting = true;
+      notifyListeners();
+    });
+    return () {
+      if (_disposed || !identical(_wait, mine)) return;
+      _wait = null;
+      _next();
+    };
+  }
+
+  /* What is showing goes; what was said while a wait ran still comes, in turn. A wait shows on until its work
+     ends. */
   void clear() {
-    if (_disposed) return;
+    if (_disposed || _wait != null) return;
+    if (_after.isNotEmpty) return _show(_after.removeAt(0));
     _timer?.cancel();
     _timer = null;
+    _waiting = false;
     if (_text == null) return;
     _text = null;
     notifyListeners();
@@ -63,7 +108,13 @@ class ToastHost extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: const BoxDecoration(color: PhonePalette.dark,
                       boxShadow: [BoxShadow(color: Color(0x4D000000), offset: Offset(0, 2), blurRadius: 6)]),
-                  child: Text(text, style: pText(PType.bodySmall, color: PhonePalette.white)),
+                  child: toaster.waiting
+                      ? Row(children: [
+                          const WaitRing(color: PhonePalette.white, delay: Duration.zero),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(text, style: pText(PType.bodySmall, color: PhonePalette.white))),
+                        ])
+                      : Text(text, style: pText(PType.bodySmall, color: PhonePalette.white)),
                 ),
               ),
             ),

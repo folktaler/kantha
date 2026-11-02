@@ -51,18 +51,23 @@ Measured measuredFor({double l = 50, double a = 0, double b = 0, double spread =
 
 var _madeForTest = 0;
 
-/* A solver that answers at once: each seed deals the members in a different turn,
-   and turns the squares differently, so a fresh deal is visibly a different grid. */
+/* A solver that answers at once, at any size: each seed deals the members in a different turn, and turns the squares
+   differently, so a fresh deal is visibly a different grid. */
 class QuickSolver implements SolverRunner {
   int calls = 0;
   @override
   void setPool(Base base) {}
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) async {
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) async => deal(size, members, seed);
+  LayoutSolve deal(BoardSize? size, List<int> members, int seed) {
     calls++;
-    return LayoutSolve(true, [for (var i = 0; i < cells; i++) members[(i + seed) % members.length]],
-        [for (var i = 0; i < cells; i++) (i + seed) % 4]);
+    final n = size == null ? cells : size.rows * size.cols;
+    return LayoutSolve(true, [for (var i = 0; i < n; i++) members[(i + seed) % members.length]],
+        [for (var i = 0; i < n; i++) (i + seed) % 4]);
   }
+  @override
+  void stop() {}
   @override
   void dispose() {}
 }
@@ -73,8 +78,10 @@ class StockSolver extends QuickSolver {
   @override
   void setPool(Base base) => _stock = base.stock;
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) async =>
-      members.fold(0, (n, m) => n + _stock[m]) < cells ? const LayoutSolve(false, null, null) : super.solve(layout, members, mount, seed);
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) async =>
+      members.fold(0, (n, m) => n + _stock[m]) < cells ? const LayoutSolve(false, null, null)
+          : super.solve(size, layout, members, mount, seed, onStep: onStep);
 }
 
 /* A solver that fails, as a worker that is missing or crashed does. */
@@ -82,8 +89,11 @@ class FailingSolver implements SolverRunner {
   @override
   void setPool(Base base) {}
   @override
-  Future<LayoutSolve> solve(LayoutKey layout, List<int> members, Mount mount, int seed) async =>
+  Future<LayoutSolve> solve(BoardSize? size, LayoutKey layout, List<int> members, Mount mount, int seed,
+      {void Function(int done, int of)? onStep}) async =>
       throw StateError('the solver is not there');
+  @override
+  void stop() {}
   @override
   void dispose() {}
 }

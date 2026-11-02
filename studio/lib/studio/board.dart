@@ -128,9 +128,6 @@ class _BoardState extends State<Board> with SingleTickerProviderStateMixin {
                     left: g.mx * ppc, top: g.my * ppc, width: g.bw * ppc, height: g.bh * ppc,
                     child: IgnorePointer(child: CustomPaint(painter: GhostGridPainter(g))),
                   ),
-                if (c.solving && grid == null)
-                  Positioned.fill(child: Center(
-                      child: Text(words.canvasSolving, style: pText(PType.metadata, color: PhonePalette.text2)))),
               ])),
             ),
           ),

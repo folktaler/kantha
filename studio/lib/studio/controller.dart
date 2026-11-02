@@ -125,6 +125,33 @@ class StudioController extends ChangeNotifier {
   String? firstSolve, savedId, savedGrid;
   Map<LayoutKey, Feasible> feasible = const {};
   int _reqId = 0;
+  /* The solve the board waits for: when it was asked, and how far it has got (each of the solver's starts as it ends,
+     where the runner says). The board's wait note reads them (owner, 1 November 2026: past 10 s, a bar and Stop). */
+  DateTime? solveSince;
+  ({int done, int of})? solveStep;
+  /* The board as it was before the press that asked for this solve (a pattern, Rows or Columns, a box, New design):
+     Stop puts it back. `_taking` is held from the press until the solve is asked for. A press while a solve is out
+     keeps the board from before the first (_pressed), so Stop never puts back a board half changed; so does a solve
+     no press asked for (the shelf changed under one), when it is asked again. */
+  _Before? _before, _taking;
+  /* The solve `_before` is for: any path that drops that solve (a new id) leaves it for no one. */
+  int _beforeFor = -1;
+  _Before? get _live => _beforeFor == _reqId ? _before : null;
+  /* A solve can be stopped while the board it replaces can be put back: one made only of cloth still in its box, each
+     piece used no more times than she holds of it now (her cloth may change while she waits). */
+  bool get canStop {
+    final b = _live, g = b?.grid;
+    if (!solving || g == null) return false;
+    final uses = <int, int>{};
+    for (final i in g) {
+      if (i < 0 || i >= cloth.length || cloth[i].box != b!.box) return false;
+      uses[i] = (uses[i] ?? 0) + 1;
+    }
+    return uses.entries.every((e) => e.value <= cloth[e.key].stock);
+  }
+  /* What a press takes as the board to go back to: the board now, or, while a solve is out, the one from before it;
+     the board now when that solve was none a press asked for. */
+  _Before? _pressed() => solving ? _live ?? _snapshot() : _snapshot();
   /* Counts the boards a tap on another pattern's tile put up; the board drops each one's squares in (owner, 21 Oct).
      `_dropFor` is the solve such a tap asked for: any later solve replaces it, and its board does not drop. */
   int drops = 0;
@@ -174,6 +201,7 @@ class StudioController extends ChangeNotifier {
      What newDesign leaves behind goes too — the saved design and its name, the note. */
   void _clearBoard() {
     _reqId++; // a solve still out is dropped when it lands
+    _before = null; _taking = null; solveStep = null;
     grid = null; rot = noTurns(squares); solving = false; savedId = null; savedGrid = null; note = ''; warn = false; _holding = false;
     name = _defaultName(layout);
   }
@@ -251,6 +279,7 @@ class StudioController extends ChangeNotifier {
   Future<void> afterImport() async {
     imports++;
     _reqId++; // a solve still out was asked of the device as it was
+    _before = null; // nor is that device's board put back by Stop
     memory = const {}; savedId = null; savedGrid = null; _justSaved = null; note = ''; warn = false;
     notifyListeners();
     final now = await shelfNow(shelf);
@@ -333,12 +362,21 @@ class StudioController extends ChangeNotifier {
     // Nothing is arranged while she is starting (the board is the empty sheet), nor on an empty box
     // (decision 13: the empty sheet, and nothing to save).
     if (starting || members(box).isEmpty) { _clearBoard(); notifyListeners(); return; }
+    // A press says what Stop puts back; a solve asked again as the shelf changes, while one is still out, keeps it.
+    final t = _taking, out = _live;
     final id = ++_reqId, s = _seeds();
+    _before = t != null ? (t.grid == null ? null : t) : out;
+    _beforeFor = id;
+    _taking = null;
+    solveSince = _now();
+    solveStep = null;
     final runner = solver, g = size;
-    final asked = g == level1 ? runner.solve(layout, members(box), mount, s)
-        : runner is SizedSolverRunner ? runner.solveOn(g, layout, members(box), mount, s)
-        : Future.value(const LayoutSolve(false, null, null));
-    asked
+    void stepped(int done, int of) {
+      if (id != _reqId) return;
+      solveStep = (done: done, of: of);
+      notifyListeners();
+    }
+    runner.solve(g == level1 ? null : g, layout, members(box), mount, s, onStep: stepped)
         .catchError((Object e, StackTrace st) {
           reportError(e, st, 'while the solver arranged the cloth');
           return const LayoutSolve(false, null, null);
@@ -371,6 +409,7 @@ class StudioController extends ChangeNotifier {
 
   void _solved(int id, LayoutSolve r, int s) {
     if (id != _reqId) return;
+    _before = null; solveStep = null;
     // No arrangement: the board is empty under the note, never the last box's cloth (decision 14).
     if (r.grid == null) { grid = null; rot = noTurns(squares); solving = false; note = cantSolveWords; warn = true; notifyListeners(); return; }
     grid = r.grid; rot = r.rot ?? noTurns(squares); seed = s; solving = false; warn = false; savedId = null; note = '';
@@ -400,6 +439,7 @@ class StudioController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final before = _pressed();
     final fresh = _defaultName(next);
     final left = keyOf(box, layout, size);
     final was = recall(memory, left);
@@ -412,6 +452,7 @@ class StudioController extends ChangeNotifier {
     layout = next;
     if (kept != null) {
       _reqId++;
+      _before = null; // the solve out is dropped
       drops++;
       final moved = kept.mount != mount;
       name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
@@ -429,6 +470,7 @@ class StudioController extends ChangeNotifier {
       note = words.canvasCantFill(words.notFillable(f.why!)); warn = true;
     }
     notifyListeners();
+    _taking = before;
     _requestSolve();
     _dropFor = changed ? _reqId : null;
     // A press that said it cannot fill keeps that note: no press-again note after it.
@@ -443,9 +485,11 @@ class StudioController extends ChangeNotifier {
       boxNumbers = {...boxNumbers, b: made};
     }
     if (b == box) return;
+    final before = _pressed();
     box = b; solving = true;
     _checkFeasible(b);
     notifyListeners();
+    _taking = before;
     _requestSolve();
   }
 
@@ -491,7 +535,7 @@ class StudioController extends ChangeNotifier {
   /* The board takes its new size: the arrangement she last saw on it, on this box and template, comes back (as a
      template's does in loadLayout); else a fresh one. Off A4 the mount is Plain. */
   void _resize(void Function() change) {
-    final was = size;
+    final was = size, before = _pressed();
     final left = keyOf(box, layout, was), kept0 = recall(memory, left);
     if (kept0 != null) memory = remember(memory, left, kept0.copyWith(name: name, mount: mount));
     change();
@@ -502,6 +546,7 @@ class StudioController extends ChangeNotifier {
     final kept = _canFill && members(box).isNotEmpty ? recall(memory, keyOf(box, layout, size)) : null;
     if (kept != null) {
       _reqId++;
+      _before = null; // the solve out is dropped
       name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
       savedId = kept.savedId; savedGrid = kept.savedGrid; note = ''; warn = false;
       _recommendThread();
@@ -512,6 +557,7 @@ class StudioController extends ChangeNotifier {
     solving = true; note = ''; warn = false;
     fit();
     if (!_started) return;
+    _taking = before;
     _requestSolve();
   }
   void setName(String v) { name = v; notifyListeners(); }
@@ -643,9 +689,11 @@ class StudioController extends ChangeNotifier {
 
   /* A fresh arrangement on the template and box she is on, under the template's name, not yet saved. */
   void newDesign() {
+    final before = _pressed();
     name = _defaultName(layout);
     savedId = null; savedGrid = null; solving = true; note = ''; warn = false;
     notifyListeners();
+    _taking = before;
     _requestSolve();
   }
 
@@ -655,6 +703,7 @@ class StudioController extends ChangeNotifier {
     if (g.any((i) => i == null)) { _warn(words.canvasMissingCloth); return false; }
     final gi = g.cast<int>();
     _reqId++;
+    _before = null; // the solve out is dropped, and with it the board Stop would have put back
     final b = p.box != null && ownBoxes.contains(p.box) ? p.box : box;
     // The board takes the design's size.
     final resized = p.size != size;
@@ -789,6 +838,7 @@ class StudioController extends ChangeNotifier {
     final g = grid;
     if (_started && g != null && uses(g)) {
       grid = null;
+      _before = null; // a board of the swatches that went is not put back
       solving = true;
       _checkFeasible(box);
       _requestSolve();
@@ -897,6 +947,36 @@ class StudioController extends ChangeNotifier {
 
   /* Always tells the screen: Fit, or a new mount (setMount), changed the board even when the pane
      is too small to fit and the scale stays. */
+  _Before _snapshot() => _Before(layout: layout, name: name, mount: mount, grid: grid, rot: rot, seed: seed, box: box,
+      savedId: savedId, savedGrid: savedGrid, chosen: chosen, feasible: feasible, note: note, warn: warn,
+      holding: _holding);
+
+  /* Stop, on a wait past 10 s: the solve is dropped (on the web its worker goes, on a phone its isolate) and the board
+     is as it was before the press that asked for it, with its pattern, size, box and name. */
+  void stopSolve() {
+    final b = _live;
+    if (!canStop || b == null) return;
+    _reqId++;
+    solver.stop();
+    final resized = b.chosen != chosen;
+    layout = b.layout; name = b.name; mount = b.mount; grid = b.grid; rot = b.rot; seed = b.seed; box = b.box;
+    savedId = b.savedId; savedGrid = b.savedGrid; chosen = b.chosen;
+    _note = b.note; warn = b.warn; // as it was: no second toast
+    // What the box can fill is read from her cloth as it is now, not as it was: a note that it could not fill goes when
+    // it now can, and one is said when it now cannot.
+    final couldNot = b.feasible[b.layout]?.fills == false;
+    _checkFeasible(box);
+    if (couldNot && (feasible[layout]?.fills ?? true)) { _note = ''; warn = false; }
+    _holding = b.holding; solving = false; solveStep = null; _before = null; _dropFor = null; _pressFor = null;
+    _recommendThread();
+    if (resized) {
+      unawaited(_keepBoard());
+      fit();
+    } else {
+      notifyListeners();
+    }
+  }
+
   void fit() {
     zoomed = false;
     if (_pane == Size.zero) { ppc = fitPpc; } else { _fitTo(_pane); }
@@ -909,4 +989,22 @@ class StudioController extends ChangeNotifier {
     solver.dispose();
     super.dispose();
   }
+}
+
+/* The board as a press found it: what stopSolve puts back. */
+class _Before {
+  const _Before({required this.layout, required this.name, required this.mount, required this.grid, required this.rot,
+      required this.seed, required this.box, required this.savedId, required this.savedGrid, required this.chosen,
+      required this.feasible, required this.note, required this.warn, required this.holding});
+  final LayoutKey layout;
+  final String name;
+  final Mount mount;
+  final List<int>? grid;
+  final List<int> rot;
+  final int? seed, box;
+  final String? savedId, savedGrid;
+  final BoardSize chosen;
+  final Map<LayoutKey, Feasible> feasible;
+  final String note;
+  final bool warn, holding;
 }

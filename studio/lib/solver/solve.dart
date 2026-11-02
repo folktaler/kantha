@@ -161,7 +161,9 @@ bool withinStock(List<int> grid, List<int> stock) {
   return true;
 }
 
-Solved? solve(Objective obj, Prepared prep, List<int> stock, List<int> pool, SolveOptions opts) {
+/* `onStep`, when given, hears each start as it ends: how many are done, of how many. It changes nothing solved. */
+Solved? solve(Objective obj, Prepared prep, List<int> stock, List<int> pool, SolveOptions opts,
+    {void Function(int done, int of)? onStep}) {
   final rand = rng(opts.seed);
   Solved? best;
   for (var k = 0, n = opts.restarts ?? restartsFor(obj.rows * obj.cols); k < n; k++) {
@@ -170,6 +172,7 @@ Solved? solve(Objective obj, Prepared prep, List<int> stock, List<int> pool, Sol
     final grid = _polish(_anneal(start, obj, prep, stock, pool, rand, opts.steps ?? stepsFor(obj.rows * obj.cols), opts.acceptStart, opts.tEnd), obj, prep, stock, pool);
     final t = _total(grid, obj, prep);
     if (best == null || t < best.total) best = Solved(grid, t, opts.seed);
+    onStep?.call(k + 1, n);
   }
   return best;
 }
