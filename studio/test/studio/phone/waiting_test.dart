@@ -93,6 +93,23 @@ void main() {
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
+  testWidgets('with tickers off (a route under another, offstage) the ring stands still and draws nothing; on again, '
+      'it turns', (tester) async {
+    final turning = find.ancestor(of: ring, matching: find.byType(Transform));
+    Matrix4 turn() => tester.widget<Transform>(turning.first).transform;
+    Widget note(bool on) => TickerMode(enabled: on, child: const WaitNote(key: ValueKey('w'), words: 'Arranging the cloth…'));
+    await pumpNote(tester, note(true));
+    await tester.pump(waitShows);
+    await pumpNote(tester, note(false));
+    final still = turn();
+    await tester.pump(WaitRing.turnEvery * 3);
+    expect(turn(), still);
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    await pumpNote(tester, note(true));
+    await tester.pump(WaitRing.turnEvery);
+    expect(turn(), isNot(still));
+  });
+
   group('a toast that waits', () {
     Future<Toaster> pumpToast(WidgetTester tester) async {
       final toaster = Toaster();
@@ -128,14 +145,16 @@ void main() {
       final end = toaster.wait('Opening the backup…');
       await tester.pump(waitShows);
       toaster.say('Saved to My designs.');
-      toaster.clear(); // as a flow with nothing to say clears
-      toaster.say('Saved to My designs.');
+      toaster.clear(); // as a flow with nothing to say clears: what was said still comes
+      toaster.say('Saved to My designs.'); // said again: a second toast
       await tester.pump();
       expect(find.text('Opening the backup…'), findsOneWidget);
       toaster.say('This device now holds kantha.zip.');
       end();
       await tester.pump();
       expect(find.text('Saved to My designs.'), findsOneWidget);
+      await tester.pump(Toaster.showFor);
+      expect(find.text('Saved to My designs.'), findsOneWidget, reason: 'the second time it was said');
       await tester.pump(Toaster.showFor);
       expect(find.text('This device now holds kantha.zip.'), findsOneWidget);
       await tester.pump(Toaster.showFor);
