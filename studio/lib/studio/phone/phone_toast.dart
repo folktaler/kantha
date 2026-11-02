@@ -23,7 +23,7 @@ class Toaster extends ChangeNotifier {
   void say(String text) {
     if (_disposed) return;
     if (_wait != null) {
-      if (_after.lastOrNull != text) _after.add(text);
+      _after.add(text); // the same words twice are two toasts, as notes are
       return;
     }
     _show(text);
@@ -61,11 +61,11 @@ class Toaster extends ChangeNotifier {
     };
   }
 
-  /* Nothing showing, and nothing said meanwhile still to come. A wait shows on until its work ends. */
+  /* What is showing goes; what was said while a wait ran still comes, in turn. A wait shows on until its work
+     ends. */
   void clear() {
-    if (_disposed) return;
-    _after.clear();
-    if (_wait != null) return;
+    if (_disposed || _wait != null) return;
+    if (_after.isNotEmpty) return _show(_after.removeAt(0));
     _timer?.cancel();
     _timer = null;
     _waiting = false;

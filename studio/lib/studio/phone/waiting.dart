@@ -53,7 +53,9 @@ class WaitRing extends StatelessWidget {
 
   /* 8 frames a second, not the screen's 60. On the web every frame is the page's own work, so Material's ring, drawn
      each frame, took the main thread from a wait whose work is there too: opening a backup at 20x CPU took 19 s with
-     it, 5 s at 8 frames a second, 3.4 s with no ring (1 November 2026). */
+     it, 5 s at 8 frames a second, 3.4 s with no ring (1 November 2026). Where a frame takes longer than that (a
+     slow phone, a busy page), the next turn waits 3 frames' time, so the ring never takes more than a quarter of the
+     thread: at a steady 8 a second it once held it whole, 18.5 s in 1 run of 10 at 20x. */
   static const turnEvery = Duration(milliseconds: 125);
 
   @override
@@ -77,20 +79,38 @@ class _Turning extends StatefulWidget {
 }
 
 class _TurningState extends State<_Turning> {
-  late final Timer _timer;
-  var _eighths = 0;
+  Timer? _timer;
+  var _eighths = 0, _on = false;
 
+  /* It turns only where tickers run: not on a route under another, nor offstage (TickerMode off). */
   @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(WaitRing.turnEvery, (_) {
-      if (mounted) setState(() => _eighths = (_eighths + 1) % 8);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final on = TickerMode.valuesOf(context).enabled;
+    if (on == _on) return;
+    _on = on;
+    _timer?.cancel();
+    _timer = null;
+    if (on) _after(WaitRing.turnEvery);
+  }
+
+  void _after(Duration wait) => _timer = Timer(wait, _turn);
+
+  /* An eighth on; the next once this frame is drawn and `turnEvery` has passed, or 3 times what the frame took. */
+  void _turn() {
+    if (!mounted || !_on) return;
+    final drawing = Stopwatch()..start();
+    setState(() => _eighths = (_eighths + 1) % 8);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_on) return;
+      final took = drawing.elapsed * 3;
+      _after(took > WaitRing.turnEvery ? took : WaitRing.turnEvery);
     });
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 

@@ -3,6 +3,7 @@
    device first. The Back up sheet runs them (redesign decision 13).
    What happened is said through `say` (`failed` when it went wrong; '' clears what was said); `busy`, when given,
    is told as the work starts, with the words for it ("Saving a backup…", "Opening the backup…"). */
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../data/backup.dart';
 import '../downloads/delivery.dart';
@@ -25,7 +26,13 @@ Future<BackupSaved> exportBackupNow({required StudioController c, required Deliv
     required Say say, required L words, Busy? busy}) async {
   final done = busy?.call(words.deviceSavingBackup);
   try {
-    final bytes = await exportBackup(c.shelf.db, c.side);
+    final Uint8List bytes;
+    try {
+      bytes = await exportBackup(c.shelf.db, c.side);
+    } finally {
+      // Made: the wait is over. The share sheet that comes next is hers to take her time over.
+      done?.call();
+    }
     final name = backupFileName(DateTime.now());
     if (!await delivery.saveBackup(bytes, name, origin: origin)) {
       say('');
@@ -38,8 +45,6 @@ Future<BackupSaved> exportBackupNow({required StudioController c, required Deliv
     // The zip code would not load (offline, or the release gone): the words an import says then.
     say(e is BackupError && e.key == 'notLoaded' ? words.clothErrorsPieceFailed : words.deviceBackupFailed, failed: true);
     return BackupSaved.failed;
-  } finally {
-    done?.call();
   }
 }
 
