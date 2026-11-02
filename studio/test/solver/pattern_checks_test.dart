@@ -18,20 +18,21 @@ const _sizes = [(rows: 7, cols: 5), (rows: 3, cols: 12), (rows: 12, cols: 3), (r
 /* Cases whose outcome is not a pass, each reported to the owner (1 November 2026) and left until he decides; a case not
    listed must pass. Keyed '<pattern> <box> <rows>x<cols>'; the comment is what the rule measured then. */
 const Map<String, Outcome> _known = {
-  // Heart on the Sample box. Three cannot be made: with the heart in its colour, the ground in others and no cloth
-  // beside itself, the box's pieces give the ground at most 23.0, 23.2 and 21.5 L* over the heart. One the box could
-  // make, and the solver falls short: the ground is not 25 L* lighter.
-  'heart Sample 3x12': Outcome.cannot,
-  'heart Sample 12x3': Outcome.cannot,
-  'heart Sample 8x8': Outcome.fail, // heart 96%, ground 29% its colour, lighter by 19.7
-  'heart Sample 12x12': Outcome.cannot,
-  // Chain needs one dark cloth with a piece for every link; 12 pieces cover 7 x 5 but not these boards.
-  'chain Sample 8x8': Outcome.cannot, // noChainCloth
+  // The Sample box of 2 November 2026 (Purple 34, Turmeric 31, White 40, the rest 12; 189 pieces) has too few pieces
+  // for a 12 x 12 Heart, Chain or Diamond. The tuning pool has no dark cloth with a piece for every 12 x 12 link.
+  'heart Sample 12x12': Outcome.cannot, // fewPieces
   'chain Sample 12x12': Outcome.cannot, // noChainCloth
   'chain Tuning pool 12x12': Outcome.cannot, // noChainCloth
-  // Diamond needs a colour family with enough pieces for each ring.
-  'diamond Sample 8x8': Outcome.cannot, // noRingFamily
   'diamond Sample 12x12': Outcome.cannot, // noRingFamily
+  // Accepted for now by the owner, 2 November 2026: Diamond on the Sample box falls short, the least one-family ring
+  // 67% (seeds 1 to 6 alike).
+  'diamond Sample 8x8': Outcome.fail,
+};
+
+/* The most same-cloth neighbours accepted on a case that passes, for now, by the owner (2 November 2026); a case not
+   listed must have none. Stripes on the Sample box of that day: 0 to 2 over seeds 1 to 6. */
+const Map<String, int> _knownRepeats = {
+  'stripes Sample 12x12': 2,
 };
 
 void main() {
@@ -49,13 +50,23 @@ void main() {
           judged++;
           if (c.solved!.rule.passes) mine++;
           if (c.random!.rule.passes) chance++;
-          if (c.solved!.apartApplies) expect(c.solved!.repeats, 0, reason: '$id: same-cloth neighbours');
+          if (c.solved!.apartApplies) {
+            expect(c.solved!.repeats, lessThanOrEqualTo(_knownRepeats[id] ?? 0), reason: '$id: same-cloth neighbours');
+          }
         }
       }
       expect(judged, greaterThan(0));
       expect(mine, greaterThan(chance), reason: 'passes $mine of $judged; random $chance');
     }, timeout: const Timeout(Duration(minutes: 3)));
   }
+
+  test('Heart keeps its rule at 12 wide and 10 tall from the Sample box (owner, 2 November 2026: "Add Turmeric")', () {
+    for (final seed in [1, 2, 3]) {
+      final c = runCase(LayoutKey.heart, sampleBox(), (rows: 10, cols: 12), seed);
+      expect(c.outcome, Outcome.pass, reason: 'seed $seed: ${c.fills ? c.solved!.rule.detail : c.why}');
+      expect(c.solved!.repeats, 0, reason: 'seed $seed: same-cloth neighbours');
+    }
+  });
 
   test('Diamond is not Centre: their target maps disagree on boards with three rings or more', () {
     for (final g in [(rows: 7, cols: 5), (rows: 8, cols: 8), (rows: 12, cols: 12), (rows: 3, cols: 12)]) {

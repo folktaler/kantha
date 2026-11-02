@@ -8,8 +8,13 @@ import 'database.dart';
 
 const clothsPerBox = 200;
 const _sampleSwap = 'sample';
-/* The done-once marker of the Sample box's top-up to more pieces (owner, 1 November 2026): the counter at 2. */
+/* The pieces of each cloth an untouched Sample box held before, in order: 7 until 1 November 2026, then 12. */
+const samplePiecesBefore = [7, 12];
+/* The marker of the Sample box's top-ups to more pieces (owner, 1 and 2 November 2026): absent or 1 for a box made
+   with the first count of [samplePiecesBefore], 2 once it holds the second, and so on; [sampleTopUpDone] once it holds
+   today's (Shelf.topUpSample). */
 const _sampleTopUp = 'samplePieces';
+final sampleTopUpDone = samplePiecesBefore.length + 1;
 
 class ShelfError implements Exception {
   const ShelfError(this.key, [this.values = const {}]);
@@ -118,22 +123,31 @@ class Shelf {
   Future<void> _markSampleReplaced() =>
       db.into(db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: _sampleSwap, next: 2));
 
-  Future<void> _markSampleToppedUp() =>
-      db.into(db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: 2));
+  Future<void> _markSampleToppedUp() => db.into(db.counters)
+      .insertOnConflictUpdate(CountersCompanion.insert(name: _sampleTopUp, next: sampleTopUpDone));
 
-  /* The Sample box's top-up (owner, 1 November 2026), once, in one transaction with its done-once marker: each of its
-     cloth named in `names` that she has not changed (still `from` pieces, no fabric, never re-cropped) gets `to`
-     pieces. A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only
-     the marker is written. A Sample box made since holds `to` already and is marked when made. */
-  Future<void> topUpSample(Set<String> names, {required int from, required int to}) => _write(() async {
-        if (await counterAt(_sampleTopUp) >= 2) return;
-        _check(to);
+  /* The Sample box's top-up (owner, 1 and 2 November 2026), once, in one transaction with its done-once marker. The
+     marker says which count of [samplePiecesBefore] the box was made or last topped up with (absent or 1: the first).
+     Each cloth named in `to` that she has not changed (still that count, no fabric, never re-cropped) gets its count in
+     `to`. A cloth she changed, and a Sample box she emptied or deleted, stay as she left them (DECISIONS 57): only the
+     marker is written. A Sample box made since holds `to` already and is marked when made. While the drawn swatches of
+     before 22 October still wait for their swap, nothing is done and no marker written: a swatch shares a name with a
+     real cloth (Turmeric), and the swap puts the real cloth in at today's counts and writes this marker itself. */
+  Future<void> topUpSample(Map<String, int> to) => _write(() async {
+        if (await counterAt(_sampleSwap) < 2) return;
+        final step = await counterAt(_sampleTopUp);
+        if (step >= sampleTopUpDone) return;
+        final from = samplePiecesBefore[math.max(1, step) - 1];
+        to.values.forEach(_check);
         final box = await _sampleBox();
         if (box != null) {
-          await (db.update(db.cloths)
-                ..where((c) => c.box.equals(box) & c.name.isIn(names) & c.pieces.equals(from) & c.fabric.equals('') &
-                    c.version.equals(1)))
-              .write(ClothsCompanion(pieces: Value(to)));
+          for (final MapEntry(key: name, value: pieces) in to.entries) {
+            if (pieces == from) continue;
+            await (db.update(db.cloths)
+                  ..where((c) => c.box.equals(box) & c.name.equals(name) & c.pieces.equals(from) & c.fabric.equals('') &
+                      c.version.equals(1)))
+                .write(ClothsCompanion(pieces: Value(pieces)));
+          }
         }
         await _markSampleToppedUp();
       });
@@ -176,6 +190,8 @@ class Shelf {
           for (final c in cloth) {
             await _insertCloth(box: box!, photo: c.photo, measured: c.measured, fabric: '', pieces: c.pieces, name: c.name);
           }
+          // In at today's counts, so the top-up has nothing left to do here.
+          await _markSampleToppedUp();
         }
         await _markSampleReplaced();
       });

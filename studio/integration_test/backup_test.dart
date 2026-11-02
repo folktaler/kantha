@@ -76,7 +76,7 @@ void main() {
     await clothTab(t);
     await tapIt(t, find.byKey(const ValueKey('box-picker'))); await settle(t, 1);
     await tapIt(t, inSheet(find.text('Sample'))); await settle(t);
-    await waitFor(t, boxPicker('Sample\n120 pieces · sample cloth'));
+    await waitFor(t, boxPicker('Sample\n189 pieces · sample cloth'));
     final shelf = appShelf(t);
     final sample = after.cloths.where((c) => c.box == 1).map((c) => c.id).toList();
     expect(sample, unorderedEquals([for (var n = 1; n <= 10; n++) 'C-$n']), reason: 'the Sample box holds C-1 to C-10');

@@ -14,6 +14,8 @@ import 'package:kantha_studio/data/shelf.dart';
 import 'package:kantha_studio/data/side_db_io.dart';
 import 'package:kantha_studio/l10n/app_localizations.dart' show lookupL;
 import 'package:kantha_studio/measure/measure.dart';
+import 'package:kantha_studio/solver/compile.dart' show ObjectiveInput;
+import 'package:kantha_studio/solver/fabrics.dart' show poolOf;
 import 'package:kantha_studio/solver/geometry.dart' show BoardSize, Mount, cells;
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/solve_layout.dart' show Base, LayoutSolve;
@@ -21,10 +23,17 @@ import 'package:kantha_studio/studio/controller.dart';
 import 'package:kantha_studio/studio/shelf_feed.dart' show shelfNow;
 import '../support/db.dart';
 import '../support/files_fixture.dart' show testSideDb;
-import '../solver/pattern_rules.dart' show samplePiecesHere;
+import '../solver/pattern_rules.dart' show sampleBox, samplePiecesHere;
 import '../support/studio_fixture.dart';
 
 final _names = [for (final s in sampleCloth) s.name];
+final _today = [for (final s in sampleCloth) s.pieces];
+const _total = 189;
+
+final _todayByName = {for (final s in sampleCloth) s.name: s.pieces};
+
+Future<Map<String, int>> _piecesByName(Shelf shelf) async =>
+    {for (final c in await shelf.db.select(shelf.db.cloths).get()) c.name: c.pieces};
 
 void main() {
   test('ten cloths: seven plain under the busy line, three prints above it, each a colour name of its own', () {
@@ -33,7 +42,7 @@ void main() {
     expect(m.map((x) => x.name).toSet().length, 10, reason: 'ten colour names');
   });
 
-  test('a fresh install gets the Sample box once, with the 10 cloths of 12, named as the owner named them', () async {
+  test('a fresh install gets the Sample box once, with the 10 cloths, 12 of each but Purple at 34, Turmeric at 31 and White at 40, named as the owner named them', () async {
     final shelf = Shelf(memoryDb());
     await ensureSampleBox(shelf);
     await ensureSampleBox(shelf);
@@ -41,8 +50,10 @@ void main() {
     expect(boxes.map((b) => b.name), ['sample']);
     final cloth = await shelf.db.select(shelf.db.cloths).get();
     expect(cloth.map((c) => c.name), _names);
-    expect(cloth.every((c) => c.pieces == 12 && c.fabric == ''), isTrue);
-    expect(samplePiecesHere, List.filled(10, samplePieces), reason: 'pattern_rules.dart copies the count');
+    expect(cloth.every((c) => c.fabric == ''), isTrue);
+    expect([for (final c in cloth) c.pieces], [12, 12, 34, 31, 12, 12, 40, 12, 12, 12]);
+    expect(_today.fold(0, (a, b) => a + b), _total);
+    expect(samplePiecesHere, _today, reason: 'pattern_rules.dart copies the counts');
     expect(await shelf.swatchesToReplace(drawnSwatches), isNull, reason: 'a Sample box made now needs no swap');
   });
 
@@ -116,7 +127,7 @@ void main() {
       return shelf;
     }
 
-    test('gets 12 of each cloth she has not changed, once; a cloth she changed stays as she left it', () async {
+    test('gets today\'s count of each cloth she has not changed, once; a cloth she changed stays as she left it', () async {
       final shelf = await old();
       final cloth = await shelf.db.select(shelf.db.cloths).get();
       await shelf.editCloth(cloth[0].id, fabric: '', pieces: 5);
@@ -125,14 +136,14 @@ void main() {
       final after = {for (final c in await shelf.db.select(shelf.db.cloths).get()) c.id: c.pieces};
       expect(after[cloth[0].id], 5);
       expect(after[cloth[1].id], 7);
-      expect([for (final c in cloth.skip(2)) after[c.id]], List.filled(8, 12));
+      expect([for (final c in cloth.skip(2)) after[c.id]], _today.skip(2));
       // Once: a cloth set back to 7 later is hers, and is not topped up again.
       await shelf.editCloth(cloth[2].id, fabric: '', pieces: 7);
       await topUpSample(shelf);
       expect((await (shelf.db.select(shelf.db.cloths)..where((c) => c.id.equals(cloth[2].id))).getSingle()).pieces, 7);
     });
 
-    test('in a backup imported later, gets its 12 on import', () async {
+    test('in a backup imported later, gets today\'s counts on import', () async {
       final backup = await exportBackup((await old()).db, testSideDb);
       final shelf = Shelf(memoryDb());
       await ensureSampleBox(shelf);
@@ -141,11 +152,11 @@ void main() {
       final from = solver.solved.length;
       await c.importFile(backup);
       await pumpEventQueue();
-      expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
-      expect(c.piecesIn(c.box!), samplePieces * sampleCloth.length, reason: 'the studio re-opened on the 12');
+      expect(await _piecesByName(shelf), _todayByName);
+      expect(c.piecesIn(c.box!), _total, reason: 'the studio re-opened on today\'s counts');
       // Topped up before the studio re-opened: no arrangement was asked of the box at 7.
       expect(solver.solved.length, greaterThan(from));
-      expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement({samplePieces}));
+      expect([for (final st in solver.solved.skip(from)) st.where((k) => k > 0).toSet()], everyElement(_today.toSet()));
     });
 
     test('in a backup from before 22 October, is topped up and swapped, and the board dealt again from the real cloth', () async {
@@ -161,10 +172,10 @@ void main() {
       await c.importFile(backup);
       await pumpEventQueue();
       expect((await shelf.db.select(shelf.db.cloths).get()).map((x) => x.name), _names);
-      expect({for (final x in await shelf.db.select(shelf.db.cloths).get()) x.pieces}, {samplePieces});
-      // Once swapped and topped up, the board was dealt again from the real cloth at 12.
+      expect(await _piecesByName(shelf), _todayByName);
+      // Once swapped and topped up, the board was dealt again from the real cloth at today's counts.
       expect(solver.solved.length, greaterThan(from));
-      expect(solver.solved.last.where((k) => k > 0).toSet(), {samplePieces});
+      expect(solver.solved.last.where((k) => k > 0).toSet(), _today.toSet());
     });
 
     test('in a backup from before 22 October, is not swapped when the studio could not re-open on it: no picture is '
@@ -231,14 +242,86 @@ void main() {
       await shelf.deleteBox(box.id, cloth: ids);
       await topUpSample(shelf);
       expect(await shelf.db.select(shelf.db.cloths).get(), isEmpty);
-      expect(await shelf.counterAt('samplePieces'), 2);
+      expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
     });
 
     test('a Sample box made now needs no top-up', () async {
       final shelf = Shelf(memoryDb());
       await ensureSampleBox(shelf);
-      expect(await shelf.counterAt('samplePieces'), 2);
+      expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
     });
+  });
+
+  group('a Sample box made with 12 pieces of each cloth', () {
+    // As one made, or topped up, between 1 and 2 November 2026: 12 of each, and the top-up marker at 2.
+    Future<Shelf> old() async {
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      await shelf.db.update(shelf.db.cloths).write(const ClothsCompanion(pieces: Value(12)));
+      await shelf.db.into(shelf.db.counters).insertOnConflictUpdate(CountersCompanion.insert(name: 'samplePieces', next: 2));
+      return shelf;
+    }
+
+    test('gets Purple at 34, Turmeric at 31 and White at 40 if she has not changed them, once; the rest, and a cloth she '
+        'changed, stay', () async {
+      final shelf = await old();
+      final cloth = await shelf.db.select(shelf.db.cloths).get();
+      await shelf.editCloth(cloth[0].id, fabric: '', pieces: 7);
+      await shelf.editCloth(cloth[6].id, fabric: 'Cotton', pieces: 12);
+      await topUpSample(shelf);
+      expect(await _piecesByName(shelf), {..._todayByName, 'Red': 7, 'White': 12},
+          reason: '7 in a box topped up to 12 is hers, and so is cotton');
+      expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
+      await shelf.editCloth(cloth[2].id, fabric: '', pieces: 12);
+      await topUpSample(shelf);
+      expect((await (shelf.db.select(shelf.db.cloths)..where((c) => c.id.equals(cloth[2].id))).getSingle()).pieces, 12);
+    });
+
+    test('in a backup imported later, gets today\'s counts on import', () async {
+      final backup = await exportBackup((await old()).db, testSideDb);
+      final shelf = Shelf(memoryDb());
+      await ensureSampleBox(shelf);
+      final (:c, shelf: _) = await studio(on: shelf, seeded: false);
+      await c.importFile(backup);
+      await pumpEventQueue();
+      expect(await _piecesByName(shelf), _todayByName);
+      expect(c.piecesIn(c.box!), _total);
+    });
+
+    test('partly emptied, the cloth left gets today\'s counts; deleted, stays deleted', () async {
+      final shelf = await old();
+      final box = (await shelf.db.select(shelf.db.boxes).get()).single;
+      final ids = await shelf.clothIn(box.id);
+      for (final id in ids.take(4)) { await shelf.removeCloth(id); }
+      await topUpSample(shelf);
+      expect(await _piecesByName(shelf), {for (final s in sampleCloth.skip(4)) s.name: s.pieces});
+      final emptied = await old();
+      final b = (await emptied.db.select(emptied.db.boxes).get()).single;
+      await emptied.deleteBox(b.id, cloth: await emptied.clothIn(b.id));
+      await topUpSample(emptied);
+      expect(await emptied.db.select(emptied.db.cloths).get(), isEmpty);
+      expect(await emptied.counterAt('samplePieces'), sampleTopUpDone);
+    });
+  });
+
+  test('a Sample box from before 22 October is not topped up before its swap: its drawn Turmeric keeps its 7, and the '
+      'swap puts the real cloth in at today\'s counts', () async {
+    final shelf = Shelf(memoryDb());
+    await _oldSample(shelf);
+    await (shelf.db.delete(shelf.db.counters)..where((c) => c.name.equals('samplePieces'))).go();
+    await topUpSample(shelf);
+    expect((await _piecesByName(shelf))['Turmeric'], 7, reason: 'the drawn swatch, not the real cloth');
+    expect(await shelf.counterAt('samplePieces'), 1, reason: 'no marker until the swap');
+    await replaceDrawnSample(shelf);
+    expect(await _piecesByName(shelf), _todayByName);
+    expect(await shelf.counterAt('samplePieces'), sampleTopUpDone);
+    await topUpSample(shelf);
+    expect(await _piecesByName(shelf), _todayByName);
+  });
+
+  test('the top-up knows every count the Sample box held before today\'s', () {
+    expect(samplePiecesBefore.length + 1, sampleTopUpDone);
+    expect(samplePiecesBefore.last, samplePieces);
   });
 
   test('every pattern fills from the Sample box at the start size', () async {
@@ -246,12 +329,21 @@ void main() {
     await ensureSampleBox(shelf);
     final c = (await studio(on: shelf, seeded: false)).c;
     expect(c.box, isNotNull);
-    expect(c.piecesIn(c.box!), 10 * 12);
+    expect(c.piecesIn(c.box!), _total);
     for (final k in LayoutKey.values) {
-      // Chain's 9 links on 7 × 5 are one cloth, and Diamond's light rings one family (owner, 1 November 2026).
+      // Chain's links are one cloth, and Diamond's light rings one family (owner, 1 November 2026).
       expect(c.feasible[k]?.fills, isTrue, reason: '${k.name} from the Sample box');
     }
     expect(c.starting, isFalse);
+  });
+
+  test('every pattern fills a board 12 wide and 10 tall from the Sample box (owner, 2 November 2026)', () {
+    final p = poolOf(sampleBox().fabrics);
+    for (final k in LayoutKey.values) {
+      final m = modelFor(k, ObjectiveInput(pool: p.pool, edge: p.edge, members: [for (var i = 0; i < 10; i++) i],
+          mount: Mount.none, stock: p.stock, size: (rows: 10, cols: 12)));
+      expect(m.fills, isTrue, reason: '${k.name} at 12 × 10: ${m.why}');
+    }
   });
 
   group('a Sample box made before 22 Oct', () {
@@ -279,7 +371,7 @@ void main() {
       final cloth = await shelf.db.select(shelf.db.cloths).get();
       expect(cloth.map((x) => x.name), [own.name, ..._names]);
       expect(cloth.every((x) => x.box == box), isTrue);
-      expect(cloth.where((x) => x.id != own.id).every((x) => x.pieces == samplePieces), isTrue);
+      expect(cloth.where((x) => x.id != own.id).map((x) => x.pieces).toList(), _today);
       expect((await shelf.db.select(shelf.db.designs).get()).map((d) => d.id), [hers]);
       final pictures = await shelf.db.select(shelf.db.pictures).get();
       expect({for (final p in pictures) p.name: p.design}, {'Swatches': null, 'Mixed': null}, reason: 'Picture only');

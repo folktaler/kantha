@@ -11,35 +11,38 @@ import 'shelf.dart';
    EXIF), shipped as app files in assets/sample/. Each is measured by the same code as a photograph when the box is
    made, and stored like any cloth of hers. */
 class SampleCloth {
-  const SampleCloth(this.name, this.file);
+  const SampleCloth(this.name, this.file, [this.pieces = samplePieces]);
   final String name;
   final String file; // in assets/sample/
+  final int pieces;
 }
 
 const sampleCloth = [
   SampleCloth('Red', 'red.jpg'), // KF-47
   SampleCloth('Navy', 'navy.jpg'), // KF-35
-  SampleCloth('Purple', 'purple.jpg'), // KF-9
-  SampleCloth('Turmeric', 'turmeric.jpg'), // KF-46
+  SampleCloth('Purple', 'purple.jpg', 34), // KF-9
+  SampleCloth('Turmeric', 'turmeric.jpg', 31), // KF-46
   SampleCloth('Orange', 'orange.jpg'), // KF-5
   SampleCloth('Dark green', 'dark-green.jpg'), // KF-29
-  SampleCloth('White', 'white.jpg'), // KF-28
+  SampleCloth('White', 'white.jpg', 40), // KF-28
   SampleCloth('Red bandhani', 'red-bandhani.jpg'), // KF-22
   SampleCloth('Red and blue block print', 'red-and-blue-block-print.jpg'), // KF-37
   SampleCloth('Teal flower print', 'teal-flower-print.jpg'), // KF-4
 ];
 
-/* 12 pieces of each cloth (owner, 1 November 2026: "we can give more cloth in the sample box since its a sample box"):
-   the fewest of each that let all 15 patterns fill the start board, 7 × 5. Chain needs 9 of its darkest cloth for its
-   9 links; Diamond needs 12 of White, the one cloth of its light family, for its light rings. Every cloth gets 12, so
-   the box stays even (9 of each and 12 of White would also do). */
+/* 12 pieces of each cloth but three, 189 in all (owner, 2 November 2026: "Bigger Sample box", "Only 2 raised", then
+   "Add Turmeric"): the fewest that let all 15 patterns fill a board 12 wide × 10 tall, and Heart keep its rule there.
+   Chain needs 34 of one dark cloth for its links: Purple, the darkest, which gives Chain the most light and dark
+   between links and ground (at 7 × 5 its links were Purple already). Diamond needs 40 of White, the one cloth of its
+   light family, for its light rings. Heart's ground must be 25 L* lighter than its heart, and at 12 wide × 10 tall that
+   takes 31 of Turmeric, the next lightest after White. */
 const samplePieces = 12;
 
-/* A Sample box made with 7 pieces of each cloth gets samplePieces of each cloth she has not changed, once (owner, 1 November 2026;
-   Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that swap puts in is topped
-   up too. */
+/* A Sample box made with fewer pieces gets each cloth's count today of each cloth she has not changed, once (owner,
+   1 and 2 November 2026; Shelf.topUpSample). Run at launch after the swap from the drawn swatches, so the cloth that
+   swap puts in is topped up too. */
 Future<void> topUpSample(Shelf shelf) =>
-    shelf.topUpSample({for (final s in sampleCloth) s.name}, from: 7, to: samplePieces);
+    shelf.topUpSample({for (final s in sampleCloth) s.name: s.pieces});
 
 /* The eight swatches drawn in code that a Sample box held before 22 Oct, by name. They are replaced by the ten cloths
    once (replaceDrawnSample); a cloth she photographed into the Sample box has its own C-n name and is never among them. */
@@ -71,7 +74,7 @@ Future<List<NewCloth>> measuredSampleCloth(
   }, photos);
   return [
     for (var i = 0; i < sampleCloth.length; i++)
-      (name: sampleCloth[i].name, photo: photos[i], measured: measured[i], pieces: samplePieces),
+      (name: sampleCloth[i].name, photo: photos[i], measured: measured[i], pieces: sampleCloth[i].pieces),
   ];
 }
 

@@ -289,7 +289,7 @@ Future<void> tapIt(WidgetTester t, Finder f) async {
 Future<void> startFromSample(WidgetTester t) async {
   await waitFor(t, find.bySemanticsLabel(RegExp(r'^Row 1, column 1 — ')), seconds: 60);
   await clothTab(t);
-  expect(boxPicker('Sample\n120 pieces · sample cloth'), findsOneWidget, reason: "the box picker's name");
+  expect(boxPicker('Sample\n189 pieces · sample cloth'), findsOneWidget, reason: "the box picker's name");
   // The swatch's name is in what a screen reader hears: name — what is free · Fix this cloth.
   expect(find.descendant(of: find.byKey(const ValueKey('dock-swatches')),
           matching: find.bySemanticsLabel(RegExp(r'^Red and blue block print — \d+ of 12 pieces still free'))),

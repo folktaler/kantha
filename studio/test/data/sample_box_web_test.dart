@@ -37,6 +37,6 @@ void main() {
     expect((await shelf.db.select(shelf.db.boxes).get()).map((b) => b.name), ['sample']);
     final cloth = await shelf.db.select(shelf.db.cloths).get();
     expect(cloth.map((c) => c.name), [for (final s in sampleCloth) s.name]);
-    expect(cloth.every((c) => c.pieces == samplePieces), isTrue);
+    expect([for (final c in cloth) c.pieces], [for (final s in sampleCloth) s.pieces]);
   });
 }
