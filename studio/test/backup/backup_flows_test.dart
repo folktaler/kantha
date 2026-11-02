@@ -48,7 +48,7 @@ void main() {
     final out = await exportBackupNow(c: s.c, delivery: CaptureDelivery(kept: false), say: (t, {failed = false}) => said.add(t),
         words: words);
     expect(out, BackupSaved.notKept);
-    expect(said, ['']);
+    expect(said, isEmpty, reason: 'not even a clear: a toast said meanwhile is not cut short');
   });
 
   testWidgets('after an import, nothing this session remembered from before shows', (tester) async {

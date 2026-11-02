@@ -54,8 +54,8 @@ class WaitRing extends StatelessWidget {
   /* 8 frames a second, not the screen's 60. On the web every frame is the page's own work, so Material's ring, drawn
      each frame, took the main thread from a wait whose work is there too: opening a backup at 20x CPU took 19 s with
      it, 5 s at 8 frames a second, 3.4 s with no ring (1 November 2026). Where a frame takes longer than that (a
-     slow phone, a busy page), the next turn waits 3 frames' time, so the ring never takes more than a quarter of the
-     thread: at a steady 8 a second it once held it whole, 18.5 s in 1 run of 10 at 20x. */
+     slow phone, a busy page), the next turn waits 3 frames' time (nextTurnAfter), so the ring never takes more than a
+     quarter of the thread: at a steady 8 a second it once held it whole, 18.5 s in 1 run of 10 at 20x. */
   static const turnEvery = Duration(milliseconds: 125);
 
   @override
@@ -68,6 +68,15 @@ class WaitRing extends StatelessWidget {
           child: MediaQuery.disableAnimationsOf(context) ? ring : _Turning(child: ring))),
     );
   }
+}
+
+/* The ring's next turn, after a frame that took `took` from its turn to drawn: turnEvery, or 3 times `took` where
+   that is more, at most 4 turnEvery's (a page hidden for a minute draws no frame till it is back: the ring then turns
+   again within half a second, not three minutes on). */
+@visibleForTesting
+Duration nextTurnAfter(Duration took) {
+  final wait = took * 3, most = WaitRing.turnEvery * 4;
+  return wait < WaitRing.turnEvery ? WaitRing.turnEvery : wait > most ? most : wait;
 }
 
 class _Turning extends StatefulWidget {
@@ -103,8 +112,7 @@ class _TurningState extends State<_Turning> {
     setState(() => _eighths = (_eighths + 1) % 8);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_on) return;
-      final took = drawing.elapsed * 3;
-      _after(took > WaitRing.turnEvery ? took : WaitRing.turnEvery);
+      _after(nextTurnAfter(drawing.elapsed));
     });
   }
 

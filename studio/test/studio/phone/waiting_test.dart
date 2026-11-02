@@ -110,6 +110,13 @@ void main() {
     expect(turn(), isNot(still));
   });
 
+  test('after a slow frame the ring waits 3 times its cost, never under 125 ms nor over 500 ms (a tab hidden a minute)',
+      () {
+    expect(nextTurnAfter(const Duration(milliseconds: 5)), WaitRing.turnEvery);
+    expect(nextTurnAfter(const Duration(milliseconds: 100)), const Duration(milliseconds: 300));
+    expect(nextTurnAfter(const Duration(minutes: 1)), const Duration(milliseconds: 500));
+  });
+
   group('a toast that waits', () {
     Future<Toaster> pumpToast(WidgetTester tester) async {
       final toaster = Toaster();

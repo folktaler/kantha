@@ -226,7 +226,7 @@ class _AddClothState extends State<AddCloth> {
     FinderAnswer? found;
     try {
       found = await Future.any<FinderAnswer?>([
-        _finder!.find(photo).timeout(finderWait), // any finder, however it is made
+        _finder!.find(photo).timeout(finderLongest), // any finder, however it is made
         stop.future.then((_) => null),
       ]);
     } catch (e, s) {

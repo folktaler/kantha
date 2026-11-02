@@ -48,9 +48,13 @@ PieceFinder? Function() pieceFinderWith = impl.create;
    10 or under, and the 57 single-cloth photos (the Sample box's 10 and the 47 start cloths) 28 at most. */
 const tooSmallTiny = 60;
 
-/* The longest the sheet waits for the finder (its first look includes loading OpenCV.js, about 0.7 MB). Past it, or
-   when the finder fails, the photo goes to the crop, as on a phone with no finder. */
+/* The longest the web finder waits for its worker to load (OpenCV.js, about 0.7 MB), and then the longest for a look,
+   once loaded. Past it, or when the finder fails, the photo goes to the crop, as on a phone with no finder. */
 const finderWait = Duration(seconds: 30);
+
+/* The longest the sheet waits for any finder, however it is made: past the web finder's own two waits, so they are
+   the ones that count. */
+const finderLongest = Duration(seconds: 65);
 
 enum FoundRoute { crop, tooSmall, check }
 

@@ -513,13 +513,29 @@ void main() {
       expect(inSheet(find.text('fill the square with the piece')), findsOneWidget);
     });
 
-    testWidgets('a finder that never answers: after finderWait, the crop, and Done adds the photo as one piece',
+    testWidgets('a finder that loads, then looks, within its own two waits: the sheet takes what it found', (tester) async {
+      finder.findHeld = Completer();
+      await openAdd(tester);
+      await tester.tap(find.text('Photo of the pieces'));
+      await untilFinding(tester);
+      await tester.pump(finderWait + const Duration(seconds: 20)); // a 20 s load, then most of a look
+      finder.findHeld!.complete(three);
+      for (var i = 0; i < 60; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(tester.takeException(), isNull);
+      expect(inSheet(find.text('Next')), findsOneWidget, reason: 'the pieces it found, to check');
+      expect(inSheet(find.text('fill the square with the piece')), findsNothing);
+    });
+
+    testWidgets('a finder that never answers: after finderLongest, the crop, and Done adds the photo as one piece',
         (tester) async {
       finder.findHeld = Completer();
       final c = await openAdd(tester);
       await tester.tap(find.text('Photo of the pieces'));
       await untilFinding(tester);
-      await tester.pump(finderWait);
+      await tester.pump(finderLongest);
       for (var i = 0; i < 60; i++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
         await tester.pump(const Duration(milliseconds: 1));

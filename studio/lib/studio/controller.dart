@@ -134,14 +134,17 @@ class StudioController extends ChangeNotifier {
      keeps the board from before the first (_pressed), so Stop never puts back a board half changed; so does a solve
      no press asked for (the shelf changed under one), when it is asked again. */
   _Before? _before, _taking;
+  /* The solve `_before` is for: any path that drops that solve (a new id) leaves it for no one. */
+  int _beforeFor = -1;
+  _Before? get _live => _beforeFor == _reqId ? _before : null;
   /* A solve can be stopped while the board it replaces can be put back: one made only of cloth still in its box. */
   bool get canStop {
-    final b = _before, g = b?.grid;
+    final b = _live, g = b?.grid;
     return solving && g != null && g.every((i) => i >= 0 && i < cloth.length && cloth[i].box == b!.box);
   }
   /* What a press takes as the board to go back to: the board now, or, while a solve is out, the one from before it;
      the board now when that solve was none a press asked for. */
-  _Before? _pressed() => solving ? _before ?? _snapshot() : _snapshot();
+  _Before? _pressed() => solving ? _live ?? _snapshot() : _snapshot();
   /* Counts the boards a tap on another pattern's tile put up; the board drops each one's squares in (owner, 21 Oct).
      `_dropFor` is the solve such a tap asked for: any later solve replaces it, and its board does not drop. */
   int drops = 0;
@@ -352,10 +355,11 @@ class StudioController extends ChangeNotifier {
     // Nothing is arranged while she is starting (the board is the empty sheet), nor on an empty box
     // (decision 13: the empty sheet, and nothing to save).
     if (starting || members(box).isEmpty) { _clearBoard(); notifyListeners(); return; }
+    // A press says what Stop puts back; a solve asked again as the shelf changes, while one is still out, keeps it.
+    final t = _taking, out = _live;
     final id = ++_reqId, s = _seeds();
-    // A press says what Stop puts back; a solve asked again as the shelf changes keeps it.
-    final t = _taking;
-    if (t != null) _before = t.grid == null ? null : t;
+    _before = t != null ? (t.grid == null ? null : t) : out;
+    _beforeFor = id;
     _taking = null;
     solveSince = _now();
     solveStep = null;
@@ -692,6 +696,7 @@ class StudioController extends ChangeNotifier {
     if (g.any((i) => i == null)) { _warn(words.canvasMissingCloth); return false; }
     final gi = g.cast<int>();
     _reqId++;
+    _before = null; // the solve out is dropped, and with it the board Stop would have put back
     final b = p.box != null && ownBoxes.contains(p.box) ? p.box : box;
     // The board takes the design's size.
     final resized = p.size != size;
@@ -942,7 +947,7 @@ class StudioController extends ChangeNotifier {
   /* Stop, on a wait past 10 s: the solve is dropped (on the web its worker goes, on a phone its isolate) and the board
      is as it was before the press that asked for it, with its pattern, size, box and name. */
   void stopSolve() {
-    final b = _before;
+    final b = _live;
     if (!canStop || b == null) return;
     _reqId++;
     solver.stop();

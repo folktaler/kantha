@@ -128,6 +128,39 @@ void main() {
     expect((c.layout, c.name, c.grid), (layout, name, grid));
   });
 
+  test('a saved design opened while a press solves drops that solve, and what Stop would put back: a solve the shelf '
+      'asks later cannot put back the board from before', () async {
+    final solver = HeldSolver();
+    final s = await studio(solver: solver);
+    final c = s.c;
+    final one = c.box!, two = await s.shelf.makeBox();
+    final ids = [for (var i = 0; i < 5; i++) await s.shelf.addPiecesForTest(two, 7)];
+    await pumpEventQueue();
+    c.openBox(two);
+    await pumpEventQueue();
+    await c.save();
+    await pumpEventQueue();
+    final design = c.saved.single;
+    await s.shelf.editCloth(ids.last, fabric: 'Cotton', pieces: 2); // 30: Box 2 cannot fill
+    await pumpEventQueue();
+    c.openBox(one);
+    await pumpEventQueue();
+    solver.hold = true;
+    c.loadLayout(layoutKeys.firstWhere((k) => k != c.layout && c.feasible[k]!.fills));
+    expect(c.canStop, isTrue);
+    expect(c.openSaved(design), isTrue);
+    expect((c.box, c.savedId, c.solving), (two, design.id, false));
+    await s.shelf.editCloth(ids.last, fabric: 'Cotton', pieces: 12); // 40: the shelf asks for a solve
+    for (var i = 0; i < 20 && !c.solving; i++) {
+      await pumpEventQueue();
+    }
+    if (c.solving) {
+      expect(c.canStop, isFalse, reason: 'nothing a press asked for: no board from before to put back');
+      c.stopSolve();
+    }
+    expect(c.box, two);
+  });
+
   test('a press during a solve no press asked for (the first one): the board as it is now, when it has one', () async {
     final solver = HeldSolver()..hold = true;
     final c = (await studio(solver: solver)).c;

@@ -34,10 +34,8 @@ Future<BackupSaved> exportBackupNow({required StudioController c, required Deliv
       done?.call();
     }
     final name = backupFileName(DateTime.now());
-    if (!await delivery.saveBackup(bytes, name, origin: origin)) {
-      say('');
-      return BackupSaved.notKept;
-    }
+    // Dismissed: nothing is said, and nothing said meanwhile is cut short.
+    if (!await delivery.saveBackup(bytes, name, origin: origin)) return BackupSaved.notKept;
     say(words.deviceExportDone(name));
     return BackupSaved.kept;
   } catch (e, s) {

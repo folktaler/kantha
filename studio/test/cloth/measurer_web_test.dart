@@ -95,6 +95,26 @@ onmessage = (e) => {
     await expectLater(next, throwsA(isA<MeasurerGone>()));
     expect(nextGone - slowGone, greaterThan(const Duration(milliseconds: 800)), reason: 'one at a time, never all at once');
   });
+
+  test('a worker stuck on one: the one after runs out too, and then the worker is started again; what was queued is '
+      'measured in place, once, and the new worker serves what comes after', () async {
+    const stuck = '''
+postMessage('{"type":"ready"}');
+onmessage = (e) => {
+  postMessage(JSON.stringify({type: 'begin', id: e.data.id}));
+  if (e.data.width === 1) { while (true) {} }
+  postMessage(JSON.stringify({id: e.data.id, error: 'notAnImage'}));
+};
+''';
+    final measure = measurerAt(urlOf(stuck), wait: const Duration(milliseconds: 500));
+    final queued = [measure(Uint8List(4), 1, 1), for (var i = 0; i < 3; i++) measure(Uint8List(8), 2, 1)];
+    for (final m in queued) {
+      await expectLater(m, throwsA(isA<MeasurerGone>()));
+    }
+    final watch = Stopwatch()..start();
+    await expectLater(measure(Uint8List(8), 2, 1), throwsA(isA<MeasureError>()), reason: 'a new worker answered');
+    expect(watch.elapsedMilliseconds, lessThan(1000));
+  });
 }
 
 typedef RGBA = ({Uint8List pixels, int width, int height});

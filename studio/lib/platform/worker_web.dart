@@ -47,8 +47,9 @@ final class WorkerStopped extends WorkerGone {
    - ready: once the worker has said "ready" (the finder's, once OpenCV.js has loaded), so a worker started again does
      not spend the find's wait loading. Until then the load has a wait of its own, so one that never loads still ends.
    - begin: once the worker says it has begun that ask ({"type":"begin","id"}: the measure's), or the ask before it has
-     ended, so time in the queue is not counted, and a worker stuck on one lets the next go after a wait of its own,
-     one at a time, never all at once. */
+     ended, so time in the queue is not counted, and a worker stuck on one lets the next go after a wait of its own.
+     When that one too runs out with nothing heard since the first, the worker is stuck: it is started again, the
+     asks still in its queue fail once (WorkerStopped), and the new worker serves those after. */
 enum WaitFrom { ready, begin }
 
 class _Ask {
@@ -69,6 +70,8 @@ class PageWorker {
 
   _Worker? _worker;
   var _heard = false, _disposed = false;
+  /* A begin ask ran out of its wait and the worker has said nothing since. */
+  var _overdue = false;
   final _waiting = <int, _Ask>{};
   var _next = 0;
 
@@ -85,6 +88,7 @@ class PageWorker {
     w.onmessage = ((_Message e) {
       if (!identical(w, _worker)) return;
       _heard = true;
+      _overdue = false;
       final data = e.data;
       if (data.isA<JSString>()) {
         final m = jsonDecode((data! as JSString).toDart) as Map<String, dynamic>;
@@ -134,7 +138,10 @@ class PageWorker {
     a.timer = Timer(wait, () {
       _waiting.removeWhere((_, x) => identical(x, a));
       a.done.completeError(TimeoutException('the worker did not answer', wait));
-      if (a.from == WaitFrom.begin) _nextBegins();
+      if (a.from != WaitFrom.begin) return;
+      if (_overdue) return restart(); // stuck: the rest go once, and a new worker serves what comes after
+      _overdue = true;
+      _nextBegins();
     });
   }
 
@@ -189,6 +196,7 @@ class PageWorker {
     if (_disposed) return;
     _worker?.terminate();
     _worker = null;
+    _overdue = false;
     _failAll(const WorkerStopped());
     _start();
   }
