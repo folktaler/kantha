@@ -302,7 +302,7 @@ void main() {
       expect(tester.widget<Pressable>(stitches).toggled, isFalse);
       expect(c.stitch, isFalse);
       expect(c.thread, best.key);
-      expect(['Cream', 'Red', 'Blue', 'Yellow', 'Green', 'Black'], contains(name));
+      expect(['Cream thread', 'Red thread', 'Blue thread', 'Yellow thread', 'Green thread', 'Black thread'], contains(name));
       expect((tester.widget<Container>(dot()).decoration! as BoxDecoration).color, hexColor(best.hex));
       // The spacing is not said, and there is no density or thread choice: no Standard, no Off, no Open.
       expect(key('stitch-spacing'), findsNothing);

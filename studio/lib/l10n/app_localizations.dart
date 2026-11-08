@@ -156,37 +156,37 @@ abstract class L {
   /// No description provided for @canvasStitchColoursEcru.
   ///
   /// In en, this message translates to:
-  /// **'Cream'**
+  /// **'Cream thread'**
   String get canvasStitchColoursEcru;
 
   /// No description provided for @canvasStitchColoursMadder.
   ///
   /// In en, this message translates to:
-  /// **'Red'**
+  /// **'Red thread'**
   String get canvasStitchColoursMadder;
 
   /// No description provided for @canvasStitchColoursIndigo.
   ///
   /// In en, this message translates to:
-  /// **'Blue'**
+  /// **'Blue thread'**
   String get canvasStitchColoursIndigo;
 
   /// No description provided for @canvasStitchColoursTurmeric.
   ///
   /// In en, this message translates to:
-  /// **'Yellow'**
+  /// **'Yellow thread'**
   String get canvasStitchColoursTurmeric;
 
   /// No description provided for @canvasStitchColoursLeaf.
   ///
   /// In en, this message translates to:
-  /// **'Green'**
+  /// **'Green thread'**
   String get canvasStitchColoursLeaf;
 
   /// No description provided for @canvasStitchColoursBlack.
   ///
   /// In en, this message translates to:
-  /// **'Black'**
+  /// **'Black thread'**
   String get canvasStitchColoursBlack;
 
   /// No description provided for @canvasNoSaved.

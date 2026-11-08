@@ -44,22 +44,22 @@ class LEn extends L {
   String get canvasStitchesSwitch => 'Show stitches';
 
   @override
-  String get canvasStitchColoursEcru => 'Cream';
+  String get canvasStitchColoursEcru => 'Cream thread';
 
   @override
-  String get canvasStitchColoursMadder => 'Red';
+  String get canvasStitchColoursMadder => 'Red thread';
 
   @override
-  String get canvasStitchColoursIndigo => 'Blue';
+  String get canvasStitchColoursIndigo => 'Blue thread';
 
   @override
-  String get canvasStitchColoursTurmeric => 'Yellow';
+  String get canvasStitchColoursTurmeric => 'Yellow thread';
 
   @override
-  String get canvasStitchColoursLeaf => 'Green';
+  String get canvasStitchColoursLeaf => 'Green thread';
 
   @override
-  String get canvasStitchColoursBlack => 'Black';
+  String get canvasStitchColoursBlack => 'Black thread';
 
   @override
   String get canvasNoSaved =>
