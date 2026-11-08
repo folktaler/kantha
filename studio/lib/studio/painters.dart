@@ -180,19 +180,18 @@ class LayoutIconPainter extends CustomPainter {
 
 /* A dashed outline, as a CSS `1px dashed` border draws one. */
 class DashedRectPainter extends CustomPainter {
-  const DashedRectPainter({required this.color, this.width = 1, this.dash = 3, this.gap = 3, this.sides = const {0, 1, 2, 3}});
+  const DashedRectPainter({required this.color, this.width = 1, this.dash = 3, this.gap = 3});
   final Color color;
   final double width, dash, gap;
-  final Set<int> sides; // 0 top, 1 right, 2 bottom, 3 left
 
   @override
   void paint(Canvas canvas, Size size) {
     final h = width / 2, pts = <Offset>[];
     final r = Rect.fromLTRB(h, h, size.width - h, size.height - h);
-    if (sides.contains(0)) _dash(pts, r.topLeft, r.topRight, dash, gap);
-    if (sides.contains(1)) _dash(pts, r.topRight, r.bottomRight, dash, gap);
-    if (sides.contains(2)) _dash(pts, r.bottomLeft, r.bottomRight, dash, gap);
-    if (sides.contains(3)) _dash(pts, r.topLeft, r.bottomLeft, dash, gap);
+    _dash(pts, r.topLeft, r.topRight, dash, gap);
+    _dash(pts, r.topRight, r.bottomRight, dash, gap);
+    _dash(pts, r.bottomLeft, r.bottomRight, dash, gap);
+    _dash(pts, r.topLeft, r.bottomLeft, dash, gap);
     canvas.drawPoints(ui.PointMode.lines, pts, Paint()
       ..color = color
       ..strokeWidth = width

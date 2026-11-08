@@ -48,7 +48,7 @@ class Pressable extends StatefulWidget {
   /* One choice among several, the one in use (aria-current): a button that says it is chosen, not a switch. */
   final bool? selected;
   final bool excludeChildSemantics;
-  /* What it holds now, read after its name: the zoom's percent. */
+  /* What it holds now, read after its name: a stepper's number, Show stitches' thread. */
   final String? value;
 
   @override

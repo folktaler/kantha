@@ -8,7 +8,7 @@ import '../studio/shelf_feed.dart';
 import '../theme.dart' show kFallbackFonts;
 
 /* The picture to share: 6 × 7.5 in at 180 ppi, so
-   1080 × 1350 px and 1 pt = 2.5 px. The design in its cloth on its mount, scaled to
+   1080 × 1350 px and 1 pt = 2.5 px. The design in its cloth, scaled to
    the room above the caption, then the caption's four lines. `photos` holds each
    cloth's picture by id; a cloth with none is drawn plain. */
 const _ppi = 180.0, _pt = _ppi / 72, _inch = _ppi;
@@ -89,14 +89,10 @@ void paintPhoto(Canvas canvas, DesignView d, Map<String, ui.Image?> photos, List
 
   // The drawing: its footprint in cm, scaled to fit the room it has, centred there.
   final room = Rect.fromLTWH(content.left, content.top, content.width, content.height - _gutter - captionHeight);
-  final foot = switch (d.mount) {
-    Mount.frame => (frame.outer.$1, frame.outer.$2),
-    Mount.tote => (tote.w, tote.h),
-    Mount.none => (sheetFor(d.size).bw, sheetFor(d.size).bh),
-  };
+  final foot = (sheetFor(d.size).bw, sheetFor(d.size).bh);
   final u = math.min(room.width / foot.$1, room.height / foot.$2);
   final at = Offset(room.center.dx - foot.$1 * u / 2, room.center.dy - foot.$2 * u / 2);
-  _drawing(canvas, at, u, d, photos);
+  _patchwork(canvas, at, u, d, photos);
 
   var y = room.bottom + _gutter;
   for (final (i, l) in lines.indexed) {
@@ -125,58 +121,10 @@ _Line _line(String words, {required double size, required bool bold, required Co
   return _Line(painter, size, painter.computeLineMetrics().length);
 }
 
-/* The panel on its mount, its top left at `at`, `u` px to the cm. */
-void _drawing(Canvas canvas, Offset at, double u, DesignView d, Map<String, ui.Image?> photos) {
-  final panel = Size(a4.bw * u, a4.bh * u);
-  switch (d.mount) {
-    case Mount.none:
-      _patchwork(canvas, at, u, d, photos);
-    case Mount.frame:
-      final outer = at & Size(frame.outer.$1 * u, frame.outer.$2 * u);
-      canvas.drawRect(outer, Paint()..color = const Color(0xFFD2AC7C));
-      final opening = Rect.fromCenter(center: outer.center, width: frame.opening.$1 * u, height: frame.opening.$2 * u);
-      canvas.drawRect(opening, Paint()..color = const Color(0xFFFBFAF6));
-      final aperture = Rect.fromCenter(center: opening.center, width: frame.aperture.$1 * u, height: frame.aperture.$2 * u);
-      canvas.drawRect(aperture, Paint()..color = const Color(0xFFFCFCFA));
-      canvas.drawRect(aperture, _stroke(0.06 * u, const Color(0xFFE9DFC8)));
-      _patchwork(canvas, aperture.center - Offset(panel.width / 2, panel.height / 2), u, d, photos);
-      canvas.drawRect(outer, _stroke(0.5 * _pt, const Color(0xFFB88C5A)));
-    case Mount.tote:
-      final bag = at & Size(tote.w * u, tote.h * u);
-      final shape = RRect.fromRectAndCorners(bag, topLeft: Radius.circular(0.25 * u), topRight: Radius.circular(0.25 * u),
-          bottomLeft: Radius.circular(0.5 * u), bottomRight: Radius.circular(0.5 * u));
-      canvas.save();
-      canvas.clipRRect(shape);
-      canvas.drawRect(bag, Paint()..color = const Color(0xFFDED2B8));
-      final hemBand = Rect.fromLTWH(bag.left, bag.top, bag.width, hem * u);
-      canvas.drawRect(hemBand, Paint()..color = const Color(0xFFD6C8AC));
-      _dashed(canvas, hemBand.bottomLeft, hemBand.bottomRight, const Color(0xFFA8987A));
-      final off = 0.6 * u;
-      final panelAt = Offset(bag.center.dx - panel.width / 2, bag.top + tote.top * u);
-      _patchwork(canvas, panelAt, u, d, photos);
-      final edge = (panelAt & panel).inflate(off);
-      _dashed(canvas, edge.topLeft, edge.topRight, const Color(0xFF8C7B5C));
-      _dashed(canvas, edge.topRight, edge.bottomRight, const Color(0xFF8C7B5C));
-      _dashed(canvas, edge.bottomRight, edge.bottomLeft, const Color(0xFF8C7B5C));
-      _dashed(canvas, edge.bottomLeft, edge.topLeft, const Color(0xFF8C7B5C));
-      canvas.restore();
-  }
-}
-
 Paint _stroke(double width, Color colour) => Paint()
   ..style = PaintingStyle.stroke
   ..strokeWidth = width
   ..color = colour;
-
-/* Typst's "dashed" at 0.5 pt: 3 pt dashes, 3 pt apart (measured on its output). */
-void _dashed(Canvas canvas, Offset from, Offset to, Color colour) {
-  const width = 0.5 * _pt, dash = 3 * _pt;
-  final paint = _stroke(width, colour);
-  final length = (to - from).distance, along = (to - from) / length;
-  for (var s = 0.0; s < length; s += 2 * dash) {
-    canvas.drawLine(from + along * s, from + along * math.min(s + dash, length), paint);
-  }
-}
 
 /* The board's grid (5 × 7 on Level 1): each square the cloth's photo covering it, turned as she turned
    it, then the seams over them — 0.2 mm lines on every square's edges. */

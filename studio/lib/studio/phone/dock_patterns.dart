@@ -47,7 +47,7 @@ final Map<LayoutKey, List<int>> _icons = {for (final k in layoutKeys) k: layoutI
 
 /* A tile per pattern in a strip that scrolls sideways, 8 px under the panel's top, then the Show stitches row. A pattern the box
    cannot fill stays, faded to 35 %, and a tap on it says why and changes nothing (decision 11). The panel scrolls up
-   and down, as Preview does, so with the phone's text set larger nothing runs over the tabs. */
+   and down, so with the phone's text set larger nothing runs over the tabs. */
 class DockPatterns extends StatelessWidget {
   const DockPatterns({super.key, required this.c, required this.toaster, required this.line});
   final StudioController c;

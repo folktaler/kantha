@@ -17,17 +17,3 @@ int layIndex(int r, int c, [SheetGrid? sheet]) => c * (sheet ?? a4).rows + r;
 
 /* How far the printed grid runs past the squares. */
 const double bleedCm = 0.45;
-
-/* How far a mount reaches past the A4 sheet (left, right, top, bottom). */
-({double left, double right, double top, double bottom}) reachOf(Mount mount) {
-  switch (mount) {
-    case Mount.frame:
-      final x = (frame.outer.$1 - sheetW) / 2, y = (frame.outer.$2 - sheetH) / 2;
-      return (left: x, right: x, top: y, bottom: y);
-    case Mount.tote:
-      final x = tote.w / 2 - a4.mx - a4.bw / 2, top = tote.top - a4.my;
-      return (left: x, right: x, top: top, bottom: tote.h - top - sheetH);
-    case Mount.none:
-      return (left: 0, right: 0, top: 0, bottom: 0);
-  }
-}

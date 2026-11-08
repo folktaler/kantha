@@ -3,12 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/studio/pressable.dart';
 
-/* The segmented controls in the Finish tab: 38 px segments, as the redesign handover draws them (each at least
-   44 wide). Zoom's −, Fit (the percentage) and + are segments too. */
-const phoneSizedItems = {
-  'Panel': 38.0, 'Frame': 38.0, 'Tote': 38.0,
-  'Zoom out': 38.0, 'Fit': 38.0, 'Zoom in': 38.0,
-};
+/* The cloth photo screen's Zoom out and Zoom in: 38 px segments, as the redesign handover draws them (each at least
+   44 wide). */
+const phoneSizedItems = {'Zoom out': 38.0, 'Zoom in': 38.0};
 
 /* The board's squares ("Row 1, column 1 — …"), whose size is the board's fitted scale: the owner's ruling of 31 October
    2026 accepts them under 44 px, with their own floor of 24 px, WCAG 2.2 AA's target size minimum (2.5.8). Every

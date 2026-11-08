@@ -11,10 +11,6 @@ void main() {
     expect(cells, 35);
   });
 
-  test('one tote, 16 × 17½ in', () {
-    expect((tote.w, tote.h, tote.top, tote.side), (40.6, 44.5, 6.9, 10.3));
-  });
-
   test("each mount's ground lightness is the number in the snapshot", () {
     final c = recorded['canvasL'] as Map<String, dynamic>;
     for (final m in Mount.values) {
