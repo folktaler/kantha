@@ -1,4 +1,3 @@
-
 const double patchCm = 4, cutCm = patchCm + 2;
 const int maxLongSide = 2500;
 const double sheetW = 21, sheetH = 29.7;

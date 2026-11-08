@@ -157,12 +157,13 @@ class DockPatterns extends StatelessWidget {
           Flexible(child: Text(words.canvasStitchesSwitch, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: pText(PType.bodySmall))),
           const SizedBox(width: 16),
-          Row(key: const ValueKey('stitch-thread'), mainAxisSize: MainAxisSize.min, children: [
+          Flexible(child: Row(key: const ValueKey('stitch-thread'), mainAxisSize: MainAxisSize.min, children: [
             Container(width: 10, height: 10, decoration: BoxDecoration(color: hexColor(thread.hex), shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFA9A392)))),
             const SizedBox(width: iconGap),
-            Text(name, maxLines: 1, style: pText(PType.bodySmall, color: PhonePalette.text2)),
-          ]),
+            Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: pText(PType.bodySmall, color: PhonePalette.text2))),
+          ])),
         ]),
       )),
     );
