@@ -24,9 +24,9 @@ void main() {
   testWidgets('an unlabelled button is one button, named by its own words: Save and a dock tab', (tester) async {
     final semantics = tester.ensureSemantics();
     await pumpStudio(tester);
-    final tab = buttonsAround(tester, find.descendant(of: find.byKey(const ValueKey('tab-finish')), matching: find.text('Preview')));
+    final tab = buttonsAround(tester, find.descendant(of: find.byKey(const ValueKey('tab-cloth')), matching: find.text('Cloth box')));
     expect(tab, hasLength(1));
-    expect(tab.single.getSemanticsData().label, 'Preview');
+    expect(tab.single.getSemanticsData().label, 'Cloth box');
     final save = buttonsAround(tester, find.descendant(of: find.byKey(const ValueKey('phone-save')), matching: find.text('Save')));
     expect(save, hasLength(1));
     expect(save.single.getSemanticsData().label, 'Save');

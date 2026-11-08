@@ -41,9 +41,6 @@ class LEn extends L {
   String get canvasMore => 'More';
 
   @override
-  String get canvasMountEyebrow => 'Mount';
-
-  @override
   String get canvasStitchesSwitch => 'Show stitches';
 
   @override
@@ -67,20 +64,6 @@ class LEn extends L {
   @override
   String get canvasNoSaved =>
       'Nothing saved yet. Press Save and your design waits here.';
-
-  @override
-  String get canvasZoomIn => 'Zoom in';
-
-  @override
-  String get canvasZoomOut => 'Zoom out';
-
-  @override
-  String get canvasFit => 'Fit';
-
-  @override
-  String canvasZoomPercent(String n) {
-    return '$n%';
-  }
 
   @override
   String get canvasSolving => 'Arranging the cloth…';
@@ -232,15 +215,6 @@ class LEn extends L {
       'Rings of colour, dark, middle and light, spreading out from the centre.';
 
   @override
-  String get canvasMountsNoneName => 'Panel';
-
-  @override
-  String get canvasMountsFrameName => 'Frame';
-
-  @override
-  String get canvasMountsToteName => 'Tote';
-
-  @override
   String get canvasNotFillableNoColour =>
       'this box has no cloth with that colour';
 
@@ -303,6 +277,9 @@ class LEn extends L {
 
   @override
   String get canvasMenu => 'Menu';
+
+  @override
+  String get canvasBackToSite => 'Back to site';
 
   @override
   String get canvasHelp => 'Help';
@@ -394,12 +371,6 @@ class LEn extends L {
 
   @override
   String get canvasTabDesign => 'Design';
-
-  @override
-  String get canvasTabPreview => 'Preview';
-
-  @override
-  String get canvasZoom => 'Zoom';
 
   @override
   String get canvasPrintPattern => 'Print pattern PDF';

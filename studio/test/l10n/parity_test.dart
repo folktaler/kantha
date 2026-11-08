@@ -4,7 +4,6 @@ import 'package:kantha_studio/l10n/app_localizations.dart';
 import 'package:kantha_studio/l10n/keyed.g.dart';
 import 'package:kantha_studio/l10n/words.dart';
 import 'package:kantha_studio/solver/compile.dart';
-import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 
 void main() {
@@ -24,13 +23,12 @@ void main() {
     expect(l.canvasSwatchAllUsed('Teal', '5'), 'Teal — all 5 pieces are in the design. Tap to add more.');
   });
 
-  test('every template, mount and reason is found by the key the web studio used', () {
+  test('every template and reason is found by the key the web studio used', () {
     for (final k in LayoutKey.values) {
       expect(l.layoutTitle(k), isNotEmpty);
       expect(l.layoutName(k), isNotEmpty);
     }
-    for (final m in Mount.values) { expect(l.mountName(m), isNotEmpty); }
     for (final u in Unfillable.values) { expect(l.notFillable(u), isNotEmpty); }
-    expect(plainByKey(l, 'canvas.mounts.tote.name'), 'Tote');
+    expect(plainByKey(l, 'canvas.layouts.contrast.title'), 'Chess');
   });
 }

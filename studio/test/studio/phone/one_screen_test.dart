@@ -81,7 +81,7 @@ void main() {
         'the board fits at 100 %', (tester) async {
       // Geist as the browser draws it.
       await tester.runAsync(loadFonts);
-      final c = await pumpStudio(tester, size: size);
+      await pumpStudio(tester, size: size);
       expect(find.byType(PhoneStudio), findsOneWidget);
       for (final k in ['phone-topbar', 'dock-panel', 'dock-tabs', 'phone-canvas']) {
         expect(key(k), findsOneWidget, reason: k);
@@ -99,7 +99,6 @@ void main() {
       expect(canvas.contains(board.topLeft) && canvas.contains(board.bottomRight), isTrue, reason: '$board in $canvas');
       expect(canvas.width, width);
       expect(board.width, lessThanOrEqualTo(width - 32), reason: '16 px each side');
-      expect(c.percent, 100);
     });
   }
 
@@ -122,23 +121,19 @@ void main() {
     });
   }
 
-  // Nothing over the board but the 4 cm line (owner, 19 Oct: no pattern description), on each mount.
+  // Nothing over the board but the 4 cm line (owner, 19 Oct: no pattern description), on the plain panel, the only
+  // mount since 8 November 2026.
   for (final (what, size) in [('desk', desk), ('laptop', laptop), ('tablet', tablet), ('phone', phone), ('short phone', const Size(390, 600))]) {
-    for (final m in Mount.values) {
-      testWidgets('on a $what shown ${m.name}, the board fits inside the canvas at 100 % with nothing to scroll', (tester) async {
-        await tester.runAsync(loadFonts);
-        final c = await pumpStudio(tester, size: size);
-        c.setMount(m);
-        await tester.pumpAndSettle();
-        expect(c.mount, m);
-        expect(key('pattern-description'), findsNothing);
-        final board = tester.getRect(find.byType(Board)), canvas = tester.getRect(key('phone-canvas'));
-        expect(canvas.contains(board.topLeft) && canvas.contains(board.bottomRight), isTrue, reason: '$board in $canvas');
-        final scroll = tester.state<ScrollableState>(find.descendant(of: key('phone-canvas'), matching: find.byType(Scrollable)).first);
-        expect(scroll.position.maxScrollExtent, 0, reason: 'nothing to scroll at the fitted scale');
-        expect(c.percent, 100);
-      });
-    }
+    testWidgets('on a $what the board fits inside the canvas at its fitted size with nothing to scroll', (tester) async {
+      await tester.runAsync(loadFonts);
+      final c = await pumpStudio(tester, size: size);
+      expect(c.mount, Mount.none);
+      expect(key('pattern-description'), findsNothing);
+      final board = tester.getRect(find.byType(Board)), canvas = tester.getRect(key('phone-canvas'));
+      expect(canvas.contains(board.topLeft) && canvas.contains(board.bottomRight), isTrue, reason: '$board in $canvas');
+      final scroll = tester.state<ScrollableState>(find.descendant(of: key('phone-canvas'), matching: find.byType(Scrollable)).first);
+      expect(scroll.position.maxScrollExtent, 0, reason: 'nothing to scroll at the fitted scale');
+    });
   }
 
   testWidgets('on a desk Share opens a sheet 600 wide, centred, with the toast inside the column', (tester) async {
@@ -187,15 +182,15 @@ void main() {
     expect(find.text(savedFirst), findsNothing, reason: 'the second Save says it no more');
   });
 
-  testWidgets('checklist: the dock\'s three tabs, Cloth box, Design and Preview, left to right, each with its panel', (tester) async {
+  testWidgets('checklist: the dock\'s two tabs, Cloth box and Design, left to right, each with its panel', (tester) async {
     await pumpStudio(tester, size: phone);
-    final xs = [for (final t in ['tab-cloth', 'tab-patterns', 'tab-finish']) tester.getCenter(key(t)).dx];
-    expect(xs, [...xs]..sort(), reason: 'Cloth box · Design · Preview (owner, 19 Oct)');
+    expect(key('tab-finish'), findsNothing, reason: 'no Preview tab (his pick, 8 November 2026)');
+    final xs = [for (final t in ['tab-cloth', 'tab-patterns']) tester.getCenter(key(t)).dx];
+    expect(xs, [...xs]..sort(), reason: 'Cloth box · Design (owner, 19 Oct)');
     expect(tester.widget<Pressable>(key('tab-patterns')).selected, isTrue, reason: 'the studio opens on Design');
     for (final (tab, words, panel) in [
       ('tab-cloth', 'Cloth box', 'dock-cloth'),
       ('tab-patterns', 'Design', 'dock-patterns'),
-      ('tab-finish', 'Preview', 'dock-finish'),
     ]) {
       expect(find.descendant(of: key(tab), matching: find.text(words)), findsOneWidget, reason: words);
       await tester.tap(key(tab));
@@ -278,7 +273,7 @@ void main() {
         screens++;
       }
 
-      for (final tab in ['tab-cloth', 'tab-patterns', 'tab-finish']) {
+      for (final tab in ['tab-cloth', 'tab-patterns']) {
         await tapAndSettle(tester, key(tab));
         check(tab);
       }
@@ -323,7 +318,7 @@ void main() {
       await tapThenWork(tester, key('swatch-$id'), done: () => sheet.evaluate().isNotEmpty);
       check('Fix this cloth');
       await closeSheets(tester);
-      expect(screens, 13);
+      expect(screens, 12);
     });
   }
 
@@ -338,32 +333,34 @@ void main() {
       names.add(n);
     }
     final tiles = [for (final k in layoutKeys) tester.widget<Pressable>(key('tile-${k.name}')).label!];
-    expect(names, ['Menu', c.name, 'Save', 'Share', ...tiles, 'Show stitches', 'Fewer rows', 'More rows', 'Fewer columns', 'More columns', 'Cloth box', 'Design', 'Preview']);
+    expect(names, ['Menu', c.name, 'Save', 'Share', ...tiles, 'Show stitches', 'Fewer rows', 'More rows', 'Fewer columns', 'More columns', 'Cloth box', 'Design']);
   });
 
-  testWidgets('on a desk with the empty board zoomed and scrolled, Tab still goes the top bar, the squares, the panel, the tabs',
+  // With no Zoom (8 November 2026), a board scrolls when its squares at the 24 px floor are taller than the canvas: 11
+  // rows in a short desk window, short of the most, so More rows is still pressable.
+  testWidgets('on a short desk with the empty board scrolled, Tab still goes the top bar, the squares, the panel, the tabs',
       (tester) async {
-    final c = await pumpStudio(tester, size: desk, solver: StockSolver());
+    final c = await pumpStudio(tester, size: const Size(1360, 480), solver: StockSolver());
     await boxWith(tester, c, 0);
-    c.zoomTo(160);
+    c.setBoardSize((rows: 11, cols: 5));
     await tester.pumpAndSettle();
     final canvas = tester.state<ScrollableState>(find.descendant(of: key('phone-canvas'), matching: find.byType(Scrollable)).first);
     expect(canvas.position.maxScrollExtent, greaterThan(100), reason: 'the squares go up under the top bar');
     canvas.position.jumpTo(canvas.position.maxScrollExtent);
     await tester.pumpAndSettle();
     final names = <String>[];
-    for (var i = 0; i < 80; i++) {
+    for (var i = 0; i < 200; i++) {
       await press(tester, LogicalKeyboardKey.tab);
       final n = focusedName();
       if (names.isNotEmpty && n == names.first) break;
       names.add(n);
     }
-    final squares = [for (var r = 1; r <= 7; r++) for (var col = 1; col <= 5; col++) cellLabel(r, col)];
+    final squares = [for (var r = 1; r <= 11; r++) for (var col = 1; col <= 5; col++) cellLabel(r, col)];
     final tiles = [for (final k in layoutKeys) tester.widget<Pressable>(key('tile-${k.name}')).label!];
-    // Share waits for a board. The squares are the canvas's, all 35 between Save and the panel, row by row.
+    // Share waits for a board. The squares are the canvas's, all 55 between Save and the panel, row by row.
     expect(names.take(3), ['Menu', c.name, 'Save']);
     expect(names.sublist(3, 3 + squares.length), squares);
-    expect(names.sublist(3 + squares.length), [...tiles, 'Show stitches', 'Fewer rows', 'More rows', 'Fewer columns', 'More columns', 'Cloth box', 'Design', 'Preview']);
+    expect(names.sublist(3 + squares.length), [...tiles, 'Show stitches', 'Fewer rows', 'More rows', 'Fewer columns', 'More columns', 'Cloth box', 'Design']);
   });
 
   for (final (what, size) in [('desk', desk), ('phone', phone)]) {

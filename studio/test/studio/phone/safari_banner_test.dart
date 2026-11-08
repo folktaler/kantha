@@ -65,10 +65,9 @@ void main() {
     expect(tester.getRect(banner).width, 600);
   });
 
-  testWidgets('with the banner up the board still fits at 100 %', (tester) async {
-    final c = await pumpStudio(tester, size: phone, safariOnIphone: true);
+  testWidgets('with the banner up the board still fits', (tester) async {
+    await pumpStudio(tester, size: phone, safariOnIphone: true);
     await letWork(tester, done: () => banner.evaluate().isNotEmpty);
-    expect(c.percent, 100);
     final board = tester.getRect(key('phone-board'));
     expect(board.top, greaterThanOrEqualTo(tester.getRect(banner).bottom));
     expect(tester.takeException(), isNull);

@@ -43,8 +43,7 @@ class Feasible {
 
 const double zoomMin = 4, zoomMax = 34;
 /* The least fitted scale on the panel: a 4 cm square at 24 px, the owner's floor for the squares she taps (31 Oct 2026;
-   WCAG 2.2 AA's target size minimum). A frame or a tote, where nothing is tapped, fits to zoomMin. Zoom out may
-   still go to zoomMin. */
+   WCAG 2.2 AA's target size minimum). A frame or a tote, where nothing is tapped, fits to zoomMin. */
 const double fitLeast = 24 / patchCm;
 List<int> noTurns([int? n]) => List<int>.filled(n ?? cells, 0);
 
@@ -99,6 +98,8 @@ class StudioController extends ChangeNotifier {
   List<int> rot = noTurns();
   String name;
   int? box;
+  /* Always the plain panel: Mount left the studio with Preview (his pick, 8 November 2026), and a design saved on a
+     frame or a tote opens on the panel (DesignView.of). */
   Mount mount = Mount.none;
   /* The thread is the one that clears this design's cloth best (_recommendThread); the stitches are always Open, 5 rows
      of 5 a piece (owner, 20 Oct). */
@@ -106,8 +107,9 @@ class StudioController extends ChangeNotifier {
   /* The one spacing, read by the board and by the Design tab's line alike, so the two cannot disagree. */
   Density get density => densities.firstWhere((d) => d.key == 'open');
   Thread get threadShown => threads.firstWhere((t) => t.key == thread, orElse: () => threads.first);
-  double ppc = 13, fitPpc = 13;
-  bool zoomed = false, stitch = false, warn = false, solving = true, busy = false;
+  /* The board's scale, px a cm: always the fitted one, as Zoom left the studio with Preview (8 November 2026). */
+  double ppc = 13;
+  bool stitch = false, warn = false, solving = true, busy = false;
   Memory memory = const {};
   /* What the studio last said. Every note said is counted in `notes`, so the same words said again are a new
      note (each is a toast as it comes); clearing it says nothing. */
@@ -205,7 +207,6 @@ class StudioController extends ChangeNotifier {
     grid = null; rot = noTurns(squares); solving = false; savedId = null; savedGrid = null; note = ''; warn = false; _holding = false;
     name = _defaultName(layout);
   }
-  int get percent => (ppc / fitPpc * 100).round();
   List<ThreadScore> get recommended => grid == null ? const [] : rankThreads(grid!, _pool.pool.lab);
 
   /* Restock: the pool is rebuilt, and the solver told, only
@@ -493,8 +494,6 @@ class StudioController extends ChangeNotifier {
     _taking = before;
     _requestSolve();
   }
-
-  void setMount(Mount m) { mount = onA4 ? m : Mount.none; fit(); }
 
   /* The board's size as she last left it on this device; one that cannot be read, or a Beginner's of the two levels,
      is 5 × 7. Read before start. */
@@ -932,22 +931,11 @@ class StudioController extends ChangeNotifier {
     // than a frame or a tote at 9 px a cm). A board that would need less scrolls.
     final least = mount == Mount.none ? fitLeast : zoomMin;
     final next = math.min(w / vw, h / vh).floorToDouble().clamp(least, zoomMax);
-    final changed = next != fitPpc || (!zoomed && ppc != next);
-    fitPpc = next;
-    if (!zoomed) ppc = next;
+    final changed = next != ppc;
+    ppc = next;
     return changed;
   }
 
-  /* 60–160 % of the fitted scale in steps of 20; 100 is Fit. Clamped to zoomMin..zoomMax. */
-  void zoomTo(int percent) {
-    if (percent == 100) { fit(); return; }
-    zoomed = true;
-    ppc = math.min(zoomMax, math.max(zoomMin, fitPpc * percent / 100));
-    notifyListeners();
-  }
-
-  /* Always tells the screen: Fit, or a new mount (setMount), changed the board even when the pane
-     is too small to fit and the scale stays. */
   _Before _snapshot() => _Before(layout: layout, name: name, mount: mount, grid: grid, rot: rot, seed: seed, box: box,
       savedId: savedId, savedGrid: savedGrid, chosen: chosen, feasible: feasible, note: note, warn: warn,
       holding: _holding);
@@ -978,9 +966,9 @@ class StudioController extends ChangeNotifier {
     }
   }
 
+  /* Always tells the screen: a new size changed the board even when the pane is too small to fit and the scale stays. */
   void fit() {
-    zoomed = false;
-    if (_pane == Size.zero) { ppc = fitPpc; } else { _fitTo(_pane); }
+    if (_pane != Size.zero) _fitTo(_pane);
     notifyListeners();
   }
 

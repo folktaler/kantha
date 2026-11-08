@@ -2,10 +2,10 @@
    2026): the panel takes the whole studio under the top bar, and its ground and the top bar's turn paper 3 together over
    0.3 s (cubic-bezier(0.4, 0, 0.2, 1)) while ≡ turns into × over the same 0.3 s; its rows fade in over 0.5 s (CSS
    `ease`). It closes at once on ×, Escape, Back, or a row chosen, and the top bar turns paper 1 again over 0.3 s.
-   Help, Privacy policy, Shop and Back up or move to another device are its rows: words left-aligned 16 px in, no
-   chevrons, no rules between them; Shop, which leaves for another site, carries ↗. Each row closes the menu, then goes
-   where it leads. Under them, on OPFS or a phone's file only, the room her work takes here, with Free up space beside
-   it when a good share of that room is empty (his decisions, 21 and 22 Oct). */
+   Back to site (first, his pick, 8 November 2026), Help, Privacy policy, Shop and Back up or move to another device are
+   its rows: words left-aligned 16 px in, no chevrons, no rules between them; Shop, which leaves for another site, carries
+   ↗. Each row closes the menu, then goes where it leads. Under them, on OPFS or a phone's file only, the room her work
+   takes here, with Free up space beside it when a good share of that room is empty (his decisions, 21 and 22 Oct). */
 import 'package:flutter/material.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../data/database.dart';
@@ -16,9 +16,9 @@ import '../studio_screen.dart';
 import 'phone_sheet.dart' show PhoneButton, PhoneButtonKind;
 import 'phone_theme.dart';
 
-/* Shop: the catsofkochi shop, in a new tab in a browser. Help and the privacy policy: the site's own pages, in the
-   same tab in a browser and kantha.app's on a phone. openLink picks the tab (platform/links.dart). */
-final shopLink = shopUri(), helpLink = helpUri(), privacyLink = privacyUri();
+/* Shop: the catsofkochi shop, in a new tab in a browser. Back to site, Help and the privacy policy: the site's own
+   pages, in the same tab in a browser and kantha.app's on a phone. openLink picks the tab (platform/links.dart). */
+final shopLink = shopUri(), siteLink = siteUri(), helpLink = helpUri(), privacyLink = privacyUri();
 
 /* ≡ and × turn into each other: Curves.fastOutSlowIn is cubic-bezier(0.4, 0, 0.2, 1). */
 const menuTurn = Duration(milliseconds: 300), menuFadeIn = Duration(milliseconds: 500);
@@ -126,6 +126,7 @@ class _MenuPanelState extends State<MenuPanel> with SingleTickerProviderStateMix
           child: SingleChildScrollView(
             padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _MenuRow(name: words.canvasBackToSite, icon: const tabler.Home(), onPressed: () => _go(() => a.openLink(siteLink))),
               _MenuRow(name: words.canvasHelp, icon: const tabler.HelpCircle(), onPressed: () => _go(() => a.openLink(helpLink))),
               _MenuRow(name: words.canvasPrivacy, icon: const tabler.ShieldLock(), onPressed: () => _go(() => a.openLink(privacyLink))),
               _MenuRow(name: words.canvasShop, icon: const tabler.BuildingStore(), note: words.canvasShopNote, leaves: true,

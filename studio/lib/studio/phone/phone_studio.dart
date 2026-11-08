@@ -1,5 +1,5 @@
 /* The studio (redesign handover, Screen: Studio), at every width in its column (2026-10-11 one-screen spec): the top
-   bar, the board across the whole width on its canvas, and at the foot the dock — its panel over its three tabs. In
+   bar, the board across the whole width on its canvas, and at the foot the dock — its panel over its two tabs. In
    Safari on an iPhone a banner under the top bar says the 7-day rule until she dismisses it (owner, 11 Oct). What the
    controller says comes up as a toast over the dock (decision 10). */
 import 'dart:async';
@@ -8,13 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../l10n/app_localizations.dart';
-import '../../solver/geometry.dart' show Mount;
 import '../board.dart';
 import '../controller.dart';
 import '../pressable.dart';
 import '../studio_screen.dart';
 import 'dock_cloth.dart';
-import 'dock_finish.dart';
 import 'dock_patterns.dart';
 import 'menu_panel.dart';
 import 'phone_sheet.dart';
@@ -24,9 +22,9 @@ import 'shortfall_banner.dart';
 import 'waiting.dart';
 import '../../platform/report.dart';
 
-/* The dock's tabs, left to right: Cloth box · Design · Preview (owner, 19 Oct). Design is the patterns, Preview the
-   finish. */
-enum DockTab { cloth, patterns, finish }
+/* The dock's tabs, left to right: Cloth box · Design (owner, 19 Oct). Design is the patterns. Preview, with Mount and
+   Zoom, is gone (his pick, 8 November 2026): the board always shows at its fitted size, on the plain panel. */
+enum DockTab { cloth, patterns }
 
 /* The dock's fixed heights; the toast stands 14 px over them and the home indicator. The panel is the Design tab's
    height at normal text size (8 + the 124 px tiles + 4 + the 44 px Show stitches row, owner 21 Oct), on every tab,
@@ -42,6 +40,8 @@ const canvasLeast = 120.0, panelLeast = 136.0;
    sheet in 32 px, and 8 on any other size, which has none. */
 EdgeInsets canvasPadding(bool onA4) => EdgeInsets.symmetric(horizontal: 16, vertical: onA4 ? 24 : 8);
 const scaleLineRoom = 32.0;
+/* The open tab's pill behind its icon: 40 × 24, Material 3's 64 × 32 indicator brought down to the dock's 48 px tabs. */
+const tabPill = Size(40, 24);
 
 /* A 1 px line along one edge, drawn over the box rather than taking room in it. */
 BoxDecoration _edge({bool top = false}) => BoxDecoration(
@@ -73,7 +73,6 @@ class _PhoneStudioState extends State<PhoneStudio> {
       _tabsOrder = ReadingOrderTraversalPolicy();
   late int _notes;
   Size? _pane;
-  Mount? _paneMount;
   bool _safari = false;
   final _shortfallKey = GlobalKey();
   /* The shortfall banner's laid-out height (_measureShortfall); 0 until it has been laid out once. */
@@ -282,7 +281,6 @@ class _PhoneStudioState extends State<PhoneStudio> {
               child: switch (_tab) {
                 DockTab.patterns => DockPatterns(c: c, toaster: widget.toaster, line: line),
                 DockTab.cloth => DockCloth(c: c, actions: widget.actions),
-                DockTab.finish => DockFinish(c: c),
               },
             ),
           ),
@@ -420,10 +418,8 @@ class _PhoneStudioState extends State<PhoneStudio> {
               final size = box.biggest, pad = canvasPadding(c.onA4);
               // The board's own room: the canvas less its padding and the 4 cm line.
               final room = Size(size.width - pad.horizontal, size.height - pad.vertical - (c.onA4 ? scaleLineRoom : 0));
-              // A design opened on another mount (openSaved) changes the mount without fitting to it.
-              if (room != _pane || c.mount != _paneMount) {
+              if (room != _pane) {
                 _pane = room;
-                _paneMount = c.mount;
                 WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) c.applyFit(room); });
               }
               return SingleChildScrollView(
@@ -463,30 +459,34 @@ class _PhoneStudioState extends State<PhoneStudio> {
     if (mounted && h != null && h != _shortfall) setState(() => _shortfall = h);
   }
 
-  /* A third of the width: 14 px, 600 and a 2 px blue top edge when selected, else 500 in text2. */
+  /* Half the width. The open tab is shown as Material 3's navigation bar shows it (his pick, 8 November 2026): a pill
+     in the pale accent behind its icon, and its words in 600; the others have no pill, their words 500 in text2. Every
+     tab keeps the pill's room, so the words do not move when it comes and goes. */
   Widget _tabButton(BuildContext context, DockTab t) {
     final words = L.of(context), on = _tab == t;
     final (name, icon) = switch (t) {
       DockTab.cloth => (words.canvasTabCloth, const tabler.Box() as tabler.Icon),
       DockTab.patterns => (words.canvasTabDesign, const tabler.LayoutGrid()),
-      DockTab.finish => (words.canvasTabPreview, const tabler.Eye()),
     };
     final colour = on ? PhonePalette.text : PhonePalette.text2;
     return Pressable(
       key: ValueKey('tab-${t.name}'),
       selected: on,
       onPressed: () => setState(() => _tab = t),
-      builder: (context, st) => focusRing(st.focused, Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: st.hovered ? PhonePalette.hover : PhonePalette.white,
-          border: Border(top: BorderSide(width: 2, color: on ? PhonePalette.blue : const Color(0x00000000))),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          roleIcon(icon, PType.navigation, color: colour),
+      builder: (context, st) => focusRing(st.focused, ColoredBox(
+        color: st.hovered ? PhonePalette.hover : PhonePalette.white,
+        child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            key: on ? ValueKey('tab-pill-${t.name}') : null,
+            width: tabPill.width, height: tabPill.height,
+            alignment: Alignment.center,
+            decoration: on ? const ShapeDecoration(color: PhonePalette.tint, shape: StadiumBorder()) : null,
+            child: roleIcon(icon, PType.navigation, color: colour),
+          ),
           const SizedBox(width: iconGap),
-          Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: pText(PType.navigation, color: colour))),
-        ]),
+          Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: pText(PType.navigation, color: colour).copyWith(fontWeight: on ? FontWeight.w600 : null))),
+        ])),
       )),
     );
   }

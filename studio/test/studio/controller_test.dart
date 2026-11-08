@@ -36,16 +36,35 @@ void main() {
     expect(s.c.grid, isNot(first), reason: 'the template already showing deals anew');
   });
 
-  test('going back to a template shows the mount she chose and the name she typed there', () async {
+  test('going back to a template shows the name she typed there', () async {
     final s = await studio();
-    s.c.setMount(Mount.frame);
     s.c.setName('For Amma');
     s.c.loadLayout(LayoutKey.wave);
     await settle();
-    expect((s.c.mount, s.c.name), (Mount.frame, 'Wave'));
-    s.c.setMount(Mount.tote);
+    expect(s.c.name, 'Wave');
     s.c.loadLayout(LayoutKey.contrast);
-    expect((s.c.mount, s.c.name), (Mount.frame, 'For Amma'));
+    expect(s.c.name, 'For Amma');
+  });
+
+  // Mount left the studio (his pick, 8 November 2026): a design saved on a frame or a tote before then opens on the
+  // plain panel, unchanged since it was saved, so nobody is left with a frame she cannot take off.
+  test('a design saved on a frame or a tote opens on the plain panel, as saved', () async {
+    final s = await studio();
+    final id = await s.c.save();
+    await settle();
+    final p = s.c.saved.firstWhere((d) => d.id == id);
+    for (final m in ['frame', 'tote']) {
+      await s.shelf.saveDesign(DesignInput(name: 'On a $m', layout: p.layout.name, mount: m, box: p.box, seed: p.seed,
+          started: null, firstSolve: null, grid: [for (var i = 0; i < p.grid.length; i++) GridCell(p.grid[i], p.rot[i])]));
+    }
+    await settle();
+    for (final m in ['frame', 'tote']) {
+      final d = s.c.saved.firstWhere((d) => d.name == 'On a $m');
+      expect(d.mount, Mount.none, reason: 'what My designs and Share read is the plain panel');
+      expect(s.c.openSaved(d), isTrue);
+      expect(s.c.mount, Mount.none);
+      expect(s.c.savedGrid, s.c.stamp(s.c.grid, s.c.rot, s.c.mount, s.c.name), reason: 'not changed since it was saved');
+    }
   });
 
   test('saving twice keeps one design, with the latest change', () async {
@@ -93,20 +112,6 @@ void main() {
     await s.c.save();
     expect(s.c.note, s.c.words.deviceNotKept);
     expect(await s.shelf.setting(StudioController.savedOnceKey), isNull);
-  });
-
-  test('zoom by percent: 60 to 160 of the fitted scale; 100 is Fit; never past the scale\'s limits', () async {
-    final s = await studio();
-    final c = s.c;
-    c.zoomTo(160);
-    expect((c.percent, c.zoomed), (160, true));
-    c.zoomTo(100);
-    expect((c.percent, c.zoomed), (100, false));
-    c.zoomTo(60);
-    expect(c.percent, 60);
-    c.fitPpc = 30;
-    c.zoomTo(160);
-    expect(c.ppc, zoomMax);
   });
 
   test('saving a template she came back to keeps one design', () async {
@@ -257,15 +262,6 @@ void main() {
     expect(s.c.memory[keyOf(1, LayoutKey.contrast)]!.savedId, isNull);
     final again = await s.c.save();
     expect(again, isNot(id), reason: 'saving the new design never overwrites the old one');
-  });
-
-  test('changing the mount re-fits and tells the screen even when the pane is too small to fit', () async {
-    final s = await studio();
-    s.c.applyFit(const Size(100, 100));
-    var told = 0;
-    s.c.addListener(() => told++);
-    s.c.setMount(Mount.frame);
-    expect(told, greaterThan(0));
   });
 
   test('fitting the same pane again tells the screen nothing new', () async {

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -41,7 +39,7 @@ void main() {
   }
 
   for (final (what, size) in [('phone', phone), ('desk', desk)]) {
-    testWidgets('on a $what the board starts 5 × 7 with the mounts, and Rows and Columns are on the Design tab', (tester) async {
+    testWidgets('on a $what the board starts 5 × 7, and Rows and Columns are on the Design tab', (tester) async {
       final c = await pumpStudio(tester, size: size, solver: SizedQuickSolver());
       expect((c.size, c.onA4), (level1, true));
       expect(c.grid, hasLength(35));
@@ -52,10 +50,6 @@ void main() {
       expect(tester.widget<Text>(key('columns-count')).data, '5');
       expect(find.text('Size'), findsNothing, reason: 'no Size line and no levels');
       expect(key('level-beginner'), findsNothing);
-      await tester.tap(key('tab-finish'));
-      await tester.pumpAndSettle();
-      expect(key('mount-frame'), findsOneWidget);
-      expect(key('mount-tote'), findsOneWidget);
       await tester.tap(key('phone-menu'));
       await tester.pumpAndSettle();
       expect(key('menu-panel'), findsOneWidget);
@@ -73,10 +67,6 @@ void main() {
       expect(c.grid, hasLength(48));
       expect(key('cell-47'), findsOneWidget);
       expect(key('cell-48'), findsNothing);
-      await tester.tap(key('tab-finish'));
-      await tester.pumpAndSettle();
-      expect(key('mount-frame'), findsNothing, reason: 'the frame and the tote stay with 5 × 7');
-      expect(key('mount-tote'), findsNothing);
       expect(await tester.runAsync(() => c.shelf.setting(StudioController.sizeKey)), '8x6');
       expect(await tester.runAsync(() => c.shelf.setting(StudioController.levelKey)), 'patchworker');
 
@@ -86,9 +76,6 @@ void main() {
       await press(tester, 'columns-fewer');
       expect(c.size, level1);
       expect(c.grid, first, reason: 'the 5 × 7 arrangement she left comes back');
-      await tester.tap(key('tab-finish'));
-      await tester.pumpAndSettle();
-      expect(key('mount-frame'), findsOneWidget);
     });
   }
 
@@ -170,8 +157,6 @@ void main() {
     final c = await pumpStudio(tester, size: phone, delivery: delivery, solver: SizedQuickSolver());
     await press(tester, 'rows-fewer');
     expect(c.size, (rows: 6, cols: 5));
-    c.setMount(Mount.frame);
-    expect(c.mount, Mount.none, reason: 'no frame off A4');
     await tester.tap(key('phone-export'));
     await letWork(tester, done: () => find.text('Share…').evaluate().isNotEmpty, turns: 300);
     expect(c.saved.single.size, (rows: 6, cols: 5));
@@ -339,40 +324,5 @@ void fitsAtIphone13() {
       await tester.pumpAndSettle();
       expect((c.size, c.ppc), (to, fitted));
     });
-  }
-
-  testWidgets('zoom steps from Fit both ways when Fit sits at the 24 px floor', (tester) async {
-    final c = await pumpStudio(tester, size: const Size(390, 548), solver: SizedQuickSolver());
-    expect((c.ppc, c.percent), (fitLeast, 100));
-    c.zoomTo(80);
-    expect(c.percent, 80);
-    expect(c.ppc, closeTo(fitLeast * 0.8, 1e-9));
-    c.zoomTo(120);
-    expect(c.percent, 120, reason: 'one step, not a jump to the most');
-    expect(c.ppc, closeTo(fitLeast * 1.2, 1e-9));
-    c.zoomTo(100);
-    expect(c.ppc, fitLeast);
-  });
-
-  // A frame or a tote is not tapped, so it fits below the 24 px floor (owner, 31 Oct 2026); zoom still steps from there.
-  for (final m in [Mount.frame, Mount.tote]) {
-    for (final size in [const Size(390, 600), const Size(1272, 588)]) {
-      testWidgets('in a ${m.name} at ${size.width.toInt()} × ${size.height.toInt()}, Fit goes below the floor and zoom steps from it', (tester) async {
-        final c = await pumpStudio(tester, size: size, solver: SizedQuickSolver());
-        c.setMount(m);
-        await tester.pumpAndSettle();
-        final fit = c.ppc;
-        expect(c.percent, 100);
-        expect(fit, lessThan(fitLeast));
-        expect(fit, greaterThanOrEqualTo(zoomMin));
-        c.zoomTo(120);
-        expect(c.percent, 120, reason: 'one step, not a jump to the most');
-        expect(c.ppc, closeTo(fit * 1.2, 1e-9));
-        c.zoomTo(100);
-        expect(c.ppc, fit);
-        c.zoomTo(80);
-        expect(c.ppc, closeTo(math.max(zoomMin, fit * 0.8), 1e-9), reason: 'never under zoomMin');
-      });
-    }
   }
 }

@@ -157,7 +157,9 @@ class DesignView {
     return DesignView(
       id: r.id, name: r.name,
       layout: LayoutKey.values.asNameMap()[r.layout] ?? LayoutKey.contrast,
-      mount: Mount.values.asNameMap()[r.mount] ?? Mount.none, // a mount that no longer exists opens as Plain
+      // Every design opens on the plain panel, one saved on a frame or a tote too: Mount left the studio (his pick,
+      // 8 November 2026), so a frame she could no longer take off is never shown, here or in what Share makes.
+      mount: Mount.none,
       box: r.box, seed: r.seed, started: r.started, firstSolve: r.firstSolve,
       grid: [for (final c in cells) c['id'] as String], rot: [for (final c in cells) c['rot'] as int], saved: r.saved,
       cols: r.cols ?? 5,

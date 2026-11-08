@@ -437,7 +437,7 @@ void main() {
       await tester.tap(stitches);
       await tester.pumpAndSettle();
       expect(tester.getSize(key('phone-board')), board);
-      for (final t in ['tab-cloth', 'tab-finish', 'tab-patterns']) {
+      for (final t in ['tab-cloth', 'tab-patterns']) {
         await tester.tap(key(t));
         await tester.pumpAndSettle();
         expect(tester.getSize(key('phone-board')), board, reason: t);

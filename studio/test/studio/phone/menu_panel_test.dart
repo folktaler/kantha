@@ -55,7 +55,7 @@ void main() {
       expect(p.bottom, size.height, reason: 'down to the foot, over the dock');
       // Rows: each its Tabler icon 16 px in, its words after it, left-aligned, no chevrons; Shop carries ↗ as it leaves
       // for another site.
-      for (final (w, icon) in [('Help', tabler.HelpCircle), ('Privacy policy', tabler.ShieldLock),
+      for (final (w, icon) in [('Back to site', tabler.Home), ('Help', tabler.HelpCircle), ('Privacy policy', tabler.ShieldLock),
           ('Shop', tabler.BuildingStore), ('Back up or move to another device', tabler.DatabaseExport)]) {
         final i = tester.getRect(inMenu(find.byType(icon))), t = tester.getRect(inMenu(find.text(w)));
         expect(i.left, closeTo(p.left + 16, 0.5), reason: w);
@@ -109,7 +109,7 @@ void main() {
       names.add(n);
       if (n == 'Close') break;
     }
-    expect(names, ['Help', 'Privacy policy', 'Shop\ncatsofkochi shop',
+    expect(names, ['Back to site', 'Help', 'Privacy policy', 'Shop\ncatsofkochi shop',
         'Back up or move to another device\nYour work is kept on this device only', c.name, '(its words)', '(its words)', 'Close']);
   });
 
@@ -187,8 +187,8 @@ void main() {
     final c = await pumpStudio(tester, size: desk);
     await tester.tap(menu);
     await tester.pumpAndSettle();
-    // ≡, the four rows, the title, then Save.
-    for (var i = 0; i < 6; i++) {
+    // ≡, the five rows, the title, then Save.
+    for (var i = 0; i < 7; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
     }

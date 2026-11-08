@@ -28,15 +28,6 @@ void main() {
     expect(layIndex(1, 0), 1, reason: 'laid column by column');
   });
 
-  testWidgets('the paper grid and the 4 cm label show only on Plain', (tester) async {
-    final c = await pumpStudio(tester);
-    expect(find.text('4 cm'), findsOneWidget);
-    c.setMount(Mount.frame);
-    await tester.pumpAndSettle();
-    expect(find.text('4 cm'), findsNothing);
-    expect(find.byKey(const ValueKey('frame')), findsOneWidget);
-  });
-
   // On an iPhone the first square is narrower than its label, which was cut to "4 cr".
   for (final size in [phone, const Size(375, 667), const Size(320, 568)]) {
     testWidgets('the 4 cm label shows whole, centred on its line, at ${size.width.toInt()} × ${size.height.toInt()}',
