@@ -207,17 +207,20 @@ void main() {
     await letWork(tester, turns: 3);
   });
 
-  testWidgets('Help and the privacy policy open the site\'s own pages; Shop, the catsofkochi shop in a new tab', (tester) async {
+  testWidgets('Back to site, Help and the privacy policy open the site\'s own pages; Shop, the catsofkochi shop in a new tab', (tester) async {
     expect(helpUriFor(web: true, anchor: 'lay').toString(), '/help#lay');
     expect(helpUriFor(web: false, anchor: 'lay').toString(), 'https://kantha.app/help#lay');
     expect(helpUriFor(web: false).toString(), 'https://kantha.app/help');
     expect(shopUri().toString(), 'https://catsofkochi.com/shop/');
     expect(privacyUriFor(web: true).toString(), '/policies/privacy');
     expect(privacyUriFor(web: false).toString(), 'https://kantha.app/policies/privacy');
+    expect(siteUriFor(web: true).toString(), '/');
+    expect(siteUriFor(web: false).toString(), 'https://kantha.app/');
     // In a browser: the shop in a new tab, Help in the studio's own.
     expect(webWindowFor(shopUri()), '_blank');
     expect(webWindowFor(helpUriFor(web: true, anchor: 'lay')), '_self');
     expect(webWindowFor(privacyUriFor(web: true)), '_self');
+    expect(webWindowFor(siteUriFor(web: true)), '_self');
   });
 }
 

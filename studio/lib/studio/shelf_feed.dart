@@ -138,7 +138,7 @@ class DesignView {
   /* The board's columns (5 on Level 1); its rows are the squares over them. */
   final int cols;
   BoardSize get size => (rows: cols > 0 ? grid.length ~/ cols : 0, cols: cols);
-  /* Level 1's A4 board: the print sheet, the frame and the tote are for it alone. */
+  /* Level 1's A4 board: the print sheet is for it alone. */
   bool get onA4 => size == level1;
   DesignView copyWithGrid(List<String> g) => DesignView(id: id, name: name, layout: layout, mount: mount, box: box, seed: seed,
       started: started, firstSolve: firstSolve, grid: g, rot: rot, saved: saved, cols: cols);
@@ -148,16 +148,16 @@ class DesignView {
   /* A test's convenience: the same design with other turns. */
   DesignView copyWithRot(List<int> r) => DesignView(id: id, name: name, layout: layout, mount: mount, box: box, seed: seed,
       started: started, firstSolve: firstSolve, grid: grid, rot: r, saved: saved, cols: cols);
-  /* A test's convenience: the same design on another mount, named as the shelf stores it. */
-  DesignView withMount(String m) => DesignView(id: id, name: name, layout: layout, mount: Mount.values.byName(m), box: box,
-      seed: seed, started: started, firstSolve: firstSolve, grid: grid, rot: rot, saved: saved, cols: cols);
 
   static DesignView of(DesignRow r) {
     final cells = (jsonDecode(r.grid) as List).cast<Map<String, dynamic>>();
     return DesignView(
       id: r.id, name: r.name,
       layout: LayoutKey.values.asNameMap()[r.layout] ?? LayoutKey.contrast,
-      mount: Mount.values.asNameMap()[r.mount] ?? Mount.none, // a mount that no longer exists opens as Plain
+      // Every design opens on the plain panel, one saved on a frame or a tote too: Mount left the studio (his pick,
+      // 8 November 2026). The board, Save photo and Share draw the panel alone. The thumbnail My designs shows was
+      // drawn when the design was saved, so one saved on a frame or a tote shows it there until it is saved again.
+      mount: Mount.none,
       box: r.box, seed: r.seed, started: r.started, firstSolve: r.firstSolve,
       grid: [for (final c in cells) c['id'] as String], rot: [for (final c in cells) c['rot'] as int], saved: r.saved,
       cols: r.cols ?? 5,

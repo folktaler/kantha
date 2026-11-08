@@ -191,7 +191,6 @@ void main() {
     await boxWith(tester, c, 10);
     final over = tester.getRect(banner).top;    final bottom = [for (var i = 0; i < cells; i++) tester.getRect(key('empty-cell-$i')).bottom].reduce((a, b) => a > b ? a : b);
     expect(bottom, lessThanOrEqualTo(over), reason: 'the last row ends at $bottom, the banner starts at $over');
-    expect(c.percent, 100);
   });
 
   // One screen at every width (2026-10-11 one-screen spec, decision 1).

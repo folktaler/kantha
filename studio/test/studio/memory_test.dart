@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/studio/memory.dart';
 
-const a = Arrangement(grid: [1, 2], rot: [0, 1], seed: 7, name: 'High contrast panel', mount: Mount.none);
+const a = Arrangement(grid: [1, 2], rot: [0, 1], seed: 7, name: 'High contrast panel');
 
 void main() {
   test('an arrangement comes back for the same box and template', () {
@@ -29,9 +28,9 @@ void main() {
     expect(recall(before, keyOf(3, LayoutKey.contrast))!.seed, 7);
     expect(recall(after, keyOf(3, LayoutKey.contrast))!.seed, 9);
   });
-  test('a deleted design\'s arrangement still shows under the name and mount it had', () {
-    final m = remember(const {}, keyOf(3, LayoutKey.contrast), a.copyWith(savedId: 'p1', savedGrid: 's1', name: 'For Amma', mount: Mount.frame));
+  test('a deleted design\'s arrangement still shows under the name it had', () {
+    final m = remember(const {}, keyOf(3, LayoutKey.contrast), a.copyWith(savedId: 'p1', savedGrid: 's1', name: 'For Amma'));
     final after = recall(forget(m, 'p1'), keyOf(3, LayoutKey.contrast))!;
-    expect((after.name, after.mount, after.savedId), ('For Amma', Mount.frame, null));
+    expect((after.name, after.savedId), ('For Amma', null));
   });
 }

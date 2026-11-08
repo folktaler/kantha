@@ -3,7 +3,9 @@ import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantha_studio/studio/board.dart';
 import 'package:kantha_studio/studio/phone/menu_panel.dart' show MenuIcon;
+import 'package:kantha_studio/studio/phone/phone_studio.dart' show tabPill;
 import 'package:kantha_studio/studio/phone/phone_theme.dart';
+import 'package:kantha_studio/studio/pressable.dart';
 import 'package:kantha_studio/studio/studio_screen.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
 import '../../support/fonts.dart';
@@ -22,10 +24,11 @@ TextStyle styleOf(WidgetTester tester, Finder inside, String words) =>
     tester.widget<Text>(find.descendant(of: inside, matching: find.text(words))).style!;
 
 /* Whether a tab wears the selected tab's 2 px blue top edge. */
-bool edged(WidgetTester tester, String tab) => find
+/* The open tab's pill: the pale accent, stadium-shaped, behind the tab's icon (his pick, 8 November 2026). */
+bool pilled(WidgetTester tester, String tab) => find
     .descendant(of: key(tab), matching: find.byWidgetPredicate((w) {
       final d = w is Container ? w.decoration : null;
-      return d is BoxDecoration && d.border is Border && (d.border! as Border).top == const BorderSide(width: 2, color: PhonePalette.blue);
+      return d is ShapeDecoration && d.color == PhonePalette.tint && d.shape is StadiumBorder;
     }))
     .evaluate()
     .isNotEmpty;
@@ -79,18 +82,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('on a phone the dock tabs are a third each; Design is selected, and a tap on Cloth box selects it', (tester) async {
+  testWidgets('on a phone the dock tabs are a half each; Design is selected, and a tap on Cloth box selects it', (tester) async {
     await pumpStudio(tester, size: phone);
-    for (final t in ['tab-cloth', 'tab-patterns', 'tab-finish']) {
+    expect(key('tab-finish'), findsNothing, reason: 'no Preview tab (his pick, 8 November 2026)');
+    for (final t in ['tab-cloth', 'tab-patterns']) {
       final r = tester.getRect(key(t));
-      expect((r.width, r.height), (phone.width / 3, 48.0), reason: t);
+      expect((r.width, r.height), (phone.width / 2, 48.0), reason: t);
     }
     void selected(String tab, String words) {
-      for (final (t, w) in [('tab-cloth', 'Cloth box'), ('tab-patterns', 'Design'), ('tab-finish', 'Preview')]) {
+      for (final (t, w) in [('tab-cloth', 'Cloth box'), ('tab-patterns', 'Design')]) {
         final on = t == tab, s = styleOf(tester, key(t), w);
-        expect((s.fontSize, s.fontWeight, s.color), (14.83, FontWeight.w500, on ? PhonePalette.text : PhonePalette.text2),
+        expect((s.fontSize, s.fontWeight, s.color),
+            (14.83, on ? FontWeight.w600 : FontWeight.w500, on ? PhonePalette.text : PhonePalette.text2),
             reason: '$w when $words is selected');
-        expect(edged(tester, t), on, reason: '$w: the blue edge');
+        expect(tester.widget<Pressable>(key(t)).selected, on, reason: '$w: a screen reader hears it selected');
+        expect(pilled(tester, t), on, reason: '$w: the pill');
+        if (on) {
+          final pill = tester.getRect(key('tab-pill-${t.substring(4)}'));
+          expect(pill.size, tabPill, reason: '$w: 40 × 24');
+          expect(pill.center.dy, closeTo(tester.getRect(key(t)).center.dy, 0.5), reason: '$w: centred in the tab');
+        }
       }
     }
     selected('tab-patterns', 'Design');
@@ -100,12 +111,11 @@ void main() {
   });
 
   for (final (what, sample) in [('her Box 1', false), ('the Sample box', true)]) {
-    testWidgets('on a phone, on $what, the board at 100 % fits the canvas, across its width; every button at least 44 px', (tester) async {
-      final c = sample ? await pumpOnSample(tester, size: phone) : await pumpStudio(tester, size: phone);
+    testWidgets('on a phone, on $what, the board fits the canvas, across its width; every button at least 44 px', (tester) async {
+      sample ? await pumpOnSample(tester, size: phone) : await pumpStudio(tester, size: phone);
       final board = tester.getRect(find.byType(Board)), area = tester.getRect(canvas);
       expect(area.contains(board.topLeft) && area.contains(board.bottomRight), isTrue, reason: '$board in $area');
       expect(board.width, lessThanOrEqualTo(phone.width - 32));
-      expect(c.percent, 100);
       expect(checkTargets(tester, 44), greaterThanOrEqualTo(7));
     });
   }
@@ -268,17 +278,18 @@ void main() {
     await pumpStudio(tester, size: phone);
     await tester.tap(key('phone-menu'));
     await tester.pumpAndSettle();
-    for (final w in ['Help', 'Privacy policy', 'Shop', 'catsofkochi shop', 'Back up or move to another device',
+    for (final w in ['Back to site', 'Help', 'Privacy policy', 'Shop', 'catsofkochi shop', 'Back up or move to another device',
         'Your work is kept on this device only']) {
       expect(find.text(w), findsOneWidget, reason: w);
     }
     checkTargets(tester, 44);
   });
 
-  testWidgets('on a phone Help opens the help page, Privacy policy the policy, Shop the shop, and the title My designs', (tester) async {
+  testWidgets('on a phone Back to site opens the home page, Help the help page, Privacy policy the policy, Shop the shop, '
+      'and the title My designs', (tester) async {
     final went = Went();
     await pumpWith(tester, went, size: phone);
-    for (final row in ['Help', 'Privacy policy', 'Shop']) {
+    for (final row in ['Back to site', 'Help', 'Privacy policy', 'Shop']) {
       await tester.tap(key('phone-menu'));
       await tester.pumpAndSettle();
       await tester.tap(find.text(row));
@@ -287,7 +298,7 @@ void main() {
     }
     await tester.tap(key('phone-title'));
     await tester.pumpAndSettle();
-    expect(went.log, ['link https://kantha.app/help', 'link https://kantha.app/policies/privacy',
+    expect(went.log, ['link https://kantha.app/', 'link https://kantha.app/help', 'link https://kantha.app/policies/privacy',
         'link https://catsofkochi.com/shop/', 'designs']);
   });
 

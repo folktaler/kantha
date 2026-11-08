@@ -147,12 +147,6 @@ abstract class L {
   /// **'More'**
   String get canvasMore;
 
-  /// No description provided for @canvasMountEyebrow.
-  ///
-  /// In en, this message translates to:
-  /// **'Mount'**
-  String get canvasMountEyebrow;
-
   /// No description provided for @canvasStitchesSwitch.
   ///
   /// In en, this message translates to:
@@ -162,37 +156,37 @@ abstract class L {
   /// No description provided for @canvasStitchColoursEcru.
   ///
   /// In en, this message translates to:
-  /// **'Cream'**
+  /// **'Cream thread'**
   String get canvasStitchColoursEcru;
 
   /// No description provided for @canvasStitchColoursMadder.
   ///
   /// In en, this message translates to:
-  /// **'Red'**
+  /// **'Red thread'**
   String get canvasStitchColoursMadder;
 
   /// No description provided for @canvasStitchColoursIndigo.
   ///
   /// In en, this message translates to:
-  /// **'Blue'**
+  /// **'Blue thread'**
   String get canvasStitchColoursIndigo;
 
   /// No description provided for @canvasStitchColoursTurmeric.
   ///
   /// In en, this message translates to:
-  /// **'Yellow'**
+  /// **'Yellow thread'**
   String get canvasStitchColoursTurmeric;
 
   /// No description provided for @canvasStitchColoursLeaf.
   ///
   /// In en, this message translates to:
-  /// **'Green'**
+  /// **'Green thread'**
   String get canvasStitchColoursLeaf;
 
   /// No description provided for @canvasStitchColoursBlack.
   ///
   /// In en, this message translates to:
-  /// **'Black'**
+  /// **'Black thread'**
   String get canvasStitchColoursBlack;
 
   /// No description provided for @canvasNoSaved.
@@ -200,30 +194,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Nothing saved yet. Press Save and your design waits here.'**
   String get canvasNoSaved;
-
-  /// No description provided for @canvasZoomIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Zoom in'**
-  String get canvasZoomIn;
-
-  /// No description provided for @canvasZoomOut.
-  ///
-  /// In en, this message translates to:
-  /// **'Zoom out'**
-  String get canvasZoomOut;
-
-  /// No description provided for @canvasFit.
-  ///
-  /// In en, this message translates to:
-  /// **'Fit'**
-  String get canvasFit;
-
-  /// No description provided for @canvasZoomPercent.
-  ///
-  /// In en, this message translates to:
-  /// **'{n}%'**
-  String canvasZoomPercent(String n);
 
   /// No description provided for @canvasSolving.
   ///
@@ -471,24 +441,6 @@ abstract class L {
   /// **'Rings of colour, dark, middle and light, spreading out from the centre.'**
   String get canvasLayoutsDiamondName;
 
-  /// No description provided for @canvasMountsNoneName.
-  ///
-  /// In en, this message translates to:
-  /// **'Panel'**
-  String get canvasMountsNoneName;
-
-  /// No description provided for @canvasMountsFrameName.
-  ///
-  /// In en, this message translates to:
-  /// **'Frame'**
-  String get canvasMountsFrameName;
-
-  /// No description provided for @canvasMountsToteName.
-  ///
-  /// In en, this message translates to:
-  /// **'Tote'**
-  String get canvasMountsToteName;
-
   /// No description provided for @canvasNotFillableNoColour.
   ///
   /// In en, this message translates to:
@@ -590,6 +542,12 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Menu'**
   String get canvasMenu;
+
+  /// No description provided for @canvasBackToSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to site'**
+  String get canvasBackToSite;
 
   /// No description provided for @canvasHelp.
   ///
@@ -716,18 +674,6 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Design'**
   String get canvasTabDesign;
-
-  /// No description provided for @canvasTabPreview.
-  ///
-  /// In en, this message translates to:
-  /// **'Preview'**
-  String get canvasTabPreview;
-
-  /// No description provided for @canvasZoom.
-  ///
-  /// In en, this message translates to:
-  /// **'Zoom'**
-  String get canvasZoom;
 
   /// No description provided for @canvasPrintPattern.
   ///

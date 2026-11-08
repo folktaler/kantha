@@ -47,7 +47,7 @@ final Map<LayoutKey, List<int>> _icons = {for (final k in layoutKeys) k: layoutI
 
 /* A tile per pattern in a strip that scrolls sideways, 8 px under the panel's top, then the Show stitches row. A pattern the box
    cannot fill stays, faded to 35 %, and a tap on it says why and changes nothing (decision 11). The panel scrolls up
-   and down, as Preview does, so with the phone's text set larger nothing runs over the tabs. */
+   and down, so with the phone's text set larger nothing runs over the tabs. */
 class DockPatterns extends StatelessWidget {
   const DockPatterns({super.key, required this.c, required this.toaster, required this.line});
   final StudioController c;
@@ -96,7 +96,9 @@ class DockPatterns extends StatelessWidget {
     );
   }
 
-  /* Its word, then minus, the number, plus: each button 44 px square, faded and not pressed at its end. */
+  /* Its word, then minus, the number, plus: each button 44 px square in a 1 px strong edge with the control's 2 px
+     corners, as the switch and the segments are, so it reads as a button (his ask, 8 November 2026); faded and not
+     pressed at its end. */
   Widget _stepper(String key, String name, int n, String fewer, String more, void Function(int) set, double? word,
       double number) {
     Widget button(String k, String label, tabler.Icon icon, bool can, VoidCallback go) => Pressable(
@@ -110,7 +112,11 @@ class DockPatterns extends StatelessWidget {
             child: Container(
               width: 44, height: 44,
               alignment: Alignment.center,
-              color: st.hovered && can ? PhonePalette.hover : PhonePalette.white,
+              decoration: BoxDecoration(
+                color: st.hovered && can ? PhonePalette.hover : PhonePalette.white,
+                borderRadius: kControlRadius,
+                border: Border.all(color: PhonePalette.strong),
+              ),
               child: tablerIcon(icon, size: 18),
             ),
           )),
@@ -126,7 +132,7 @@ class DockPatterns extends StatelessWidget {
   }
 
   /* One row across the panel, at least 44 tall and one target: 16 px in, the switch, the words "Show stitches", then a
-     dot in the thread's colour and the colour's plain name (canvas.stitchColours), on or off (owner, 21 Oct). A screen
+     dot in the thread's colour and its name in full, "Yellow thread" (canvas.stitchColours; his words, 8 November 2026), on or off (owner, 21 Oct). A screen
      reader hears Show stitches, on or off, then the colour. */
   Widget _stitches(BuildContext context) {
     final words = L.of(context);
@@ -151,12 +157,13 @@ class DockPatterns extends StatelessWidget {
           Flexible(child: Text(words.canvasStitchesSwitch, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: pText(PType.bodySmall))),
           const SizedBox(width: 16),
-          Row(key: const ValueKey('stitch-thread'), mainAxisSize: MainAxisSize.min, children: [
+          Flexible(child: Row(key: const ValueKey('stitch-thread'), mainAxisSize: MainAxisSize.min, children: [
             Container(width: 10, height: 10, decoration: BoxDecoration(color: hexColor(thread.hex), shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFA9A392)))),
             const SizedBox(width: iconGap),
-            Text(name, maxLines: 1, style: pText(PType.bodySmall, color: PhonePalette.text2)),
-          ]),
+            Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: pText(PType.bodySmall, color: PhonePalette.text2))),
+          ])),
         ]),
       )),
     );

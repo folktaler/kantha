@@ -1,6 +1,5 @@
-/* The board (the sheet, from the tote under it to the 4 cm line): the A4 sheet at
-   the controller's scale, its printed grid on Plain, the 35 squares each wearing its own
-   cloth, the grid over them, the stitches, and the frame or tote around it. */
+/* The board (the sheet, out to the 4 cm line): the A4 sheet at the controller's scale, its printed grid,
+   the 35 squares each wearing its own cloth, the grid over them, and the stitches. */
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:tabler_icons_next/tabler_icons_next.dart' as tabler;
@@ -8,16 +7,15 @@ import '../l10n/app_localizations.dart';
 import '../l10n/words.dart';
 import '../solver/geometry.dart';
 import 'controller.dart';
-import 'mounts.dart';
 import 'painters.dart';
 import 'phone/phone_theme.dart';
 import 'pressable.dart';
 import 'sheet_geometry.dart';
 import 'shelf_feed.dart';
 
-/* The board's own colours: the sheet and the 4 cm label (a cloth's ground is swatchBase).
+/* The board's own colours: the 4 cm label (a cloth's ground is swatchBase).
    The board is what she makes, not the studio's chrome. */
-const _sheet = Color(0xFFFCFCFA), _dimBg = Color(0xFFF6F2E6), _dimInk = Color(0xFF666A75);
+const _dimBg = Color(0xFFF6F2E6), _dimInk = Color(0xFF666A75);
 
 /* The squares in the order they are laid: column by column, each over the one before. One list per sheet. */
 final _laidOn = <SheetGrid, List<int>>{};
@@ -83,66 +81,47 @@ class _BoardState extends State<Board> with SingleTickerProviderStateMixin {
     _follow();
     final words = L.of(context);
     final ppc = c.ppc, cellPx = patchCm * ppc;
-    // The frame or tote takes up room in the layout, so it is centred and nothing sits under it.
-    final reach = reachOf(c.mount);
-    final flat = c.mount == Mount.none, framed = c.mount == Mount.frame;
     final grid = c.grid;
     final dens = c.density;
     final thread = c.threadShown;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final g = c.sheet, cells = g.rows * g.cols;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(reach.left * ppc, reach.top * ppc, reach.right * ppc, reach.bottom * ppc),
-      child: SizedBox(
-        width: g.w * ppc, height: g.h * ppc,
-        child: Stack(clipBehavior: Clip.none, children: [
-          if (c.mount == Mount.tote) ToteUnder(ppc: ppc),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: framed
-                  ? const BoxDecoration(color: _sheet, boxShadow: [
-                      BoxShadow(offset: Offset(0, 2), blurRadius: 4, color: Color(0x141E2027)),
-                      BoxShadow(offset: Offset(0, 14), blurRadius: 34, color: Color(0x141E2027)),
-                    ])
-                  : const BoxDecoration(),
-              // The empty squares take Tab in reading order, row by row, wherever the board is scrolled to.
-              child: FocusTraversalGroup(policy: WidgetOrderTraversalPolicy(), child: Stack(clipBehavior: Clip.none, children: [
-                if (flat)
-                  Positioned(
-                    left: (g.mx - bleedCm) * ppc, top: (g.my - bleedCm) * ppc,
-                    width: (g.bw + bleedCm * 2) * ppc, height: (g.bh + bleedCm * 2) * ppc,
-                    child: IgnorePointer(child: CustomPaint(painter: PaperGridPainter(g))),
-                  ),
-                if (grid != null)
-                  Positioned.fill(child: ClipRect(
-                    clipper: _WhileDropping(Rect.fromLTRB(-1e4, g.my * ppc, 1e4, 1e4), _drop),
-                    child: Stack(clipBehavior: Clip.none, children: [
-                      for (final i in _laid(g)) if (i < grid.length) _cell(words, g, i, grid[i], ppc, cellPx, dpr),
-                    ]),
-                  ))
-                else if (!c.solving && (c.box == null || c.piecesIn(c.box!) < cells))
-                  for (var i = 0; i < cells; i++) _emptyCell(words, g, i, ppc, cellPx),
-                if (flat)
-                  Positioned(
-                    left: g.mx * ppc, top: g.my * ppc, width: g.bw * ppc, height: g.bh * ppc,
-                    child: IgnorePointer(child: CustomPaint(painter: GhostGridPainter(g))),
-                  ),
-              ])),
+    return SizedBox(
+      width: g.w * ppc, height: g.h * ppc,
+      child: Stack(clipBehavior: Clip.none, children: [
+        // The empty squares take Tab in reading order, row by row, wherever the board is scrolled to.
+        Positioned.fill(
+          child: FocusTraversalGroup(policy: WidgetOrderTraversalPolicy(), child: Stack(clipBehavior: Clip.none, children: [
+            Positioned(
+              left: (g.mx - bleedCm) * ppc, top: (g.my - bleedCm) * ppc,
+              width: (g.bw + bleedCm * 2) * ppc, height: (g.bh + bleedCm * 2) * ppc,
+              child: IgnorePointer(child: CustomPaint(painter: PaperGridPainter(g))),
             ),
-          ),
-          if (c.mount == Mount.tote) ToteEdge(ppc: ppc, hex: thread.hex),
-          if (flat && c.onA4) _dimension(words, g, ppc, cellPx),
-          Positioned(
-            left: g.mx * ppc, top: g.my * ppc, width: g.bw * ppc, height: g.bh * ppc,
-            child: IgnorePointer(child: AnimatedOpacity(
-              opacity: c.stitch ? 1 : 0, duration: const Duration(milliseconds: 200),
-              child: CustomPaint(painter: StitchPainter(density: dens, thread: thread, sheet: g)),
-            )),
-          ),
-          if (framed) FrameOver(ppc: ppc),
-        ]),
-      ),
+            if (grid != null)
+              Positioned.fill(child: ClipRect(
+                clipper: _WhileDropping(Rect.fromLTRB(-1e4, g.my * ppc, 1e4, 1e4), _drop),
+                child: Stack(clipBehavior: Clip.none, children: [
+                  for (final i in _laid(g)) if (i < grid.length) _cell(words, g, i, grid[i], ppc, cellPx, dpr),
+                ]),
+              ))
+            else if (!c.solving && (c.box == null || c.piecesIn(c.box!) < cells))
+              for (var i = 0; i < cells; i++) _emptyCell(words, g, i, ppc, cellPx),
+            Positioned(
+              left: g.mx * ppc, top: g.my * ppc, width: g.bw * ppc, height: g.bh * ppc,
+              child: IgnorePointer(child: CustomPaint(painter: GhostGridPainter(g))),
+            ),
+          ])),
+        ),
+        if (c.onA4) _dimension(words, g, ppc, cellPx),
+        Positioned(
+          left: g.mx * ppc, top: g.my * ppc, width: g.bw * ppc, height: g.bh * ppc,
+          child: IgnorePointer(child: AnimatedOpacity(
+            opacity: c.stitch ? 1 : 0, duration: const Duration(milliseconds: 200),
+            child: CustomPaint(painter: StitchPainter(density: dens, thread: thread, sheet: g)),
+          )),
+        ),
+      ]),
     );
   }
 

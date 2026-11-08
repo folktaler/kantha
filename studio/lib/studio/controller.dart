@@ -41,10 +41,9 @@ class Feasible {
   bool get fills => why == null;
 }
 
-const double zoomMin = 4, zoomMax = 34;
-/* The least fitted scale on the panel: a 4 cm square at 24 px, the owner's floor for the squares she taps (31 Oct 2026;
-   WCAG 2.2 AA's target size minimum). A frame or a tote, where nothing is tapped, fits to zoomMin. Zoom out may
-   still go to zoomMin. */
+const double zoomMax = 34;
+/* The least fitted scale: a 4 cm square at 24 px, the owner's floor for the squares she taps (31 Oct 2026;
+   WCAG 2.2 AA's target size minimum). */
 const double fitLeast = 24 / patchCm;
 List<int> noTurns([int? n]) => List<int>.filled(n ?? cells, 0);
 
@@ -99,15 +98,18 @@ class StudioController extends ChangeNotifier {
   List<int> rot = noTurns();
   String name;
   int? box;
-  Mount mount = Mount.none;
+  /* Always the plain panel: Mount left the studio with Preview (his pick, 8 November 2026), and a design saved on a
+     frame or a tote opens on the panel (DesignView.of). */
+  Mount get mount => Mount.none;
   /* The thread is the one that clears this design's cloth best (_recommendThread); the stitches are always Open, 5 rows
      of 5 a piece (owner, 20 Oct). */
   String thread = 'ecru';
   /* The one spacing, read by the board and by the Design tab's line alike, so the two cannot disagree. */
   Density get density => densities.firstWhere((d) => d.key == 'open');
   Thread get threadShown => threads.firstWhere((t) => t.key == thread, orElse: () => threads.first);
-  double ppc = 13, fitPpc = 13;
-  bool zoomed = false, stitch = false, warn = false, solving = true, busy = false;
+  /* The board's scale, px a cm: always the fitted one, as Zoom left the studio with Preview (8 November 2026). */
+  double ppc = 13;
+  bool stitch = false, warn = false, solving = true, busy = false;
   Memory memory = const {};
   /* What the studio last said. Every note said is counted in `notes`, so the same words said again are a new
      note (each is a toast as it comes); clearing it says nothing. */
@@ -164,7 +166,7 @@ class StudioController extends ChangeNotifier {
   /* The squares the board has, and so the pieces a box needs to fill it. */
   int get squares => size.rows * size.cols;
   SheetGrid get sheet => sheetFor(size);
-  /* Level 1's A4 board: only it is offered the print sheet, the frame and the tote. */
+  /* Level 1's A4 board: only it is offered the print sheet. */
   bool get onA4 => size == level1;
   static const levelKey = 'boardLevel', sizeKey = 'boardSize';
   /* From 30 to 31 Oct 2026 the board had two levels, kept under levelKey: 'beginner' was 5 × 7 whatever sizeKey held,
@@ -205,7 +207,6 @@ class StudioController extends ChangeNotifier {
     grid = null; rot = noTurns(squares); solving = false; savedId = null; savedGrid = null; note = ''; warn = false; _holding = false;
     name = _defaultName(layout);
   }
-  int get percent => (ppc / fitPpc * 100).round();
   List<ThreadScore> get recommended => grid == null ? const [] : rankThreads(grid!, _pool.pool.lab);
 
   /* Restock: the pool is rebuilt, and the solver told, only
@@ -417,7 +418,7 @@ class StudioController extends ChangeNotifier {
     if (id == _dropFor) drops++;
     if (id == _pressFor) unawaited(_patternAgain(id));
     firstSolve ??= _now().toUtc().toIso8601String();
-    memory = remember(memory, keyOf(box, layout, size), Arrangement(grid: grid!, rot: rot, seed: s, name: name, mount: mount));
+    memory = remember(memory, keyOf(box, layout, size), Arrangement(grid: grid!, rot: rot, seed: s, name: name));
     _recommendThread();
     notifyListeners();
   }
@@ -428,7 +429,7 @@ class StudioController extends ChangeNotifier {
     if (best != null) thread = best.thread.key;
   }
 
-  /* The template she leaves is remembered as she last saw it: the mount she chose and the name she typed. */
+  /* The template she leaves is remembered as she last saw it: under the name she typed. */
   void loadLayout(LayoutKey next) {
     // With no box that can fill and no Sample box (decision 11), a template is only chosen: the board is the
     // empty sheet, and a saved design she held open is left for it. On an empty box the same: the
@@ -444,7 +445,7 @@ class StudioController extends ChangeNotifier {
     final fresh = _defaultName(next);
     final left = keyOf(box, layout, size);
     final was = recall(memory, left);
-    final mem = was != null ? remember(memory, left, was.copyWith(name: name, mount: mount)) : memory;
+    final mem = was != null ? remember(memory, left, was.copyWith(name: name)) : memory;
     // While no box can fill (a Sample box trimmed under 35), an arrangement remembered from when it could holds cloth
     // since removed: the tap arranges what is there now.
     final kept = next == layout || !_canFill ? null : recall(mem, keyOf(box, next, size));
@@ -455,10 +456,8 @@ class StudioController extends ChangeNotifier {
       _reqId++;
       _before = null; // the solve out is dropped
       drops++;
-      final moved = kept.mount != mount;
-      name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
+      name = kept.name; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
       savedId = kept.savedId; savedGrid = kept.savedGrid; note = ''; warn = false;
-      if (moved) fit();
       _recommendThread();
       notifyListeners();
       return;
@@ -494,8 +493,6 @@ class StudioController extends ChangeNotifier {
     _requestSolve();
   }
 
-  void setMount(Mount m) { mount = onA4 ? m : Mount.none; fit(); }
-
   /* The board's size as she last left it on this device; one that cannot be read, or a Beginner's of the two levels,
      is 5 × 7. Read before start. */
   Future<void> loadBoard() async {
@@ -529,26 +526,24 @@ class StudioController extends ChangeNotifier {
   /* The board as a saved design's size, as she chose it for the design. */
   void _takeSize(BoardSize g) {
     chosen = g;
-    if (!onA4) mount = Mount.none;
     unawaited(_keepBoard());
   }
 
   /* The board takes its new size: the arrangement she last saw on it, on this box and template, comes back (as a
-     template's does in loadLayout); else a fresh one. Off A4 the mount is Plain. */
+     template's does in loadLayout); else a fresh one. */
   void _resize(void Function() change) {
     final was = size, before = _pressed();
     final left = keyOf(box, layout, was), kept0 = recall(memory, left);
-    if (kept0 != null) memory = remember(memory, left, kept0.copyWith(name: name, mount: mount));
+    if (kept0 != null) memory = remember(memory, left, kept0.copyWith(name: name));
     change();
     unawaited(_keepBoard());
     if (size == was) { notifyListeners(); return; }
-    if (!onA4) mount = Mount.none;
     _checkFeasible(box);
     final kept = _canFill && members(box).isNotEmpty ? recall(memory, keyOf(box, layout, size)) : null;
     if (kept != null) {
       _reqId++;
       _before = null; // the solve out is dropped
-      name = kept.name; mount = kept.mount; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
+      name = kept.name; grid = kept.grid; rot = kept.rot; seed = kept.seed; solving = false;
       savedId = kept.savedId; savedGrid = kept.savedGrid; note = ''; warn = false;
       _recommendThread();
       fit();
@@ -625,7 +620,7 @@ class StudioController extends ChangeNotifier {
       // it saved, claiming that one as saved would let the next Save overwrite this design.
       if (identical(grid, g) && layout == l && box == b) {
         savedId = out.design.id; savedGrid = st;
-        memory = remember(memory, keyOf(b, l, size), Arrangement(grid: g, rot: r, seed: s, name: out.design.name, mount: m,
+        memory = remember(memory, keyOf(b, l, size), Arrangement(grid: g, rot: r, seed: s, name: out.design.name,
             savedId: out.design.id, savedGrid: st));
       }
       note = !first ? words.canvasSaved : storageKept ? words.canvasSavedFirst : words.deviceNotKept;
@@ -711,12 +706,12 @@ class StudioController extends ChangeNotifier {
     if (resized) _takeSize(p.size);
     if (b != box || resized) _checkFeasible(b);
     final st = stamp(gi, p.rot, p.mount, p.name);
-    grid = gi; rot = p.rot; layout = p.layout; name = p.name; mount = p.mount; box = b; solving = false;
+    grid = gi; rot = p.rot; layout = p.layout; name = p.name; box = b; solving = false;
     note = ''; warn = false; savedId = p.id; savedGrid = st;
     // Opened while no box can fill a panel, it takes the board while it is open (decision 4).
     _holding = !_canFill;
     memory = remember(memory, keyOf(b, p.layout, size),
-        Arrangement(grid: gi, rot: p.rot, seed: p.seed, name: p.name, mount: p.mount, savedId: p.id, savedGrid: st));
+        Arrangement(grid: gi, rot: p.rot, seed: p.seed, name: p.name, savedId: p.id, savedGrid: st));
     _recommendThread();
     // Another size is fitted afresh, as _resize does.
     if (resized) { fit(); } else { notifyListeners(); }
@@ -925,30 +920,15 @@ class StudioController extends ChangeNotifier {
     // Less room than one 24 px square is a pane on its way somewhere (a route turning, the keyboard): the scale stays.
     // Any more is fitted, and a board that needs more room scrolls.
     if (w < fitLeast * patchCm || h < fitLeast * patchCm) return false;
-    final vw = mount == Mount.frame ? frame.outer.$1 + 1 : mount == Mount.tote ? tote.w + 2 : sheet.w;
-    final vh = mount == Mount.frame ? frame.outer.$2 + 1 : mount == Mount.tote ? tote.h + 2 : sheet.h;
-    // On the panel, whose empty squares she taps, never less than fitLeast, so a square is at least 24 px (owner,
-    // 31 Oct 2026). In a frame or on a tote, where nothing is tapped, as small as zoomMin (a phone's canvas is narrower
-    // than a frame or a tote at 9 px a cm). A board that would need less scrolls.
-    final least = mount == Mount.none ? fitLeast : zoomMin;
-    final next = math.min(w / vw, h / vh).floorToDouble().clamp(least, zoomMax);
-    final changed = next != fitPpc || (!zoomed && ppc != next);
-    fitPpc = next;
-    if (!zoomed) ppc = next;
+    // Never less than fitLeast, so a square she taps is at least 24 px (owner, 31 Oct 2026). A board that would need
+    // less scrolls.
+    final next = math.min(w / sheet.w, h / sheet.h).floorToDouble().clamp(fitLeast, zoomMax);
+    final changed = next != ppc;
+    ppc = next;
     return changed;
   }
 
-  /* 60–160 % of the fitted scale in steps of 20; 100 is Fit. Clamped to zoomMin..zoomMax. */
-  void zoomTo(int percent) {
-    if (percent == 100) { fit(); return; }
-    zoomed = true;
-    ppc = math.min(zoomMax, math.max(zoomMin, fitPpc * percent / 100));
-    notifyListeners();
-  }
-
-  /* Always tells the screen: Fit, or a new mount (setMount), changed the board even when the pane
-     is too small to fit and the scale stays. */
-  _Before _snapshot() => _Before(layout: layout, name: name, mount: mount, grid: grid, rot: rot, seed: seed, box: box,
+  _Before _snapshot() => _Before(layout: layout, name: name, grid: grid, rot: rot, seed: seed, box: box,
       savedId: savedId, savedGrid: savedGrid, chosen: chosen, feasible: feasible, note: note, warn: warn,
       holding: _holding);
 
@@ -960,7 +940,7 @@ class StudioController extends ChangeNotifier {
     _reqId++;
     solver.stop();
     final resized = b.chosen != chosen;
-    layout = b.layout; name = b.name; mount = b.mount; grid = b.grid; rot = b.rot; seed = b.seed; box = b.box;
+    layout = b.layout; name = b.name; grid = b.grid; rot = b.rot; seed = b.seed; box = b.box;
     savedId = b.savedId; savedGrid = b.savedGrid; chosen = b.chosen;
     _note = b.note; warn = b.warn; // as it was: no second toast
     // What the box can fill is read from her cloth as it is now, not as it was: a note that it could not fill goes when
@@ -978,9 +958,9 @@ class StudioController extends ChangeNotifier {
     }
   }
 
+  /* Always tells the screen: a new size changed the board even when the pane is too small to fit and the scale stays. */
   void fit() {
-    zoomed = false;
-    if (_pane == Size.zero) { ppc = fitPpc; } else { _fitTo(_pane); }
+    if (_pane != Size.zero) _fitTo(_pane);
     notifyListeners();
   }
 
@@ -994,12 +974,11 @@ class StudioController extends ChangeNotifier {
 
 /* The board as a press found it: what stopSolve puts back. */
 class _Before {
-  const _Before({required this.layout, required this.name, required this.mount, required this.grid, required this.rot,
+  const _Before({required this.layout, required this.name, required this.grid, required this.rot,
       required this.seed, required this.box, required this.savedId, required this.savedGrid, required this.chosen,
       required this.feasible, required this.note, required this.warn, required this.holding});
   final LayoutKey layout;
   final String name;
-  final Mount mount;
   final List<int>? grid;
   final List<int> rot;
   final int? seed, box;

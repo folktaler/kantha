@@ -1,5 +1,4 @@
 import '../solver/compile.dart';
-import '../solver/geometry.dart';
 import '../solver/js_math.dart';
 import '../solver/layouts.dart';
 import 'app_localizations.dart';
@@ -9,7 +8,6 @@ import 'keyed.g.dart';
 extension Words on L {
   String layoutTitle(LayoutKey k) => plainByKey(this, 'canvas.layouts.${k.name}.title')!;
   String layoutName(LayoutKey k) => plainByKey(this, 'canvas.layouts.${k.name}.name')!;
-  String mountName(Mount m) => plainByKey(this, 'canvas.mounts.${m.name}.name')!;
   String stitchColour(String key) => plainByKey(this, 'canvas.stitchColours.$key')!;
   String notFillable(Unfillable u) => plainByKey(this, 'canvas.notFillable.${u.name}')!;
 

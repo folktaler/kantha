@@ -16,6 +16,9 @@ Uri helpUri([String? anchor]) => helpUriFor(web: kIsWeb, anchor: anchor);
 Uri shopUri() => _shop;
 Uri privacyUriFor({required bool web}) => _onSite(Uri(path: '/policies/privacy'), web: web);
 Uri privacyUri() => privacyUriFor(web: kIsWeb);
+/* Back to site: kantha.app's home page, opened as Help is (his pick, 8 November 2026). */
+Uri siteUriFor({required bool web}) => _onSite(Uri(path: '/'), web: web);
+Uri siteUri() => siteUriFor(web: kIsWeb);
 
 /* In a browser: a page on another site opens in a new tab, the site's own in the studio's tab. */
 String webWindowFor(Uri uri) => uri.hasAuthority ? '_blank' : '_self';

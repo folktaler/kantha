@@ -23,26 +23,14 @@
   },
   "canvasDuplicate": "Duplicate",
   "canvasMore": "More",
-  "canvasMountEyebrow": "Mount",
   "canvasStitchesSwitch": "Show stitches",
-  "canvasStitchColoursEcru": "Cream",
-  "canvasStitchColoursMadder": "Red",
-  "canvasStitchColoursIndigo": "Blue",
-  "canvasStitchColoursTurmeric": "Yellow",
-  "canvasStitchColoursLeaf": "Green",
-  "canvasStitchColoursBlack": "Black",
+  "canvasStitchColoursEcru": "Cream thread",
+  "canvasStitchColoursMadder": "Red thread",
+  "canvasStitchColoursIndigo": "Blue thread",
+  "canvasStitchColoursTurmeric": "Yellow thread",
+  "canvasStitchColoursLeaf": "Green thread",
+  "canvasStitchColoursBlack": "Black thread",
   "canvasNoSaved": "Nothing saved yet. Press Save and your design waits here.",
-  "canvasZoomIn": "Zoom in",
-  "canvasZoomOut": "Zoom out",
-  "canvasFit": "Fit",
-  "canvasZoomPercent": "{n}%",
-  "@canvasZoomPercent": {
-    "placeholders": {
-      "n": {
-        "type": "String"
-      }
-    }
-  },
   "canvasSolving": "Arranging the cloth…",
   "canvasSolvingStep": "Tried {done} of {total} arrangements",
   "@canvasSolvingStep": {
@@ -134,9 +122,6 @@
   "canvasLayoutsChainName": "Dark chains on the diagonals, over a light ground.",
   "canvasLayoutsDiamondTitle": "Diamond",
   "canvasLayoutsDiamondName": "Rings of colour, dark, middle and light, spreading out from the centre.",
-  "canvasMountsNoneName": "Panel",
-  "canvasMountsFrameName": "Frame",
-  "canvasMountsToteName": "Tote",
   "canvasNotFillableNoColour": "this box has no cloth with that colour",
   "canvasNotFillableFewPieces": "this box has too few pieces near that colour to fill the shape",
   "canvasNotFillableNoDarkEnough": "this box has no cloth of that colour dark enough to stand against the ground",
@@ -178,6 +163,7 @@
     }
   },
   "canvasMenu": "Menu",
+  "canvasBackToSite": "Back to site",
   "canvasHelp": "Help",
   "canvasDeleteSure": "Delete “{name}”? This cannot be undone.",
   "@canvasDeleteSure": {
@@ -262,8 +248,6 @@
   },
   "canvasTabCloth": "Cloth box",
   "canvasTabDesign": "Design",
-  "canvasTabPreview": "Preview",
-  "canvasZoom": "Zoom",
   "canvasPrintPattern": "Print pattern PDF",
   "canvasPrintPatternNote": "A4 — print at 100%",
   "canvasStitchingGuide": "Kantha stitching guide",

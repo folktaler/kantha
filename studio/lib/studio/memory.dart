@@ -5,31 +5,30 @@ import '../solver/layouts.dart';
 const _keep = Object();
 
 /* The arrangement she last saw on each template, per box, for this visit. Going
-   back to a template shows it again, under the name and mount it had; pressing
+   back to a template shows it again, under the name it had; pressing
    the template already showing deals a new one. An arrangement she saved carries
    the design it was saved as, so saving again saves over that design. */
 @immutable
 class Arrangement {
-  const Arrangement({required this.grid, required this.rot, required this.seed, required this.name, required this.mount,
+  const Arrangement({required this.grid, required this.rot, required this.seed, required this.name,
       this.savedId, this.savedGrid});
   final List<int> grid, rot;
   final int? seed;
   final String name;
-  final Mount mount;
   final String? savedId, savedGrid;
 
-  Arrangement copyWith({List<int>? grid, List<int>? rot, Object? seed = _keep, String? name, Mount? mount,
+  Arrangement copyWith({List<int>? grid, List<int>? rot, Object? seed = _keep, String? name,
           Object? savedId = _keep, Object? savedGrid = _keep}) =>
       Arrangement(grid: grid ?? this.grid, rot: rot ?? this.rot, seed: seed == _keep ? this.seed : seed as int?,
-          name: name ?? this.name, mount: mount ?? this.mount,
+          name: name ?? this.name,
           savedId: savedId == _keep ? this.savedId : savedId as String?,
           savedGrid: savedGrid == _keep ? this.savedGrid : savedGrid as String?);
 
   @override
   bool operator ==(Object other) => other is Arrangement && listEquals(other.grid, grid) && listEquals(other.rot, rot) &&
-      other.seed == seed && other.name == name && other.mount == mount && other.savedId == savedId && other.savedGrid == savedGrid;
+      other.seed == seed && other.name == name && other.savedId == savedId && other.savedGrid == savedGrid;
   @override
-  int get hashCode => Object.hash(Object.hashAll(grid), Object.hashAll(rot), seed, name, mount, savedId, savedGrid);
+  int get hashCode => Object.hash(Object.hashAll(grid), Object.hashAll(rot), seed, name, savedId, savedGrid);
 }
 
 typedef Memory = Map<String, Arrangement>;

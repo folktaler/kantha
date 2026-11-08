@@ -9,21 +9,16 @@
     "copyName": "{name} copy",
     "duplicate": "Duplicate",
     "more": "More",
-    "mountEyebrow": "Mount",
     "stitchesSwitch": "Show stitches",
     "stitchColours": {
-      "ecru": "Cream",
-      "madder": "Red",
-      "indigo": "Blue",
-      "turmeric": "Yellow",
-      "leaf": "Green",
-      "black": "Black"
+      "ecru": "Cream thread",
+      "madder": "Red thread",
+      "indigo": "Blue thread",
+      "turmeric": "Yellow thread",
+      "leaf": "Green thread",
+      "black": "Black thread"
     },
     "noSaved": "Nothing saved yet. Press Save and your design waits here.",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out",
-    "fit": "Fit",
-    "zoomPercent": "{n}%",
     "solving": "Arranging the cloth…",
     "solvingStep": "Tried {done} of {total} arrangements",
     "waitStop": "Stop",
@@ -97,17 +92,6 @@
         "name": "Rings of colour, dark, middle and light, spreading out from the centre."
       }
     },
-    "mounts": {
-      "none": {
-        "name": "Panel"
-      },
-      "frame": {
-        "name": "Frame"
-      },
-      "tote": {
-        "name": "Tote"
-      }
-    },
     "notFillable": {
       "noColour": "this box has no cloth with that colour",
       "fewPieces": "this box has too few pieces near that colour to fill the shape",
@@ -127,6 +111,7 @@
     "madeWith": "made with kantha.app",
     "upcycled": "Upcycled from {n} cloth pieces",
     "menu": "Menu",
+    "backToSite": "Back to site",
     "help": "Help",
     "deleteSure": "Delete “{name}”? This cannot be undone.",
     "shop": "Shop",
@@ -148,8 +133,6 @@
     "swatchAllUsed": "{name} — all {stock} pieces are in the design. Tap to add more.",
     "tabCloth": "Cloth box",
     "tabDesign": "Design",
-    "tabPreview": "Preview",
-    "zoom": "Zoom",
     "printPattern": "Print pattern PDF",
     "printPatternNote": "A4 — print at 100%",
     "stitchingGuide": "Kantha stitching guide",

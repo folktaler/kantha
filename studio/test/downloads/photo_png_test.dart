@@ -42,6 +42,8 @@ void expectSamePicture(Uint8List? png, String fixture, String reason, {required 
 void main() {
   testWidgets('the photo and the footer she shares are what they were before the studio went to Inter', (tester) async {
     // Both fixtures were drawn by the studio of 11 Oct (737bb39), with these fonts loaded, for this design and these words.
+    // The photo's drawing (above wordsFrom) was redrawn on 8 November 2026 on the plain panel, as the frame it was on
+    // left the studio; its words are still 11 Oct's.
     await tester.runAsync(loadFonts);
     final png = (await tester.runAsync(() => photoPng(zinnia(), const {},
         ['കാന്ത — ഒരു പരീക്ഷണം', 'High contrast — Every seam earns its keep, light against dark.',
@@ -51,16 +53,14 @@ void main() {
     expectSamePicture(footer, 'test/fixtures/footer-fixture.png', "the sheet's footer", wordsFrom: 0, allow: 400);
   }, tags: 'pixels');
 
-  testWidgets('the photo is a 1080 × 1350 PNG, on every mount, with a Malayalam name', (tester) async {
+  testWidgets('the photo is a 1080 × 1350 PNG, with a Malayalam name', (tester) async {
     await tester.runAsync(loadFonts);
-    for (final mount in ['none', 'frame', 'tote']) {
-      final made = await tester.runAsync(() => photoPng(zinnia().withMount(mount), const {},
-          ['കാന്ത — ഒരു പരീക്ഷണം', 'High contrast — Every seam earns its keep, light against dark.',
-            'Upcycled from 35 cloth pieces', 'made with kantha.app']));
-      expect(made?.thumb, isNull, reason: 'no small copy for Save photo or Share');
-      final back = img.decodePng(made!.png)!;
-      expect((back.width, back.height), (1080, 1350), reason: mount);
-    }
+    final made = await tester.runAsync(() => photoPng(zinnia(), const {},
+        ['കാന്ത — ഒരു പരീക്ഷണം', 'High contrast — Every seam earns its keep, light against dark.',
+          'Upcycled from 35 cloth pieces', 'made with kantha.app']));
+    expect(made?.thumb, isNull, reason: 'no small copy for Save photo or Share');
+    final back = img.decodePng(made!.png)!;
+    expect((back.width, back.height), (1080, 1350));
   });
 
   testWidgets('each square is its cloth covering it, turned clockwise as she turned it', (tester) async {
@@ -69,7 +69,7 @@ void main() {
     // middle 400 × 400 is shown, red on the left and blue on the right, edge to edge.
     final picture = img.Image(width: 600, height: 400)..clear(img.ColorRgb8(0, 0, 255));
     img.fillRect(picture, x1: 0, y1: 0, x2: 299, y2: 399, color: img.ColorRgb8(255, 0, 0));
-    final d = zinnia().withMount('none').copyWithRot([1, ...List.filled(34, 0)]);
+    final d = zinnia().copyWithRot([1, ...List.filled(34, 0)]);
     final png = await tester.runAsync(() async {
       final codec = await ui.instantiateImageCodec(img.encodePng(picture));
       final photo = (await codec.getNextFrame()).image;
