@@ -5,8 +5,8 @@
     "scope": "/studio/",
     "id": "/studio/",
     "display": "standalone",
-    "background_color": "#F1E9D6",
-    "theme_color": "#F1E9D6",
+    "background_color": "#F3EFE7",
+    "theme_color": "#F3EFE7",
     "description": "Kantha studio",
     "prefer_related_applications": false,
     "icons": [
