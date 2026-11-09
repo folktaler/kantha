@@ -1,6 +1,6 @@
 # Kantha studio
 
-<img src="studio/assets/icon/kantha-icon.png" alt="Kantha icon: a stitched K" width="96">
+<img src="studio/assets/icon/kantha-icon.png" alt="Kantha icon: a solid K" width="96">
 
 **[kantha.app](https://kantha.app)** · [Open the studio](https://kantha.app/studio) · [Help](https://kantha.app/help)
 
