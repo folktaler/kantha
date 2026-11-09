@@ -70,17 +70,18 @@ flutter:
       fonts:
         - asset: assets/fonts/Newsreader-Regular.ttf
 
-# The app icon: the stitched K, a bold K (Public Sans Bold) in #33507F with a running stitch around it in the
-# same blue, on the canvas colour #F3EFE7 (owner, 26 Oct 2026). Its source is assets/icon/kantha-icon.svg.
-# The three PNGs in assets/icon/ are rendered from it; then `dart run icons_launcher:create` makes every size
-# below. iOS takes the alpha channel off itself.
+# The app icon: the solid K, the kit's K mark in ink #211E1C on the page colour #F1E9D6, the same mark as
+# kantha.app's favicon (owner, 9 November 2026). Its source is assets/icon/kantha-icon.svg, which the site
+# repository's site/scripts/render-icons.mjs writes from its kit/mark/k-mark.svg. That script renders the
+# three PNGs in assets/icon/, then runs `dart run icons_launcher:create` to make every size below. iOS takes
+# the alpha channel off itself.
 icons_launcher:
   image_path: "assets/icon/kantha-icon.png"
   platforms:
     android:
       enable: true
       image_path: "assets/icon/kantha-icon.png"
-      adaptive_background_color: "#F3EFE7"
+      adaptive_background_color: "#F1E9D6"
       adaptive_foreground_image: "assets/icon/kantha-foreground.png"
     ios:
       enable: true
