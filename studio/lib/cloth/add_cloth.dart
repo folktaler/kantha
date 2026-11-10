@@ -42,7 +42,8 @@ class _Quiet extends StatelessWidget {
 
 class AddCloth extends StatefulWidget {
   const AddCloth({super.key, required this.box, required this.shelf, required this.photos, required this.words,
-      required this.onClose, this.cropHeld, this.read = readPhoto, this.title, this.onManyAdded, this.boxName});
+      required this.onClose, this.cropHeld, this.read = readPhoto, this.title, this.onManyAdded, this.boxName,
+      this.groupCut});
   /* The box the pieces go into; null when she has none yet: her first photo makes it (spec 2026-10-07, decision 2). */
   final int? box;
   final Shelf shelf;
@@ -59,6 +60,11 @@ class AddCloth extends StatefulWidget {
   final void Function(int cloths, int pieces, int box)? onManyAdded;
   /* A box's name as she sees it ("Box 2", "Sample box"), for what went in. */
   final String Function(int box)? boxName;
+  /* How alike found pieces must be to be one cloth (groupsOf's cut, 0 to 1); null is the studio's own, groupCut.
+     Another app that uses this sheet may set its own. Such an app must ship, beside its index.html (its page base),
+     what the sheet loads on the web: finder_worker.js and measure_worker.js compiled from the studio's web/finder_worker.dart and web/measure_worker.dart, and
+     opencv_finder.js, which the finder's worker loads beside itself. */
+  final double? groupCut;
 
   @override
   State<AddCloth> createState() => _AddClothState();
@@ -226,7 +232,7 @@ class _AddClothState extends State<AddCloth> {
     FinderAnswer? found;
     try {
       found = await Future.any<FinderAnswer?>([
-        _finder!.find(photo).timeout(finderLongest), // any finder, however it is made
+        _finder!.find(photo, cut: widget.groupCut).timeout(finderLongest), // any finder, however it is made
         stop.future.then((_) => null),
       ]);
     } catch (e, s) {

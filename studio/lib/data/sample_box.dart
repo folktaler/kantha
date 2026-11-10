@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
 // The measuring of the Sample box's photos, loaded apart (deferred). The image package it uses is not deferred with it:
 // measure.dart, which shelf.dart imports, loads it with the studio.
 import 'sample_swatches.dart' deferred as swatches;
+import '../platform/assets.dart';
 import '../platform/deferred.dart';
 import 'shelf.dart';
 
@@ -61,7 +61,7 @@ Future<List<NewCloth>> measuredSampleCloth(
     {Future<ByteData> Function(String key)? read}) async {
   // All ten asked for at once, then awaited in order, not Future.wait: a bundle that answers at once (a
   // SynchronousFuture) leaves Future.wait's list empty.
-  final reads = [for (final s in sampleCloth) (read ?? rootBundle.load)('assets/sample/${s.file}')];
+  final reads = [for (final s in sampleCloth) (read ?? loadStudioAsset)('assets/sample/${s.file}')];
   final photos = <Uint8List>[];
   for (final r in reads) {
     final b = await r;

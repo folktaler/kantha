@@ -9,6 +9,7 @@
    frame does not name them. */
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
+import 'assets.dart';
 
 Future<void>? _publicSans, _malayalam;
 Future<List<ByteData>>? _publicSansFiles;
@@ -21,7 +22,7 @@ const _publicSansNames = ['PublicSans-Regular', 'PublicSans-Medium', 'PublicSans
 
 /* Public Sans's files, fetched and held in memory. The face is not made from them here. */
 Future<List<ByteData>> fetchPublicSans() => _publicSansFiles ??=
-    Future.wait([for (final f in _publicSansNames) rootBundle.load('assets/fonts/$f.ttf')])
+    Future.wait([for (final f in _publicSansNames) loadStudioAsset('assets/fonts/$f.ttf')])
         .catchError((Object e, StackTrace s) {
       _publicSansFiles = null;
       Error.throwWithStackTrace(e, s);
@@ -33,6 +34,16 @@ Future<void> loadPublicSans() => _publicSans ??= _register('Public Sans', fetchP
 Future<void> loadMalayalam() => _malayalam ??= _load('Noto Sans Malayalam',
     ['NotoSansMalayalam-Regular', 'NotoSansMalayalam-SemiBold', 'NotoSansMalayalam-Bold'], () => _malayalam = null);
 
+/* The theme's own faces, Geist and Newsreader, for an app that uses the studio as a package: the studio lists them as
+   fonts, so there they are named packages/kantha_studio/Geist and so on, and the theme (kPhoneFont, kSerifFont) does
+   not find them. Such an app calls this once at its start, after setting studioAssetPrefix. The studio never does:
+   its font manifest loads them. */
+Future<void> loadThemeFaces() => _themeFaces ??= Future.wait([
+      _load('Geist', ['Geist-Regular', 'Geist-Medium', 'Geist-SemiBold'], () => _themeFaces = null),
+      _load('Newsreader', ['Newsreader-Regular'], () => _themeFaces = null),
+    ]);
+Future<void>? _themeFaces;
+
 /* Lets go of Public Sans's held files and its face, so a test can fetch and load them again. */
 @visibleForTesting
 void forgetPublicSans() => _publicSans = _publicSansFiles = null;
@@ -41,7 +52,7 @@ void forgetPublicSans() => _publicSans = _publicSansFiles = null;
 Future<void> _load(String family, List<String> files, void Function() forget) {
   final loader = FontLoader(family);
   for (final f in files) {
-    loader.addFont(rootBundle.load('assets/fonts/$f.ttf'));
+    loader.addFont(loadStudioAsset('assets/fonts/$f.ttf'));
   }
   return loader.load().catchError((Object e, StackTrace s) {
     forget();
