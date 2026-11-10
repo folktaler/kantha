@@ -1,15 +1,85 @@
 /* The boxes the pattern rules (lib/solver/rules.dart, re-exported here) were tuned and checked on, read from the
-   studio's files: the Sample box's photos, the 47 factory cloths and the tuning pool. Run in studio/. */
+   studio's files (the Sample box's photos, the 47 factory cloths and the tuning pool), and one case run on a box. Run
+   in studio/. */
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:kantha_studio/data/numbers.dart' show busyOf, edgeOf;
 import 'package:kantha_studio/measure/measure.dart';
+import 'package:kantha_studio/solver/compile.dart';
 import 'package:kantha_studio/solver/fabrics.dart';
+import 'package:kantha_studio/solver/geometry.dart';
 import 'package:kantha_studio/solver/hue.dart';
+import 'package:kantha_studio/solver/layouts.dart';
 import 'package:kantha_studio/solver/rules.dart';
+import 'package:kantha_studio/solver/score.dart';
+import 'package:kantha_studio/solver/solve.dart';
 
 export 'package:kantha_studio/solver/rules.dart';
+
+// ---- Boxes. ----
+
+class Box {
+  const Box(this.name, this.fabrics, {this.heldOut = false});
+  final String name;
+  final List<Fabric> fabrics;
+  /* Never tuned on (see [heldOutBoxes]). */
+  final bool heldOut;
+  int get pieces => fabrics.fold(0, (a, f) => a + f.stock);
+
+  /* The box with enough pieces for a board of n squares: each cloth's count times the least whole k that gives at least
+     1.25 n pieces (k = 1 when the box already has them), so its proportions stay as they were. */
+  ({Pool pool, List<double?> edge, List<int> stock, List<int> members}) forBoard(int n) {
+    final k = math.max(1, (1.25 * n / pieces).ceil());
+    final p = poolOf([for (final f in fabrics) Fabric(id: f.id, name: f.name, lab: f.lab, busy: f.busy, edge: f.edge,
+        grain: f.grain, stock: f.stock * k)]);
+    return (pool: p.pool, edge: p.edge, stock: p.stock, members: [for (var i = 0; i < fabrics.length; i++) i]);
+  }
+}
+// ---- One case: a pattern, a box, a board, a seed. ----
+
+class Case {
+  Case(this.key, this.box, this.heldOut, this.size, this.seed, this.fills, this.why, this.solved, this.random, this.sorted,
+      this.grid, this.colours, this.millis);
+  final LayoutKey key;
+  final String box;
+  final bool heldOut;
+  final BoardSize size;
+  final int seed;
+  /* False when the studio refuses to fill the pattern from this box (it fades the tile); then nothing is judged. */
+  final bool fills;
+  final String? why;
+  final Judged? solved, random, sorted;
+  final List<int>? grid;
+  final List<Lab>? colours;
+  final int millis;
+  Outcome get outcome => fills ? solved!.rule.outcome : Outcome.cannot;
+}
+
+Case runCase(LayoutKey key, Box box, BoardSize g, int seed, {SolveOptions? options}) {
+  final n = g.rows * g.cols, b = box.forBoard(n);
+  final m = modelFor(key, ObjectiveInput(pool: b.pool, edge: b.edge, members: b.members, mount: Mount.none, stock: b.stock, size: g));
+  Case refused(String why) => Case(key, box.name, box.heldOut, g, seed, false, why, null, null, null, null, null, 0);
+  if (!m.fills) return refused(m.why?.name ?? 'refused');
+  final prep = prepare(m.pool);
+  final sw = Stopwatch()..start();
+  final s = solve(m.obj, prep, b.stock, b.members, options ?? SolveOptions(seed: seed));
+  final ms = sw.elapsedMilliseconds;
+  if (s == null) return refused('no solve');
+  final rand = randomGrid(b.stock, b.members, n, seed * 7919 + n);
+  final sorted = sortedGrid(key, m, b.stock, b.members);
+  return Case(key, box.name, box.heldOut, g, seed, true, null, judge(key, m, s.grid, b.stock, b.members, g),
+      judge(key, m, rand, b.stock, b.members, g), sorted == null ? null : judge(key, m, sorted, b.stock, b.members, g),
+      s.grid, b.pool.lab, ms);
+}
+
+/* The studio's pattern names, for the table (messages/en.json's titles). */
+const Map<LayoutKey, String> patternName = {
+  LayoutKey.contrast: 'Chess', LayoutKey.gradient: 'Gradient', LayoutKey.medallion: 'Centre', LayoutKey.wave: 'Wave',
+  LayoutKey.framed: 'Border', LayoutKey.cross: 'Cross', LayoutKey.spectrum: 'Spectrum', LayoutKey.boro: 'Mixed',
+  LayoutKey.blocks: 'Blocks', LayoutKey.medallionPrint: 'Ripple', LayoutKey.heart: 'Heart', LayoutKey.stripes: 'Stripes',
+  LayoutKey.zigzag: 'Zigzag', LayoutKey.chain: 'Chain', LayoutKey.diamond: 'Diamond',
+};
 
 double _d(Object? v) => (v as num).toDouble();
 

@@ -19,12 +19,10 @@ import 'dart:typed_data';
 import 'package:material_color_utilities/material_color_utilities.dart';
 import 'cam16.dart';
 import 'compile.dart';
-import 'fabrics.dart';
 import 'geometry.dart';
 import 'hue.dart';
 import 'layouts.dart';
 import 'score.dart';
-import 'solve.dart';
 import 'spec.dart';
 
 // ---- The thresholds, fixed on 1 November 2026 before any run of these rules. ----
@@ -236,9 +234,14 @@ double? extremeMean(List<double> l, List<int> stock, List<int> members, int size
 
 enum Outcome { pass, fail, cannot }
 
-/* One measured quantity of a rule: its value on the board, its bar, and the best the box's pieces can give (`perfect`;
-   for a quantity that must stay under its bar, perfect is below the bar). For a caller grading how far a board clears
-   its bar; no outcome depends on it. */
+/* One measured quantity of a rule: its value on the board, its bar, and `perfect`, the rule's own aim for it: what the
+   pattern asks for when it is met in full, fixed by the rule, never what a box's pieces can reach (owner, 10 November
+   2026). For a quantity that must stay under its bar, perfect is below the bar; where perfect equals the bar the
+   quantity is met or not. The aims: Somers' d 1; separation the whole light-to-dark gap the target asks for (the bar
+   is [separationShare] of it); the median seam and the ground lighter than the heart 2 × [seamL], 50 L*, a design
+   choice with no published source; every share that should be whole 1 (checker, own block, heart its colour, ring one
+   family); the ground's share of the heart's colour 0. For a caller grading how far a board clears its bar; no
+   outcome depends on it. */
 typedef Term = ({String name, double value, double bar, double perfect});
 
 class Verdict {
@@ -247,6 +250,7 @@ class Verdict {
   /* The rule's main statistic (Somers' d, a share, a consistency, a seam gap). */
   final double stat;
   final String detail;
+  /* Empty only when the outcome is cannot; a pass or a fail always carries at least one. */
   final List<Term> terms;
   bool get passes => outcome == Outcome.pass;
 }
@@ -270,10 +274,14 @@ Map<double, int> _byValue(List<double> v, List<int> stock, List<int> members) {
   return out;
 }
 
-/* A lightness pattern: Somers' d of lightness given the target, and the light-third-against-dark-third separation. */
-Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members, {bool apart = false}) {
-  final t = m.obj.targetL!, w = m.obj.wL!, l = m.pool.lightness;
+/* A lightness pattern: Somers' d of lightness given the target, and the light-third-against-dark-third separation.
+   Public so a caller can judge a board's lightness against its pattern's own target beside rules of its own. A model
+   with no lightness target, or none weighted, cannot be judged by it. */
+Verdict lightnessRule(Compiled m, List<int> grid, List<int> stock, List<int> members, {bool apart = false}) {
+  final t = m.obj.targetL, w = m.obj.wL, l = m.pool.lightness;
+  if (t == null || w == null) return _cannot('no lightness target');
   final idx = [for (var i = 0; i < grid.length; i++) if (w[i] > 0) i];
+  if (idx.isEmpty) return _cannot('no square has a lightness target');
   final lt = [for (final i in idx) t[i]], ll = [for (final i in idx) l[grid[i]]];
   final lo = lt.reduce(math.min), hi = lt.reduce(math.max), span = hi - lo;
   if (span == 0) return _cannot('the box has one lightness');
@@ -288,14 +296,12 @@ Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members, {bo
   if (can < separationShare * want) {
     return _cannot('at most ${can.toStringAsFixed(1)} of separation from its pieces, needs ${(separationShare * want).toStringAsFixed(1)}');
   }
-  var cap = can;
   // With the no-same-neighbour rule, a cloth takes at most an independent set of each third.
   if (apart) {
     final topSquares = [for (final k in top) idx[k]], bottomSquares = [for (final k in bottom) idx[k]];
     final hiMean = extremeMean(l, stock, members, top.length, darkest: false, cap: apartCap(topSquares, m.obj));
     final loMean = extremeMean(l, stock, members, bottom.length, darkest: true, cap: apartCap(bottomSquares, m.obj));
     final apartCan = hiMean == null || loMean == null ? double.negativeInfinity : hiMean - loMean;
-    cap = math.min(cap, apartCan);
     if (apartCan < separationShare * want) {
       return _cannot('at most ${apartCan.toStringAsFixed(1)} of separation with no cloth beside itself, needs '
           '${(separationShare * want).toStringAsFixed(1)}');
@@ -308,14 +314,9 @@ Verdict _map(Compiled m, List<int> grid, List<int> stock, List<int> members, {bo
   return Verdict(ok ? Outcome.pass : Outcome.fail, d,
       'd ${d.toStringAsFixed(2)}, separation ${got.toStringAsFixed(1)} of ${want.toStringAsFixed(1)}', [
     (name: 'd', value: d, bar: minSomersD, perfect: 1),
-    (name: 'separation', value: got, bar: separationShare * want, perfect: cap),
+    (name: 'separation', value: got, bar: separationShare * want, perfect: want),
   ]);
 }
-
-/* [_map], the lightness rule, for a caller judging a board's lightness against the pattern's own target with rules of
-   its own beside it; no verdict here uses it. */
-Verdict lightnessRule(Compiled m, List<int> grid, List<int> stock, List<int> members, {bool apart = false}) =>
-    _map(m, grid, stock, members, apart: apart);
 
 /* Chess and Mixed. The bound: a seam reaches [seamL] only between two pieces that far apart in lightness, so a square
    whose cloth has no such partner in the box spoils every seam it touches, at least one each; if those squares must
@@ -352,9 +353,8 @@ Verdict _seamRule(Compiled m, List<int> grid, List<int> stock, List<int> members
   final median = _median(gaps), checker = (pos - neg).abs() / pairs.length;
   final detail = 'median seam ${median.toStringAsFixed(1)} (needs ${seamL.round()}), checker ${checker.toStringAsFixed(2)}';
   final ok = median >= seamL && (!chess || checker >= checkerConsistency);
-  final ls = [for (final i in have) l[i]];
   return Verdict(ok ? Outcome.pass : Outcome.fail, chess ? checker : median, detail, [
-    (name: 'median seam', value: median, bar: seamL, perfect: ls.reduce(math.max) - ls.reduce(math.min)),
+    (name: 'median seam', value: median, bar: seamL, perfect: 2 * seamL),
     if (chess) (name: 'checker', value: checker, bar: checkerConsistency, perfect: 1),
   ]);
 }
@@ -371,7 +371,8 @@ Verdict _spectrum(Compiled m, List<int> grid, List<int> stock, List<int> members
   final cut = checkCut(hues.values.toList());
   final idx = [for (var i = 0; i < grid.length; i++) if (coloured(grid[i])) i];
   if (idx.length < spectrumMinSquares) {
-    return Verdict(Outcome.fail, double.nan, '${idx.length} coloured squares');
+    return Verdict(Outcome.fail, double.nan, '${idx.length} coloured squares',
+        [(name: 'coloured squares', value: idx.length.toDouble(), bar: spectrumMinSquares.toDouble(), perfect: spectrumMinSquares.toDouble())]);
   }
   final d = somersD([for (final i in idx) -onCheckLine(hues[grid[i]]!, cut)], [for (final i in idx) (i % cols).toDouble()]);
   return Verdict(d >= minSomersD ? Outcome.pass : Outcome.fail, d, 'd ${d.toStringAsFixed(2)} over ${idx.length} coloured squares',
@@ -393,7 +394,7 @@ Verdict _blocks(Compiled m, List<int> grid, List<int> stock, List<int> members) 
   for (var i = 0; i < grid.length; i++) { if (nearest(grid[i], t[i])) near++; }
   final share = near / grid.length;
   return Verdict(share >= blockShare ? Outcome.pass : Outcome.fail, share, '${(100 * share).round()}% nearest their own block’s colour',
-      [(name: 'own block', value: share, bar: blockShare, perfect: reach / grid.length)]);
+      [(name: 'own block', value: share, bar: blockShare, perfect: 1)]);
 }
 
 /* Heart. The bounds: enough pieces of the heart's colour for the heart, enough of other colours for the ground, and
@@ -428,9 +429,9 @@ Verdict _heart(Compiled m, List<int> grid, List<int> stock, List<int> members, B
   final ok = inHeart >= heartShare && inGround <= groundShare && contrast >= seamL;
   return Verdict(ok ? Outcome.pass : Outcome.fail, inHeart, 'heart ${(100 * inHeart).round()}% its colour, ground '
       '${(100 * inGround).round()}%, ground lighter by ${contrast.toStringAsFixed(1)} (needs ${seamL.round()})', [
-    (name: 'heart its colour', value: inHeart, bar: heartShare, perfect: math.min(1, nearPieces / heart.length)),
+    (name: 'heart its colour', value: inHeart, bar: heartShare, perfect: 1),
     (name: 'ground its colour', value: inGround, bar: groundShare, perfect: 0),
-    (name: 'ground lighter', value: contrast, bar: seamL, perfect: groundMost - heartLeast),
+    (name: 'ground lighter', value: contrast, bar: seamL, perfect: 2 * seamL),
   ]);
 }
 
@@ -459,7 +460,7 @@ Verdict _chain(Compiled m, List<int> grid, List<int> stock, List<int> members, B
           '${(separationShare * want).toStringAsFixed(1)}');
     }
   }
-  final v = _map(m, grid, stock, members);
+  final v = lightnessRule(m, grid, stock, members);
   if (v.outcome == Outcome.cannot) return v;
   final kinds = {for (final i in links) grid[i]}.length;
   return Verdict(v.passes && kinds == 1 ? Outcome.pass : Outcome.fail, v.stat, '${v.detail}, links of $kinds cloth', v.terms);
@@ -468,11 +469,11 @@ Verdict _chain(Compiled m, List<int> grid, List<int> stock, List<int> members, B
 /* Diamond as Sunshine and Shadow (owner, 1 November 2026): each ring one colour family, dark, middle and light outward,
    each family one colour at one lightness (grouped by CAM16-UCS ΔE′, J′a′b′). A ring is one family when at least
    [blockShare] of its squares are nearer (ΔE′) to its own family's colour than to any other family's; every ring
-   must be. The lightness order is [_map]'s. A Diamond with no family per ring (before 1 November 2026) fails. The
+   must be. The lightness order is [lightnessRule]'s. A Diamond with no family per ring (before 1 November 2026) fails. The
    bound: as Blocks', over the rings. */
 Verdict _diamond(Compiled m, List<int> grid, List<int> stock, List<int> members, BoardSize g) {
   final t = m.obj.targetColour, lab = m.pool.lab;
-  final v = _map(m, grid, stock, members, apart: members.length >= apartFrom);
+  final v = lightnessRule(m, grid, stock, members, apart: members.length >= apartFrom);
   if (v.outcome == Outcome.cannot) return v;
   if (t == null) return Verdict(Outcome.fail, 0, '${v.detail}, no colour family per ring', v.terms);
   final targets = t.toSet().toList();
@@ -508,8 +509,8 @@ Verdict ruleFor(LayoutKey key, Compiled m, List<int> grid, List<int> stock, List
     case LayoutKey.medallionPrint:
       final kinds = {for (final i in members) m.pool.lightness[i]}.length;
       if (kinds < rippleKinds) return _cannot('$kinds kinds of busy');
-      return _map(m, grid, stock, members, apart: members.length >= apartFrom);
-    default: return _map(m, grid, stock, members, apart: members.length >= apartFrom);
+      return lightnessRule(m, grid, stock, members, apart: members.length >= apartFrom);
+    default: return lightnessRule(m, grid, stock, members, apart: members.length >= apartFrom);
   }
 }
 
@@ -575,70 +576,6 @@ List<int>? sortedGrid(LayoutKey key, Compiled m, List<int> stock, List<int> memb
       return _deal(m.obj.targetL!, _spread(pieces, (f) => l[f], n));
   }
 }
-
-// ---- Boxes. ----
-
-class Box {
-  const Box(this.name, this.fabrics, {this.heldOut = false});
-  final String name;
-  final List<Fabric> fabrics;
-  /* Never tuned on (see heldOutBoxes in test/solver/pattern_rules.dart). */
-  final bool heldOut;
-  int get pieces => fabrics.fold(0, (a, f) => a + f.stock);
-
-  /* The box with enough pieces for a board of n squares: each cloth's count times the least whole k that gives at least
-     1.25 n pieces (k = 1 when the box already has them), so its proportions stay as they were. */
-  ({Pool pool, List<double?> edge, List<int> stock, List<int> members}) forBoard(int n) {
-    final k = math.max(1, (1.25 * n / pieces).ceil());
-    final p = poolOf([for (final f in fabrics) Fabric(id: f.id, name: f.name, lab: f.lab, busy: f.busy, edge: f.edge,
-        grain: f.grain, stock: f.stock * k)]);
-    return (pool: p.pool, edge: p.edge, stock: p.stock, members: [for (var i = 0; i < fabrics.length; i++) i]);
-  }
-}
-// ---- One case: a pattern, a box, a board, a seed. ----
-
-class Case {
-  Case(this.key, this.box, this.heldOut, this.size, this.seed, this.fills, this.why, this.solved, this.random, this.sorted,
-      this.grid, this.colours, this.millis);
-  final LayoutKey key;
-  final String box;
-  final bool heldOut;
-  final BoardSize size;
-  final int seed;
-  /* False when the studio refuses to fill the pattern from this box (it fades the tile); then nothing is judged. */
-  final bool fills;
-  final String? why;
-  final Judged? solved, random, sorted;
-  final List<int>? grid;
-  final List<Lab>? colours;
-  final int millis;
-  Outcome get outcome => fills ? solved!.rule.outcome : Outcome.cannot;
-}
-
-Case runCase(LayoutKey key, Box box, BoardSize g, int seed, {SolveOptions? options}) {
-  final n = g.rows * g.cols, b = box.forBoard(n);
-  final m = modelFor(key, ObjectiveInput(pool: b.pool, edge: b.edge, members: b.members, mount: Mount.none, stock: b.stock, size: g));
-  Case refused(String why) => Case(key, box.name, box.heldOut, g, seed, false, why, null, null, null, null, null, 0);
-  if (!m.fills) return refused(m.why?.name ?? 'refused');
-  final prep = prepare(m.pool);
-  final sw = Stopwatch()..start();
-  final s = solve(m.obj, prep, b.stock, b.members, options ?? SolveOptions(seed: seed));
-  final ms = sw.elapsedMilliseconds;
-  if (s == null) return refused('no solve');
-  final rand = randomGrid(b.stock, b.members, n, seed * 7919 + n);
-  final sorted = sortedGrid(key, m, b.stock, b.members);
-  return Case(key, box.name, box.heldOut, g, seed, true, null, judge(key, m, s.grid, b.stock, b.members, g),
-      judge(key, m, rand, b.stock, b.members, g), sorted == null ? null : judge(key, m, sorted, b.stock, b.members, g),
-      s.grid, b.pool.lab, ms);
-}
-
-/* The studio's pattern names, for the table (messages/en.json's titles). */
-const Map<LayoutKey, String> patternName = {
-  LayoutKey.contrast: 'Chess', LayoutKey.gradient: 'Gradient', LayoutKey.medallion: 'Centre', LayoutKey.wave: 'Wave',
-  LayoutKey.framed: 'Border', LayoutKey.cross: 'Cross', LayoutKey.spectrum: 'Spectrum', LayoutKey.boro: 'Mixed',
-  LayoutKey.blocks: 'Blocks', LayoutKey.medallionPrint: 'Ripple', LayoutKey.heart: 'Heart', LayoutKey.stripes: 'Stripes',
-  LayoutKey.zigzag: 'Zigzag', LayoutKey.chain: 'Chain', LayoutKey.diamond: 'Diamond',
-};
 
 /* A plain pattern's lightness target map (its LFromT) on a board, 0 the darkest. */
 Float64List targetMap(LayoutKey key, BoardSize g) => fieldCells((layouts[key]!.rules[0]!.l! as LFromT).t, g);
