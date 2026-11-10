@@ -34,6 +34,16 @@ Future<void> loadPublicSans() => _publicSans ??= _register('Public Sans', fetchP
 Future<void> loadMalayalam() => _malayalam ??= _load('Noto Sans Malayalam',
     ['NotoSansMalayalam-Regular', 'NotoSansMalayalam-SemiBold', 'NotoSansMalayalam-Bold'], () => _malayalam = null);
 
+/* The theme's own faces, Geist and Newsreader, for an app that uses the studio as a package: the studio lists them as
+   fonts, so there they are named packages/kantha_studio/Geist and so on, and the theme (kPhoneFont, kSerifFont) does
+   not find them. Such an app calls this once at its start, after setting studioAssetPrefix. The studio never does:
+   its font manifest loads them. */
+Future<void> loadThemeFaces() => _themeFaces ??= Future.wait([
+      _load('Geist', ['Geist-Regular', 'Geist-Medium', 'Geist-SemiBold'], () => _themeFaces = null),
+      _load('Newsreader', ['Newsreader-Regular'], () => _themeFaces = null),
+    ]);
+Future<void>? _themeFaces;
+
 /* Lets go of Public Sans's held files and its face, so a test can fetch and load them again. */
 @visibleForTesting
 void forgetPublicSans() => _publicSans = _publicSansFiles = null;

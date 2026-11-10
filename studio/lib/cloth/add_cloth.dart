@@ -60,8 +60,10 @@ class AddCloth extends StatefulWidget {
   final void Function(int cloths, int pieces, int box)? onManyAdded;
   /* A box's name as she sees it ("Box 2", "Sample box"), for what went in. */
   final String Function(int box)? boxName;
-  /* How alike found pieces must be to be one cloth (groupsOf's cut); null is the studio's own, groupCut. Another app
-     that uses this sheet may set its own. */
+  /* How alike found pieces must be to be one cloth (groupsOf's cut, 0 to 1); null is the studio's own, groupCut.
+     Another app that uses this sheet may set its own. Such an app must ship, beside its index.html (its page base),
+     what the sheet loads on the web: finder_worker.js and measure_worker.js compiled from the studio's web/finder_worker.dart and web/measure_worker.dart, and
+     opencv_finder.js, which the finder's worker loads beside itself. */
   final double? groupCut;
 
   @override

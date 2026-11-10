@@ -19,8 +19,8 @@ import 'package:web/web.dart' as web;
    - {id, cells}: cells, pictures of single squares (ArrayBuffers). The answer: a group number per picture,
      each measured on its middle 80 %.
    The studio's Add a piece sheet (lib/finder/finder_runner_web.dart) asks with the picture it already read:
-   - {id, pixels, width, height, groupCut}: the picture as RGBA bytes, and the grouping's cut (groupsOf), null for
-     groupCut. The answer as for photo (no crops), with `tiny` (FoundSquares.tiny); the picture and what the finder
+   - {id, pixels, width, height, groupCut}: the picture as RGBA bytes, and the grouping's cut (groupsOf), 0 to 1; none,
+     or one out of range, is groupCut. The answer as for photo (no crops), with `tiny` (FoundSquares.tiny); the picture and what the finder
      read of it are kept for the asks below.
    - {id, snap: [x, y]}: the square around a tap on the kept picture, in working pixels, or null.
    - {id, cut: [[x0, y0, … y3], …]}: each square (working pixels) cut from the kept picture and straightened, at
@@ -198,7 +198,7 @@ void _findPixels(OpenCvJs cv, _Ask ask) {
   try {
     f = finder.find(photo);
     try {
-      groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f), cut: ask.groupCut ?? groupCut);
+      groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f), cut: _cutOf(ask.groupCut));
       groupMs = clock.elapsedMilliseconds;
       look = _look(cv, f);
       lookMs = clock.elapsedMilliseconds - groupMs;
@@ -217,6 +217,10 @@ void _findPixels(OpenCvJs cv, _Ask ask) {
     'squares': [for (final q in f.squares) q], 'groups': groups, 'tiny': f.tiny, 'look': ?look, 'lookMs': lookMs, 'totalMs': clock.elapsedMilliseconds,
   }).toJS);
 }
+
+/// The grouping's cut asked for: a number from 0 to 1 (a mean Bhattacharyya distance); anything else, or none, is
+/// the studio's own, groupCut.
+double _cutOf(double? asked) => asked != null && asked >= 0 && asked <= 1 ? asked : groupCut;
 
 void _snap(_Ask ask) {
   final at = ask.snap!.toDart;

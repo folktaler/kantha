@@ -1,32 +1,13 @@
 /* One of the studio's own files (pubspec.yaml's assets, `assets/…`), read from the app's files. In the studio its key
-   is its path. In an app that uses the studio as a package, Flutter keeps a package's files under
-   packages/kantha_studio/, so a read there finds it under that name instead. Which one answers is kept once known. */
-import 'package:flutter/foundation.dart' show visibleForTesting;
+   is its path. An app that uses the studio as a package has the studio's files under packages/kantha_studio/ instead,
+   and says so once at its start: studioAssetPrefix = studioAsPackage. The studio itself never sets it. */
 import 'package:flutter/services.dart';
 
-const _asPackage = 'packages/kantha_studio/';
-String? _prefix;
+/* What an app that uses the studio as a package sets studioAssetPrefix to. */
+const studioAsPackage = 'packages/kantha_studio/';
 
-Future<ByteData> loadStudioAsset(String path, {AssetBundle? bundle}) async {
-  final from = bundle ?? rootBundle;
-  final known = _prefix;
-  if (known != null) return from.load('$known$path');
-  try {
-    final b = await from.load(path);
-    _prefix = '';
-    return b;
-  } catch (e, s) {
-    try {
-      final b = await from.load('$_asPackage$path');
-      _prefix = _asPackage;
-      return b;
-    } catch (_) {
-      // Neither: the studio's own error, as it was before this fallback.
-      Error.throwWithStackTrace(e, s);
-    }
-  }
-}
+/* Put before every studio file's path: '' in the studio. */
+String studioAssetPrefix = '';
 
-/* Forgets which name answered, so a test can start again. */
-@visibleForTesting
-void forgetStudioAssetPrefix() => _prefix = null;
+Future<ByteData> loadStudioAsset(String path, {AssetBundle? bundle}) =>
+    (bundle ?? rootBundle).load('$studioAssetPrefix$path');
