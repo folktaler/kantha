@@ -24,8 +24,9 @@ class FinderAnswer {
 }
 
 abstract interface class PieceFinder {
-  /* The pieces in `photo`. The photo is kept for snap and cut until the next find, or forget. */
-  Future<FinderAnswer> find(PickedPhoto photo);
+  /* The pieces in `photo`. The photo is kept for snap and cut until the next find, or forget. `cut` is the grouping's
+     cut (groupsOf); null is the studio's own, groupCut. */
+  Future<FinderAnswer> find(PickedPhoto photo, {double? cut});
   /* The piece around a tap at `at` (picture pixels) on the kept photo, or null when nothing there looks like one. */
   Future<Float32List?> snap(Offset at);
   /* Each square cut from the kept photo and straightened at its own size, as side × side RGBA pixels, which

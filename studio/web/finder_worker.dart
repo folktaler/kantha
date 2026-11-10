@@ -19,8 +19,9 @@ import 'package:web/web.dart' as web;
    - {id, cells}: cells, pictures of single squares (ArrayBuffers). The answer: a group number per picture,
      each measured on its middle 80 %.
    The studio's Add a piece sheet (lib/finder/finder_runner_web.dart) asks with the picture it already read:
-   - {id, pixels, width, height}: the picture as RGBA bytes. The answer as for photo (no crops), with `tiny`
-     (FoundSquares.tiny); the picture and what the finder read of it are kept for the asks below.
+   - {id, pixels, width, height, groupCut}: the picture as RGBA bytes, and the grouping's cut (groupsOf), null for
+     groupCut. The answer as for photo (no crops), with `tiny` (FoundSquares.tiny); the picture and what the finder
+     read of it are kept for the asks below.
    - {id, snap: [x, y]}: the square around a tap on the kept picture, in working pixels, or null.
    - {id, cut: [[x0, y0, … y3], …]}: each square (working pixels) cut from the kept picture and straightened, at
      its own size; the answer is not JSON but {id, sides, rgba}, rgba an ArrayBuffer per square, handed over.
@@ -42,6 +43,7 @@ extension type _Ask._(JSObject _) implements JSObject {
   external JSArrayBuffer? get pixels;
   external int? get width;
   external int? get height;
+  external double? get groupCut;
   external JSArray<JSNumber>? get snap;
   external JSArray<JSArray<JSNumber>>? get cut;
   external bool? get forget;
@@ -196,7 +198,7 @@ void _findPixels(OpenCvJs cv, _Ask ask) {
   try {
     f = finder.find(photo);
     try {
-      groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f));
+      groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f), cut: ask.groupCut ?? groupCut);
       groupMs = clock.elapsedMilliseconds;
       look = _look(cv, f);
       lookMs = clock.elapsedMilliseconds - groupMs;

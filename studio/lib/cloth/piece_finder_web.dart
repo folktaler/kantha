@@ -42,7 +42,7 @@ class _WorkerFinder implements PieceFinder {
   }
 
   @override
-  Future<FinderAnswer> find(PickedPhoto photo) async {
+  Future<FinderAnswer> find(PickedPhoto photo, {double? cut}) async {
     final picture = photo.picture as web.ImageBitmap;
     final (canvas, context) = canvasOf(photo.width, photo.height);
     context.drawImage(picture, 0, 0);
@@ -51,7 +51,8 @@ class _WorkerFinder implements PieceFinder {
     final m = await _ask(JSObject()
       ..['pixels'] = pixels
       ..['width'] = photo.width.toJS
-      ..['height'] = photo.height.toJS, [pixels]) as Map<String, dynamic>;
+      ..['height'] = photo.height.toJS
+      ..['groupCut'] = cut?.toJS, [pixels]) as Map<String, dynamic>;
     final scale = _scale = (m['scale'] as num).toDouble();
     return FinderAnswer(
       squares: [

@@ -37,10 +37,14 @@ class FakeFinder implements PieceFinder {
   final snaps = <Offset>[];
   final cuts = <int>[];
   var forgot = 0, finds = 0;
+  /* The grouping's cut the last find was asked with. */
+  double? askedCut;
 
   @override
-  Future<FinderAnswer> find(PickedPhoto photo) async {
+  Future<FinderAnswer> find(PickedPhoto photo, {double? cut}) async {
     finds++;
+    askedCut = cut;
+
     if (fails) throw StateError('the worker did not load');
     return findHeld?.future ?? answer;
   }
@@ -627,6 +631,23 @@ void main() {
         find.byKey(const ValueKey('pieces-photo')).evaluate().isNotEmpty);
     expect(find.byKey(const ValueKey('pieces-photo')), findsOneWidget);
     expect(find.text(wait), findsNothing);
+  });
+
+  testWidgets('the studio\'s sheet asks the finder for its own cut; a sheet given a cut asks for that one', (tester) async {
+    await openAdd(tester);
+    await pick(tester);
+    expect(finder.finds, 1);
+    expect(finder.askedCut, isNull, reason: 'null is the studio\'s own, groupCut');
+
+    final shelf = Shelf(memoryDb());
+    final box = (await tester.runAsync(shelf.makeBox))!;
+    await tester.pumpWidget(MaterialApp(localizationsDelegates: const [L.delegate], supportedLocales: L.supportedLocales,
+        home: Scaffold(body: SingleChildScrollView(child: AddCloth(box: box, shelf: shelf, photos: FixturePhotos(),
+            words: lookupL(const Locale('en')), onClose: () {}, groupCut: 0.46)))));
+    await tester.tap(find.text('Photo of the pieces'));
+    await letWork(tester, done: () => find.byKey(const ValueKey('pieces-photo')).evaluate().isNotEmpty);
+    expect(finder.finds, 2);
+    expect(finder.askedCut, 0.46);
   });
 
   testWidgets('a tap still snapping when she presses Next adds nothing she did not see', (tester) async {

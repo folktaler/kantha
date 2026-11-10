@@ -9,6 +9,7 @@
    frame does not name them. */
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
+import 'assets.dart';
 
 Future<void>? _publicSans, _malayalam;
 Future<List<ByteData>>? _publicSansFiles;
@@ -21,7 +22,7 @@ const _publicSansNames = ['PublicSans-Regular', 'PublicSans-Medium', 'PublicSans
 
 /* Public Sans's files, fetched and held in memory. The face is not made from them here. */
 Future<List<ByteData>> fetchPublicSans() => _publicSansFiles ??=
-    Future.wait([for (final f in _publicSansNames) rootBundle.load('assets/fonts/$f.ttf')])
+    Future.wait([for (final f in _publicSansNames) loadStudioAsset('assets/fonts/$f.ttf')])
         .catchError((Object e, StackTrace s) {
       _publicSansFiles = null;
       Error.throwWithStackTrace(e, s);
@@ -41,7 +42,7 @@ void forgetPublicSans() => _publicSans = _publicSansFiles = null;
 Future<void> _load(String family, List<String> files, void Function() forget) {
   final loader = FontLoader(family);
   for (final f in files) {
-    loader.addFont(rootBundle.load('assets/fonts/$f.ttf'));
+    loader.addFont(loadStudioAsset('assets/fonts/$f.ttf'));
   }
   return loader.load().catchError((Object e, StackTrace s) {
     forget();
