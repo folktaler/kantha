@@ -62,17 +62,17 @@ class FinderSession {
   /// The square around a tap at [x], [y] on the kept picture, in working pixels, or null.
   Float32List? snap(double x, double y) => _finder?.snap(x, y);
 
-  /// Each square (corners in working pixels) cut from the kept picture and straightened at its own size, as
-  /// side x side RGBA pixels.
-  List<Uint8List> cut(List<Float32List> squares) {
+  /// Each square (corners in working pixels) cut from the kept picture and straightened at its own size: the side,
+  /// and side x side RGBA pixels.
+  List<(int, Uint8List)> cut(List<Float32List> squares) {
     final photo = _kept;
     if (photo == null) throw StateError('no picture kept');
-    final out = <Uint8List>[];
+    final out = <(int, Uint8List)>[];
     for (final corners in squares) {
       final side = cropSide(corners, _keptScale);
       final cell = cv.warpQuad(photo, Float32List.fromList([for (final v in corners) v / _keptScale]), side);
       final rgba = cv.cvtColor(cell, CvColour.bgrToRgba);
-      out.add(cv.bytes(rgba));
+      out.add((side, cv.bytes(rgba)));
       rgba.dispose();
       cell.dispose();
     }

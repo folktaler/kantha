@@ -19,19 +19,23 @@ class _NativeMat implements CvMat {
 }
 
 class _NativeContours implements CvContours {
-  _NativeContours(this._v, this._hierarchy) : length = _v.length;
+  _NativeContours(this._v, this._hierarchy) : length = _v.length, _each = List.filled(_v.length, null);
   final cv.Contours _v;
   final cv.VecVec4i _hierarchy;
   @override
   final int length;
+  /* Each contour read once. opencv_dart's _v[i] allocates a small native handle onto the contour every time, and it
+     cannot be disposed (that would free the contour inside _v), so it is read once and kept. */
+  final List<cv.VecPoint?> _each;
+  cv.VecPoint _at(int i) => _each[i] ??= _v[i];
 
   @override
-  Int32List points(int i) => _ints(_v[i]);
+  Int32List points(int i) => _ints(_at(i));
   @override
-  double arcLength(int i) => cv.arcLength(_v[i], true);
+  double arcLength(int i) => cv.arcLength(_at(i), true);
   @override
   Int32List approxPolyDP(int i, double epsilon) {
-    final out = cv.approxPolyDP(_v[i], epsilon, true);
+    final out = cv.approxPolyDP(_at(i), epsilon, true);
     final p = _ints(out);
     out.dispose();
     return p;
@@ -76,9 +80,19 @@ class OpenCvNative implements FinderCv {
   cv.Mat _m(CvMat m) => (m as _NativeMat).m;
   CvMat _wrap(cv.Mat m) => _NativeMat(m);
 
+  /// A width x height Mat holding [bytes], which must be exactly its size: checked before OpenCV allocates anything.
   cv.Mat _filled(int width, int height, cv.MatType type, Uint8List bytes) {
+    final size = width * height * type.channels;
+    if (width <= 0 || height <= 0 || bytes.length != size) {
+      throw ArgumentError('$width x $height x ${type.channels} needs $size bytes, not ${bytes.length}');
+    }
     final m = cv.Mat.create(rows: height, cols: width, type: type);
-    m.data.setAll(0, bytes);
+    try {
+      m.data.setAll(0, bytes);
+    } catch (_) {
+      m.dispose();
+      rethrow;
+    }
     return m;
   }
 

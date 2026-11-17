@@ -31,6 +31,8 @@ class _IsolateFinder implements PieceFinder {
   /* The isolate and its port, once started; null when it has gone (stopped, or it failed): the next ask starts
      another. */
   Future<(Isolate, SendPort, ReceivePort)>? _running;
+  /* Done when the isolate last let go has exited, so a new one starts only then: one OpenCV session at a time. */
+  Future<void> _exited = Future.value();
   final _waiting = <int, Completer<Object?>>{};
   int _next = 0;
   /* The working picture's size over the picture's, of the photo the isolate keeps. */
@@ -42,7 +44,9 @@ class _IsolateFinder implements PieceFinder {
   Future<(Isolate, SendPort, ReceivePort)> _started() {
     final running = _running;
     if (running != null) return running;
-    final port = ReceivePort(), ready = Completer<SendPort>();
+    final port = ReceivePort(), ready = Completer<SendPort>(), exited = Completer<void>();
+    final before = _exited;
+    _exited = exited.future;
     late final Future<(Isolate, SendPort, ReceivePort)> me;
     port.listen((m) {
       switch (m) {
@@ -52,18 +56,24 @@ class _IsolateFinder implements PieceFinder {
           _waiting.remove(id)?.complete(answer);
         case (int id, String error, String stack):
           _waiting.remove(id)?.completeError(StateError('finder: $error'), StackTrace.fromString(stack));
-        default: // it has gone, or failed outside an ask: whatever it held fails, and the next ask starts another
+        default: // it has exited (null), or failed outside an ask: whatever it held fails, and the next ask starts another
+          if (m == null) {
+            port.close();
+            if (!exited.isCompleted) exited.complete();
+          }
           if (identical(_running, me)) _gone();
           if (!ready.isCompleted) ready.completeError(StateError('finder: the isolate did not start'));
       }
     });
     me = () async {
       try {
+        await before.timeout(wait, onTimeout: () {}); // one that never exits does not hold the finder up for good
         final isolate = await Isolate.spawn(_finderMain, port.sendPort,
             onExit: port.sendPort, onError: port.sendPort, debugName: 'finder');
         return (isolate, await ready.future, port);
       } catch (_) {
         port.close();
+        if (!exited.isCompleted) exited.complete();
         if (identical(_running, me)) _running = null;
         rethrow;
       }
@@ -71,14 +81,12 @@ class _IsolateFinder implements PieceFinder {
     return _running = me;
   }
 
-  /* The isolate let go: every ask still waiting fails. */
+  /* The isolate let go: every ask still waiting fails. It is killed, and goes with all it keeps once its OpenCV call
+     in hand returns; its port closes when it has exited. */
   void _gone() {
     final running = _running;
     _running = null;
-    unawaited(running?.then((r) {
-      r.$1.kill(priority: Isolate.immediate);
-      r.$3.close();
-    }, onError: (Object _) {}));
+    unawaited(running?.then((r) => r.$1.kill(priority: Isolate.immediate), onError: (Object _) {}));
     for (final c in _waiting.values) {
       c.completeError(StateError('finder: the isolate has gone'));
     }
@@ -92,6 +100,10 @@ class _IsolateFinder implements PieceFinder {
     send.send((id, kind, payload));
     try {
       return await answer.future.timeout(wait);
+    } on TimeoutException {
+      // Still busy with it, so the next ask would wait behind it: it goes, with what it kept, and another starts.
+      stop();
+      rethrow;
     } finally {
       _waiting.remove(id);
     }
@@ -99,10 +111,18 @@ class _IsolateFinder implements PieceFinder {
 
   @override
   Future<FinderAnswer> find(PickedPhoto photo, {double? cut}) async {
-    final picture = photo.picture as img.Image;
-    final rgba = picture.convert(numChannels: 4, format: img.Format.uint8).getBytes(order: img.ChannelOrder.rgba);
-    final m = await _ask('find', (TransferableTypedData.fromList([rgba]), photo.width, photo.height, cut))
-        as Map<String, Object?>;
+    var picture = photo.picture as img.Image;
+    if (picture.format != img.Format.uint8 || picture.hasPalette) picture = picture.convert(format: img.Format.uint8);
+    // The picture's own pixels, copied once to be handed over; made RGBA in the finder's isolate.
+    _scale = 1;
+    final Map<String, Object?> m;
+    try {
+      m = await _ask('find', (TransferableTypedData.fromList([picture.toUint8List()]), photo.width, photo.height,
+          picture.numChannels, cut)) as Map<String, Object?>;
+    } catch (_) {
+      forget(); // nothing kept answers a snap or cut meant for another photo
+      rethrow;
+    }
     final scale = _scale = (m['scale']! as num).toDouble();
     final look = m['look'] as Map<String, Object?>?;
     return FinderAnswer(
@@ -161,15 +181,20 @@ void _finderMain(SendPort out) {
     try {
       switch (kind) {
         case 'find':
-          final (TransferableTypedData pixels, int width, int height, double? cut) =
-              payload! as (TransferableTypedData, int, int, double?);
-          out.send((id, session.find(pixels.materialize().asUint8List(), width, height, groupCut: cut)));
+          final (TransferableTypedData pixels, int width, int height, int channels, double? cut) =
+              payload! as (TransferableTypedData, int, int, int, double?);
+          var rgba = pixels.materialize().asUint8List();
+          if (channels != 4) {
+            rgba = img.Image.fromBytes(width: width, height: height, bytes: rgba.buffer, numChannels: channels)
+                .getBytes(order: img.ChannelOrder.rgba);
+          }
+          out.send((id, session.find(rgba, width, height, groupCut: cut)));
         case 'snap':
           final (double x, double y) = payload! as (double, double);
           out.send((id, session.snap(x, y)));
         case 'cut':
-          final rgba = session.cut((payload! as List).cast<Float32List>());
-          out.send((id, [for (final b in rgba) TransferableTypedData.fromList([b])]));
+          final cuts = session.cut((payload! as List).cast<Float32List>());
+          out.send((id, [for (final (_, b) in cuts) TransferableTypedData.fromList([b])]));
         case 'forget':
           session.forget();
       }

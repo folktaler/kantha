@@ -187,11 +187,11 @@ void _cut(FinderSession session, _Ask ask) {
     final q = asked[i].toDart;
     squares.add(Float32List.fromList([for (var k = 0; k < q.length; k++) q[k].toDartDouble]));
   }
-  final rgba = session.cut(squares);
-  final out = [for (final b in rgba) b.buffer.toJS];
+  final cuts = session.cut(squares);
+  final out = [for (final (_, b) in cuts) b.buffer.toJS];
   final answer = JSObject()
     ..['id'] = ask.id.toJS
-    ..['sides'] = [for (final q in squares) cropSide(q, session.scale).toJS].toJS
+    ..['sides'] = [for (final (side, _) in cuts) side.toJS].toJS
     ..['rgba'] = out.toJS;
   _self.postMessage(answer, out.toJS);
 }

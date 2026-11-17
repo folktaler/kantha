@@ -5,7 +5,7 @@
    three folders (the photos at the top, full/ and workshop-2026-11-10/), then merged under each photo's path.
    The photos are the owner's and are not in the repository: the test reads them from ~/kantha-finder-photos (or
    KANTHA_FINDER_PHOTOS) and is skipped where they are not. Then the isolate finder the sheet uses, once, on one of
-   them. */
+   them. A drawn photo checks the phones' OpenCV everywhere, CI too. */
 @TestOn('vm')
 library;
 
@@ -86,6 +86,39 @@ void main() {
     }, skip: there ? false : 'the owner\'s test photos are not on this machine ($home)');
   }
 
+  group('a drawn photo of 9 pieces of 3 cloths, wherever the test runs', () {
+    final p = _drawn();
+    final rgba = p.getBytes(order: img.ChannelOrder.rgba);
+
+    test('the phones\' OpenCV finds the 9 pieces as 3 cloths', () {
+      final session = FinderSession(OpenCvNative());
+      final f = session.find(rgba, p.width, p.height);
+      expect(f['squares'], hasLength(9));
+      expect((f['groups']! as List).toSet(), hasLength(3));
+      final cuts = session.cut((f['squares']! as List).cast<Float32List>().take(2).toList());
+      for (final (side, b) in cuts) {
+        expect(b.length, side * side * 4);
+      }
+      session.forget();
+    });
+
+    test('a picture of the wrong size is refused before OpenCV holds it', () {
+      expect(() => FinderSession(OpenCvNative()).find(Uint8List(10), p.width, p.height), throwsArgumentError);
+    });
+
+    test('in its isolate, from the picture as the sheet holds it (3 channels)', () async {
+      final three = p.convert(numChannels: 3);
+      final finder = isolateFinder();
+      final a = await finder.find(PickedPhoto(Uint8List(0), p.width, p.height, three));
+      expect(a.squares, hasLength(9));
+      expect(a.groups.toSet(), hasLength(3));
+      expect(await finder.cut(a.squares.take(1).toList()), hasLength(1));
+      finder.stop();
+      expect((await finder.find(PickedPhoto(Uint8List(0), p.width, p.height, p))).squares, hasLength(9));
+      finder.forget();
+    });
+  });
+
   test('the sheet\'s finder, in its isolate: find, snap and cut on a many-piece photo', () async {
     const name = 'r3-stacks.jpg';
     final p = picture(name);
@@ -138,3 +171,17 @@ void main() {
 
 /// Group numbers as a partition: for each item, the first item of its group.
 List<int> _partition(List<int> groups) => [for (final g in groups) groups.indexOf(g)];
+
+/// 9 pieces of 3 cloths, 220 px each and 100 px apart, on a pale table: integration_test/many_pieces_test.dart's.
+img.Image _drawn() {
+  const cloths = [(178, 34, 52), (32, 52, 110), (214, 160, 30)];
+  final photo = img.Image(width: 1400, height: 1100, numChannels: 4)..clear(img.ColorRgba8(236, 230, 214, 255));
+  for (var row = 0; row < 3; row++) {
+    for (var col = 0; col < 3; col++) {
+      final (r, g, b) = cloths[(row + col) % 3];
+      final x = 160 + col * 320, y = 110 + row * 320;
+      img.fillRect(photo, x1: x, y1: y, x2: x + 219, y2: y + 219, color: img.ColorRgba8(r, g, b, 255));
+    }
+  }
+  return photo;
+}
