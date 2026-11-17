@@ -4,12 +4,12 @@
    after an add a banner says what went in, until the sheet closes. Every close (Done, the ×, the scrim, back, Escape)
    with a photo waiting adds it as Add does, then closes; if the add fails the sheet stays open with the error and the
    photo (owner, 22 October 2026).
-   Where there is a finder (the web, piece_finder.dart), the photo may hold many pieces (plan Part 1, owner's mockup of
+   Where there is a finder (the web and the phones, piece_finder.dart), the photo may hold many pieces (plan Part 1, owner's mockup of
    30 October 2026): once read, the finder looks. 2 or more pieces: "Are these your pieces?", then "Your cloths", then
    one cloth per cloth found goes in through the same add, its count as she left it, and the sheet closes. 0 or 1: the
    crop, as before, its square on the piece found. Pieces there but too small to find: she is asked for a closer
-   photo. Every close adds what is waiting: the pieces as matched, or the cloths as counted. A phone has no finder, and
-   the sheet is as it was. */
+   photo. Every close adds what is waiting: the pieces as matched, or the cloths as counted. With no finder (a test sets
+   none) the sheet is one piece and the crop. */
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -92,7 +92,7 @@ class _AddClothState extends State<AddCloth> {
   /* Done or a close was asked for with a photo waiting: the sheet closes once that photo is in the box. */
   bool _closeAfter = false;
 
-  /* The finder, where this platform has one; null on a phone, and the sheet is as it was. */
+  /* The finder; null (in a test) is a sheet of one piece and the crop. */
   final PieceFinder? _finder = pieceFinder();
   bool get _many => _finder != null;
   _Step _step = _Step.pick;

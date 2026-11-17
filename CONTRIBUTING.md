@@ -78,8 +78,17 @@ The studio, in `studio/` (Flutter 3.47.6):
 ```bash
 flutter pub get
 flutter analyze
+dart run tool/l10n_from_messages.dart --check
 flutter test --exclude-tags pixels
 ```
+
+The first `flutter test`, and the first Android or iOS build, compile OpenCV for the phones' piece finder from
+source (opencv_dart's build hook, with the modules `pubspec.yaml` names). That takes a few minutes and needs CMake
+and Ninja, and a C and C++ compiler; on a Mac, Xcode's, not only the Command Line Tools. An Android build also
+needs `ANDROID_HOME` set to the Android SDK, so the hook finds the NDK, and on an Apple-silicon Mac without Rosetta
+an arm64 `yasm` in place of the NDK's (`toolchains/llvm/prebuilt/darwin-x86_64/bin/yasm`, which is Intel only), for
+the x86_64 build. `dart run` builds it once more, for itself, which is why the check above runs before `flutter test`:
+a test of the word files runs `dart run` and allows it 30 seconds.
 
 If you changed the studio, also run the 2 journeys in Chrome, in `studio/`. Set `CHROME_EXECUTABLE` to
 a Chrome or Chrome for Testing binary; the script fetches the matching chromedriver the first time:

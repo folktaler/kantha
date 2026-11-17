@@ -1,7 +1,7 @@
 /* The square finder as the Add a piece sheet uses it: every piece in her photo, which are the same cloth, a tap snapped
-   to the piece under it, and each piece cut from the photo. On the web it runs in its own worker
-   (piece_finder_web.dart, web/finder_worker.dart), which loads OpenCV.js when the sheet first opens. A phone has no
-   finder yet (plan Part 1 step 7): there the sheet is as it was, one piece and the crop. */
+   to the piece under it, and each piece cut from the photo. The finder itself is lib/finder/finder_session.dart, the
+   same on every platform. On the web it runs in its own worker (piece_finder_web.dart, web/finder_worker.dart), which
+   loads OpenCV.js when the sheet first opens; on a phone in its own isolate, on opencv_dart (piece_finder_io.dart). */
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Offset, Size;
@@ -38,8 +38,8 @@ abstract interface class PieceFinder {
   void stop();
 }
 
-/* The finder this platform has, or null (a phone). Started when the sheet opens, not with the studio. A test sets
-   pieceFinderWith. */
+/* The finder this platform has. Started when the sheet opens, not with the studio. A test sets pieceFinderWith; null
+   is a sheet with no finder, one piece and the crop. */
 PieceFinder? pieceFinder() => pieceFinderWith();
 @visibleForTesting
 PieceFinder? Function() pieceFinderWith = impl.create;
@@ -50,7 +50,7 @@ PieceFinder? Function() pieceFinderWith = impl.create;
 const tooSmallTiny = 60;
 
 /* The longest the web finder waits for its worker to load (OpenCV.js, about 0.7 MB), and then the longest for a look,
-   once loaded. Past it, or when the finder fails, the photo goes to the crop, as on a phone with no finder. */
+   once loaded (on a phone, the longest for each look). Past it, or when the finder fails, the photo goes to the crop. */
 const finderWait = Duration(seconds: 30);
 
 /* The longest the sheet waits for any finder, however it is made: past the web finder's own two waits, so they are
