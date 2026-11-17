@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantha_studio/cloth/piece_finder.dart' show pieceFinderWith;
 import 'package:kantha_studio/data/backup.dart' show loadBackupCode;
 import 'package:kantha_studio/data/sample_box.dart' show loadSwatches;
 import 'package:kantha_studio/platform/fonts.dart';
@@ -15,6 +16,9 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // The browser tests (flutter test --platform chrome) pump no widgets: nothing there runs on a fake clock.
   if (kIsWeb) return testMain();
   TestWidgetsFlutterBinding.ensureInitialized();
+  // No finder unless a test gives one: the phone's finder answers from its isolate, which a widget test's fake clock
+  // never waits for. Its own tests (test/cloth/finder_phone_web_test.dart) run it on the real clock.
+  pieceFinderWith = () => null;
   await Future.wait([loadPublicSans(), loadMalayalam(), loadBackupCode(), loadSheetPdf(), loadSwatches(),
       loadClothSheets()]);
   await testMain();

@@ -15,6 +15,9 @@
                 numbers], …}); default <photos>/halloween, skipped when it has no key.json. A <reference>/
                 <folder name>.json, {"labels": […]}, is the Python grouping to compare with
    --measure    cut and measure every found square (lib/measure/measure.dart), and print the readings
+   --decode     each photo decoded here by the image package and handed to Chrome as a PNG, so Chrome finds in the
+                same pixels as the phones' finder test (test/cloth/finder_phone_web_test.dart); its --json is that
+                test's test/fixtures/finder/web.json
    With no photo names, every .jpg in --photos. */
 import 'dart:async';
 import 'dart:convert';
@@ -40,6 +43,7 @@ Future<void> main(List<String> args) async {
   final jsonOut = opt('json', '');
   final cells = Directory(opt('cells', '${photos.path}/halloween'));
   final measure = args.contains('--measure');
+  final decode = args.contains('--decode');
   final valued = {'--photos', '--reference', '--slow', '--runs', '--chrome', '--json', '--cells'};
   final named = [
     for (var i = 0; i < args.length; i++)
@@ -59,7 +63,7 @@ Future<void> main(List<String> args) async {
   // at 6x). So the slowed timing runs the same compiled worker on the page's thread (page.html), and so does
   // one at 1x, to show the two threads take the same time unslowed.
   final runsOn = [('worker', 1), if (slow > 1) ...[('page', 1), ('page', slow)]];
-  final server = await _serve(photos, cells);
+  final server = await _serve(photos, cells, decode: decode);
   final keyFile = File('${cells.path}/key.json');
   Map<String, dynamic>? cellResult;
   final browser = await _Chrome.start(chrome);
@@ -310,7 +314,7 @@ const ask = (m) => self.onmessage({data: m});
 </script><script src="/opencv_finder.js"></script><script src="/finder_worker.js"></script>''';
 
 /// The bench page, the worker and OpenCV.js from web/, and the photos and cells from their folders, on 127.0.0.1 only.
-Future<HttpServer> _serve(Directory photos, Directory cells) async {
+Future<HttpServer> _serve(Directory photos, Directory cells, {bool decode = false}) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   server.listen((req) async {
     final path = req.uri.path;
@@ -331,7 +335,11 @@ Future<HttpServer> _serve(Directory photos, Directory cells) async {
       if (!name.contains('/')) file = File('${cells.path}/crops/$name');
       res.headers.contentType = ContentType('image', 'png');
     }
-    if (file != null && file.existsSync()) {
+    if (file != null && file.existsSync() && decode && path.startsWith('/photo/')) {
+      final picture = img.decodeImage(file.readAsBytesSync())!;
+      res.headers.contentType = ContentType('image', 'png');
+      res.add(img.encodePng(picture.convert(numChannels: 4, format: img.Format.uint8)));
+    } else if (file != null && file.existsSync()) {
       await res.addStream(file.openRead());
     } else if (!path.endsWith('.html')) {
       res.statusCode = HttpStatus.notFound;

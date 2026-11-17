@@ -2,3 +2,5 @@ Kantha
 Copyright 2026 Tinybridge Ventures Private Limited.
 
 This product includes OpenCV (https://opencv.org), Apache License 2.0, in studio/web/opencv_finder.js.
+The Android and iOS apps include OpenCV (https://opencv.org) and opencv_dart
+(https://github.com/rainyl/opencv_dart), both Apache License 2.0, in their native library.

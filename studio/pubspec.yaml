@@ -23,6 +23,12 @@ dependencies:
   image_picker: 1.2.4
   intl: 0.20.3
   material_color_utilities: 0.13.0
+  # The square finder's OpenCV on phones (lib/finder/opencv_native.dart); the web has OpenCV.js instead.
+  opencv_dart: 2.2.2
+  # opencv_dart's own bindings, held at the release it came with. 2.3.x's link hook writes a list of the native
+  # functions to keep that names other contrib modules' too, and every build after a release build then fails to link
+  # ("version script assignment … symbol not defined"; rainyl/opencv_dart#462, measured 17 November 2026).
+  dartcv4: 2.2.2
   path_provider: 2.1.6
   pdf: 3.13.1
   pool: 1.5.3
@@ -42,6 +48,27 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   icons_launcher: 3.1.0
+
+# OpenCV for the phones' square finder, built from source by dartcv4's hook with only what the finder calls: imgproc,
+# and ximgproc for Felzenszwalb's segmentation with the modules ximgproc needs (calib3d, features2d, flann, imgcodecs,
+# video), named here because dartcv4 2.2.2 does not add them itself.
+hooks:
+  user_defines:
+    dartcv4:
+      include_modules:
+        - imgproc
+        - ximgproc
+        - calib3d
+        - features2d
+        - flann
+        - imgcodecs
+        - video
+      # Ninja, not Xcode's project generator: dartcv4 2.2.2 asks for macOS 10.15 and iOS 12.0, under what Xcode 27's
+      # projects accept (the binary keeps working on newer systems).
+      macos:
+        generator: Ninja
+      ios:
+        generator: Ninja
 
 flutter:
   uses-material-design: true

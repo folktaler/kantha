@@ -23,5 +23,8 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze
+      # A first `dart run` builds OpenCV for the phones' finder (opencv_dart's build hook) for the host, which takes
+      # minutes; done here, so the word-file test's own `dart run` (30 s) finds it built.
+      - run: dart run tool/l10n_from_messages.dart --check
       # The pixel comparisons only hold on the Mac, where their fixtures were drawn (dart_test.yaml).
       - run: flutter test --exclude-tags pixels

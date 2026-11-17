@@ -5,6 +5,7 @@ import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 import 'package:kantha_studio/finder/cv.dart';
 import 'package:kantha_studio/finder/find_squares.dart';
+import 'package:kantha_studio/finder/finder_session.dart';
 import 'package:kantha_studio/finder/group_squares.dart';
 import 'package:kantha_studio/finder/opencv_js.dart';
 import 'package:web/web.dart' as web;
@@ -49,10 +50,9 @@ extension type _Ask._(JSObject _) implements JSObject {
   external bool? get forget;
 }
 
-/// The picture the studio last asked about, as BGR, its finder, and the working scale.
-CvMat? _kept;
-SquareFinder? _finder;
-double _keptScale = 1;
+/// The studio's asks (pixels, snap, cut, forget), on the picture it last asked about: lib/finder/finder_session.dart,
+/// which a phone runs in an isolate with opencv_dart.
+FinderSession? _session;
 
 void main() {
   _importScripts('opencv_finder.js'.toJS);
@@ -67,10 +67,11 @@ void main() {
     unawaited(() async {
       try {
         final cv = await ready;
-        if (ask.pixels != null) return _findPixels(cv, ask);
-        if (ask.snap != null) return _snap(ask);
-        if (ask.cut != null) return _cut(cv, ask);
-        if (ask.forget == true) return _letGo();
+        final session = _session ??= FinderSession(cv);
+        if (ask.pixels != null) return _findPixels(session, ask);
+        if (ask.snap != null) return _snap(session, ask);
+        if (ask.cut != null) return _cut(session, ask);
+        if (ask.forget == true) return session.forget();
         await (ask.cells != null ? _group(cv, ask) : _find(cv, ask));
       } catch (error) {
         _self.postMessage(jsonEncode({'id': ask.id, 'error': '$error'}).toJS);
@@ -113,7 +114,7 @@ Future<void> _find(OpenCvJs cv, _Ask ask) async {
     try {
       groups = groupsOf(cv, squareHistograms(cv, f));
       groupMs = clock.elapsedMilliseconds - findMs;
-      look = _look(cv, f);
+      look = lookOf(cv, f);
       lookMs = clock.elapsedMilliseconds - findMs - groupMs;
     } finally {
       f.dispose();
@@ -168,85 +169,29 @@ Future<void> _group(OpenCvJs cv, _Ask ask) async {
   _self.postMessage(jsonEncode({'id': ask.id, 'groups': groupsOf(cv, hists), 'totalMs': clock.elapsedMilliseconds}).toJS);
 }
 
-/// printLook as JSON, for 4 squares or more (fewer are never one print).
-Map<String, Object?>? _look(OpenCvJs cv, FoundSquares f) {
-  final l = f.squares.length < 4 ? null : printLook(cv, f);
-  return l == null ? null : {
-    'boxSpread': l.boxSpread, 'ringSpread': l.ringSpread, 'ringVsBox': l.ringVsBox, 'ringVsOutside': l.ringVsOutside,
-  };
+void _findPixels(FinderSession session, _Ask ask) {
+  final m = session.find(ask.pixels!.toDart.asUint8List(), ask.width!, ask.height!, groupCut: ask.groupCut);
+  _self.postMessage(jsonEncode({'id': ask.id, ...m}).toJS);
 }
 
-void _letGo() {
-  _kept?.dispose();
-  _kept = null;
-  _finder = null;
-}
-
-void _findPixels(OpenCvJs cv, _Ask ask) {
-  final clock = Stopwatch()..start();
-  _letGo();
-  final rgba = ask.pixels!.toDart.asUint8List();
-  final four = cv.fromRgba(rgba, ask.width!, ask.height!);
-  final photo = cv.cvtColor(four, CvColour.rgbaToBgr);
-  four.dispose();
-  final finder = SquareFinder(cv);
-  // OpenCV's memory goes back whatever happens; the photo is kept only once all of it worked.
-  final FoundSquares f;
-  final List<int> groups;
-  final Map<String, Object?>? look;
-  final int groupMs, lookMs;
-  try {
-    f = finder.find(photo);
-    try {
-      groups = f.squares.isEmpty ? <int>[] : groupsOf(cv, squareHistograms(cv, f), cut: _cutOf(ask.groupCut));
-      groupMs = clock.elapsedMilliseconds;
-      look = _look(cv, f);
-      lookMs = clock.elapsedMilliseconds - groupMs;
-    } finally {
-      f.dispose();
-    }
-  } catch (_) {
-    photo.dispose();
-    rethrow;
-  }
-  _kept = photo;
-  _finder = finder;
-  _keptScale = f.scale;
-  _self.postMessage(jsonEncode({
-    'id': ask.id, 'width': f.width, 'height': f.height, 'scale': f.scale, 'side': f.side,
-    'squares': [for (final q in f.squares) q], 'groups': groups, 'tiny': f.tiny, 'look': ?look, 'lookMs': lookMs, 'totalMs': clock.elapsedMilliseconds,
-  }).toJS);
-}
-
-/// The grouping's cut asked for: a number from 0 to 1 (a mean Bhattacharyya distance); anything else, or none, is
-/// the studio's own, groupCut.
-double _cutOf(double? asked) => asked != null && asked >= 0 && asked <= 1 ? asked : groupCut;
-
-void _snap(_Ask ask) {
+void _snap(FinderSession session, _Ask ask) {
   final at = ask.snap!.toDart;
-  final q = _finder?.snap(at[0].toDartDouble, at[1].toDartDouble);
+  final q = session.snap(at[0].toDartDouble, at[1].toDartDouble);
   _self.postMessage(jsonEncode({'id': ask.id, 'square': q}).toJS);
 }
 
-void _cut(OpenCvJs cv, _Ask ask) {
-  final photo = _kept;
-  if (photo == null) throw StateError('no picture kept');
+void _cut(FinderSession session, _Ask ask) {
   final asked = ask.cut!.toDart;
-  final sides = <JSNumber>[], out = <JSArrayBuffer>[];
+  final squares = <Float32List>[];
   for (var i = 0; i < asked.length; i++) {
     final q = asked[i].toDart;
-    final corners = Float32List.fromList([for (var k = 0; k < q.length; k++) q[k].toDartDouble]);
-    final side = cropSide(corners, _keptScale);
-    final cell = cv.warpQuad(photo, Float32List.fromList([for (final v in corners) v / _keptScale]), side);
-    final rgba = cv.cvtColor(cell, CvColour.bgrToRgba);
-    sides.add(side.toJS);
-    out.add(Uint8List.fromList(cv.bytes(rgba)).buffer.toJS);
-    rgba.dispose();
-    cell.dispose();
+    squares.add(Float32List.fromList([for (var k = 0; k < q.length; k++) q[k].toDartDouble]));
   }
+  final cuts = session.cut(squares);
+  final out = [for (final (_, b) in cuts) b.buffer.toJS];
   final answer = JSObject()
     ..['id'] = ask.id.toJS
-    ..['sides'] = sides.toJS
+    ..['sides'] = [for (final (side, _) in cuts) side.toJS].toJS
     ..['rgba'] = out.toJS;
   _self.postMessage(answer, out.toJS);
 }
