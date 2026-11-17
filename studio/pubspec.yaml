@@ -8,9 +8,9 @@ environment:
   flutter: 3.47.6
 
 dependencies:
-  archive: 4.3.0
+  archive: 4.7.1
   crop_your_image: 2.0.1
-  drift: 2.35.2
+  drift: 2.35.4
   drift_flutter: 0.3.1
   file_picker: 13.1.0
   flutter:
@@ -28,23 +28,23 @@ dependencies:
   # opencv_dart's own bindings, held at the release it came with. 2.3.x's link hook writes a list of the native
   # functions to keep that names other contrib modules' too, and every build after a release build then fails to link
   # ("version script assignment … symbol not defined"; rainyl/opencv_dart#462, measured 17 November 2026).
-  dartcv4: 2.2.2
+  dartcv4: 2.3.1
   path_provider: 2.1.6
   pdf: 3.13.1
   pool: 1.5.3
   printing: 5.15.1
   share_plus: 13.3.1
-  sqlite3: 3.7.0
+  sqlite3: 3.9.1
   tabler_icons_next: 3.48.0
   url_launcher: 6.3.3
-  web: 1.1.1
+  web: 1.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
-  drift_dev: 2.35.1
-  build_runner: 2.16.1
+  drift_dev: 2.35.3
+  build_runner: 2.16.2
   integration_test:
     sdk: flutter
   icons_launcher: 3.1.0
